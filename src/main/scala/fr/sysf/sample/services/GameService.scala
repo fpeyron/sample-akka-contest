@@ -1,4 +1,4 @@
-package fr.sysf.sample.game
+package fr.sysf.sample.services
 
 import javax.ws.rs.Path
 import javax.ws.rs.core.MediaType
@@ -7,20 +7,20 @@ import akka.actor.ActorRef
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
-import fr.sysf.sample.DefaultDirectives
-import fr.sysf.sample.game.GameActor._
-import fr.sysf.sample.game.GameModel._
+import fr.sysf.sample.DefaultJsonFormats
+import fr.sysf.sample.actors.GameActor._
+import fr.sysf.sample.models.Game._
 import io.swagger.annotations._
 
 
 /**
   *
-  * @param gameActor     Game Actor
+  * @param gameActor Game Actor
   */
 @Api(value = "/games", produces = MediaType.APPLICATION_JSON)
 @Path("/games")
 class GameService(gameActor: ActorRef)
-  extends DefaultDirectives with GameJsonFormats {
+  extends Directives with DefaultJsonFormats with GameJsonFormats {
 
   import akka.pattern.ask
 
@@ -28,15 +28,8 @@ class GameService(gameActor: ActorRef)
 
   implicit val timeout: Timeout = Timeout(2.seconds)
 
-  def route: Route = handleRejections(rejectionHandler) {
-    handleExceptions(exceptionHandler) {
-      game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
-      game_getLines ~ game_createLine ~ game_deleteLine ~game_updateLine
-
-    }
-  }
-
-
+  def route: Route = game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
+    game_getLines ~ game_createLine ~ game_deleteLine ~ game_updateLine
 
 
   /**
@@ -155,7 +148,7 @@ class GameService(gameActor: ActorRef)
   def game_delete: Route = path("games" / JavaUUID) { id =>
     delete {
       onSuccess(gameActor ? GameDeleteCmd(id)) {
-        case None => complete(StatusCodes.OK)
+        case None => complete(StatusCodes.OK, None)
       }
     }
   }
@@ -216,6 +209,7 @@ class GameService(gameActor: ActorRef)
 
   /**
     * game.getLines
+    *
     * @return Seq[GameLineResponse]
     */
   @Path("/{id}/lines")
@@ -238,6 +232,7 @@ class GameService(gameActor: ActorRef)
 
   /**
     * game.createLine
+    *
     * @return GameLineResponse
     */
   @Path("/{id}/lines")
@@ -253,7 +248,7 @@ class GameService(gameActor: ActorRef)
     post {
       entity(as[GameLineCreateRequest]) { request =>
         onSuccess(gameActor ? GameLineCreateCmd(id, request)) {
-          case response: GameResponse => complete(StatusCodes.OK, response)
+          case response: GameLineResponse => complete(StatusCodes.OK, response)
         }
       }
     }
@@ -262,6 +257,7 @@ class GameService(gameActor: ActorRef)
 
   /**
     * game.updateLine
+    *
     * @return GameLineResponse
     */
   @Path("/{id}/lines/{lineId}")
@@ -287,6 +283,7 @@ class GameService(gameActor: ActorRef)
 
   /**
     * game.deleteLine
+    *
     * @return Void
     */
   @Path("/{id}/lines/{lineId}")

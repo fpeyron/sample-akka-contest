@@ -8,7 +8,7 @@ import fr.sysf.sample.DefaultDirectives.{EntityNotFoundException, ErrorResponse,
 import spray.json._
 
 
-object DefaultDirectives{
+object DefaultDirectives {
 
   // Error body
   case class ErrorResponse(code: Int, `type`: String, message: Option[String] = None, detail: Option[Map[String, String]] = None)

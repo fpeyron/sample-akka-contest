@@ -1,10 +1,8 @@
-package fr.sysf.sample.swagger
+package fr.sysf.sample.services
 
 import com.github.swagger.akka.SwaggerHttpService
 import com.github.swagger.akka.model.Info
 import fr.sysf.sample.CorsSupport
-import fr.sysf.sample.game.GameService
-import fr.sysf.sample.prize.PrizeService
 import io.swagger.models.ExternalDocs
 import io.swagger.models.auth.OAuth2Definition
 

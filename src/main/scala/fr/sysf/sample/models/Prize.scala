@@ -1,4 +1,4 @@
-package fr.sysf.sample.prize
+package fr.sysf.sample.models
 
 import java.util.UUID
 
@@ -6,7 +6,7 @@ import fr.sysf.sample.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 
-object PrizeModel {
+object Prize {
 
 
   // Service

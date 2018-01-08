@@ -1,4 +1,4 @@
-package fr.sysf.sample.prize
+package fr.sysf.sample.services
 
 import javax.ws.rs.Path
 import javax.ws.rs.core.MediaType
@@ -7,21 +7,20 @@ import akka.actor.ActorRef
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
-import fr.sysf.sample.DefaultDirectives
-import fr.sysf.sample.prize.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd}
-import fr.sysf.sample.prize.PrizeModel.{PrizeCreateRequest, PrizeGetRequest, PrizeJsonFormats, PrizeListRequest, PrizeResponse}
+import fr.sysf.sample.DefaultJsonFormats
+import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd}
+import fr.sysf.sample.models.Prize.{PrizeCreateRequest, PrizeGetRequest, PrizeJsonFormats, PrizeListRequest, PrizeResponse}
 import io.swagger.annotations._
-
 
 
 /**
   *
-  * @param prizeActor       PrizeActor
+  * @param prizeActor PrizeActor
   */
 @Api(value = "/prizes", produces = MediaType.APPLICATION_JSON)
 @Path("/prizes")
-class PrizeService(prizeActor: ActorRef) // (implicit executionContext: ExecutionContext)
-  extends DefaultDirectives with PrizeJsonFormats {
+class PrizeService(prizeActor: ActorRef)
+  extends Directives with DefaultJsonFormats with PrizeJsonFormats {
 
   import akka.pattern.ask
 
@@ -30,11 +29,7 @@ class PrizeService(prizeActor: ActorRef) // (implicit executionContext: Executio
   implicit val timeout: Timeout = Timeout(2.seconds)
 
 
-  def route: Route = handleRejections(rejectionHandler) {
-    handleExceptions(exceptionHandler) {
-      prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
-    }
-  }
+  def route: Route = prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
 
 
   /**
@@ -144,7 +139,7 @@ class PrizeService(prizeActor: ActorRef) // (implicit executionContext: Executio
   def prize_delete: Route = path("prizes" / JavaUUID) { id =>
     delete {
       onSuccess(prizeActor ? PrizeDeleteCmd(id)) {
-        case None => complete(StatusCodes.OK)
+        case None => complete(StatusCodes.OK, None)
       }
     }
   }

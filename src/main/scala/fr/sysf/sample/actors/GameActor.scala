@@ -1,11 +1,12 @@
-package fr.sysf.sample.game
+package fr.sysf.sample.actors
 
 import java.time.{Instant, ZoneId}
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging}
 import fr.sysf.sample.DefaultDirectives.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
-import fr.sysf.sample.game.GameModel._
+import fr.sysf.sample.actors.GameActor._
+import fr.sysf.sample.models.Game._
 
 
 object GameActor {
@@ -33,8 +34,6 @@ object GameActor {
 
 
 class GameActor extends Actor with ActorLogging {
-
-  import fr.sysf.sample.game.GameActor._
 
   var gameState = Seq.empty[GameResponse]
   var gameInstantState = Seq.empty

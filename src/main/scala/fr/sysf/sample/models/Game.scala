@@ -1,4 +1,4 @@
-package fr.sysf.sample.game
+package fr.sysf.sample.models
 
 import java.time.Instant
 import java.util.UUID
@@ -7,7 +7,7 @@ import fr.sysf.sample.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 
-object GameModel {
+object Game {
 
   // Service
   case class GameListRequest(types: Option[String], status: Option[String])

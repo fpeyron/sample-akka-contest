@@ -1,10 +1,11 @@
-package fr.sysf.sample.prize
+package fr.sysf.sample.actors
 
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging}
 import fr.sysf.sample.DefaultDirectives.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
-import fr.sysf.sample.prize.PrizeModel.PrizeCreateRequest
+import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd}
+import fr.sysf.sample.models.Prize.{PrizeCreateRequest, PrizeGetRequest, PrizeListRequest, PrizeResponse, PrizeType}
 
 
 object PrizeActor {
@@ -21,8 +22,6 @@ object PrizeActor {
 
 class PrizeActor extends Actor with ActorLogging {
 
-  import fr.sysf.sample.prize.PrizeModel._
-  import fr.sysf.sample.prize.PrizeActor._
 
   var state = Seq.empty[PrizeResponse]
 

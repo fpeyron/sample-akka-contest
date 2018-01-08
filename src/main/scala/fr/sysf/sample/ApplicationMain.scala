@@ -6,13 +6,12 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
-import fr.sysf.sample.game.{GameActor, GameService}
-import fr.sysf.sample.prize.{PrizeActor, PrizeService}
-import fr.sysf.sample.swagger.SwaggerDocService
+import fr.sysf.sample.actors.{GameActor, InstantwinActor, PrizeActor}
+import fr.sysf.sample.services.{GameService, PrizeService, SwaggerDocService}
 
 import scala.concurrent.ExecutionContextExecutor
 
-object ApplicationMain extends App with RouteConcatenation {
+object ApplicationMain extends App with RouteConcatenation with DefaultDirectives {
 
   // configurations
   val config = ConfigFactory.parseString(
