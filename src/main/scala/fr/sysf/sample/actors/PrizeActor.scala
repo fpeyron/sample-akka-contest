@@ -2,13 +2,16 @@ package fr.sysf.sample.actors
 
 import java.util.UUID
 
-import akka.actor.{Actor, ActorLogging}
-import fr.sysf.sample.DefaultDirectives.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
+import akka.actor.{Actor, ActorLogging, Props}
 import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd}
-import fr.sysf.sample.models.Prize.{PrizeCreateRequest, PrizeGetRequest, PrizeListRequest, PrizeResponse, PrizeType}
+import fr.sysf.sample.models.PrizeDomain.{PrizeCreateRequest, PrizeGetRequest, PrizeListRequest, PrizeResponse, PrizeType}
+import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
 
 
 object PrizeActor {
+
+  def props = Props(new PrizeActor)
+  def name = "prize-singleton"
 
   // Command
   sealed trait Cmd

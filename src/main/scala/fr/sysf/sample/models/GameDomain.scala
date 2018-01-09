@@ -7,12 +7,14 @@ import fr.sysf.sample.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 
-object Game {
+object GameDomain {
 
   // Service
   case class GameListRequest(types: Option[String], status: Option[String])
 
   case class GameGetRequest(id: UUID)
+
+  case class GameGetInstantwinRequest(game_id: UUID)
 
   case class GameCreateRequest(
                                 @ApiModelProperty(position = 1, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
@@ -65,15 +67,15 @@ object Game {
                            @ApiModelProperty(position = 3, value = "status", required = true, example = "DRAFT", allowableValues = "DRAFT,ACTIVATE,ARCHIVED")
                            status: GameStatusType.Value,
                            @ApiModelProperty(position = 4, value = "parent game")
-                           parent_id: Option[UUID],
+                           parent_id: Option[UUID] = None,
                            @ApiModelProperty(position = 5, value = "reference", required = true, example = "MY_CONTEST")
                            reference: String,
                            @ApiModelProperty(position = 6, value = "country code", required = true, example = "CA")
                            country_code: String,
                            @ApiModelProperty(position = 6, value = "portal code", required = false, example = "WW_DANON")
-                           portal_code: Option[String],
+                           portal_code: Option[String] = None,
                            @ApiModelProperty(position = 7, value = "title", example = "My new game")
-                           title: Option[String],
+                           title: Option[String] = None,
                            @ApiModelProperty(position = 8, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
                            start_date: Instant,
                            @ApiModelProperty(position = 9, value = "time zone", example = "+02:00")
@@ -83,11 +85,11 @@ object Game {
                            @ApiModelProperty(position = 11, value = "input type", required = true, example = "FREE", allowableValues = "FREE,POINT,SKU")
                            input_type: GameInputType.Value,
                            @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
-                           input_point: Option[Int],
+                           input_point: Option[Int] = None,
                            @ApiModelProperty(position = 13, value = "input eans", required = false)
-                           input_eans: Option[Seq[String]],
+                           input_eans: Option[Seq[String]] = None,
                            @ApiModelProperty(position = 14, value = "input freecodes", required = false)
-                           input_freecodes: Option[Seq[String]],
+                           input_freecodes: Option[Seq[String]] = None,
                            @ApiModelProperty(position = 15, value = "participation limits")
                            limits: Seq[GameLimitResponse] = Seq.empty,
                            @ApiModelProperty(position = 16, value = "lines")
@@ -195,6 +197,7 @@ object Game {
   trait GameJsonFormats extends DefaultJsonFormats {
     implicit val gameLimitRequest: RootJsonFormat[GameLimitRequest] = jsonFormat4(GameLimitRequest)
     implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat14(GameCreateRequest)
+    implicit val gameLineCreateRequest: RootJsonFormat[GameLineCreateRequest] = jsonFormat4(GameLineCreateRequest)
 
     implicit val gameType: RootJsonFormat[GameType.Value] = enumFormat(GameType)
     implicit val gameInputType: RootJsonFormat[GameInputType.Value] = enumFormat(GameInputType)
@@ -203,11 +206,8 @@ object Game {
 
     implicit val gameLimitUnit: RootJsonFormat[GameLimitUnit.Value] = enumFormat(GameLimitUnit)
     implicit val gameLimitResponse: RootJsonFormat[GameLimitResponse] = jsonFormat4(GameLimitResponse)
-    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat17(GameResponse)
-
-    implicit val gameLineCreateRequest: RootJsonFormat[GameLineCreateRequest] = jsonFormat4(GameLineCreateRequest)
-
     implicit val gameLineResponse: RootJsonFormat[GameLineResponse] = jsonFormat5(GameLineResponse)
+    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat17(GameResponse)
   }
 
 }

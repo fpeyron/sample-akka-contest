@@ -1,35 +1,40 @@
-package fr.sysf.sample.services
+package fr.sysf.sample.routes
 
+import java.io.File
+import java.time.Instant
+import java.util.UUID
 import javax.ws.rs.Path
-import javax.ws.rs.core.MediaType
 
+import akka.NotUsed
 import akka.actor.ActorRef
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server._
-import akka.util.Timeout
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.server.{Directives, Route}
+import akka.stream.scaladsl.Source
+import akka.util.{ByteString, Timeout}
 import fr.sysf.sample.DefaultJsonFormats
 import fr.sysf.sample.actors.GameActor._
-import fr.sysf.sample.models.Game._
+import fr.sysf.sample.models.GameDomain._
+import fr.sysf.sample.models.InstantwinDomain.Instantwin
 import io.swagger.annotations._
 
 
 /**
   *
-  * @param gameActor Game Actor
   */
-@Api(value = "/games", produces = MediaType.APPLICATION_JSON)
+@Api(value = "/games", produces = javax.ws.rs.core.MediaType.APPLICATION_JSON)
 @Path("/games")
-class GameService(gameActor: ActorRef)
-  extends Directives with DefaultJsonFormats with GameJsonFormats {
+trait GameRoute
+  extends Directives with DefaultJsonFormats with GameJsonFormats  {
 
   import akka.pattern.ask
 
   import scala.concurrent.duration._
+  implicit val gameActor: ActorRef
+  private implicit val timeout: Timeout = Timeout(2.seconds)
 
-  implicit val timeout: Timeout = Timeout(2.seconds)
-
-  def route: Route = game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
-    game_getLines ~ game_createLine ~ game_deleteLine ~ game_updateLine
+  def gameRoute: Route = game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
+    game_getLines ~ game_createLine ~ game_deleteLine ~ game_updateLine ~
+    game_downloadInstantwins
 
 
   /**
@@ -271,10 +276,10 @@ class GameService(gameActor: ActorRef)
     new ApiImplicitParam(name = "lineId", value = "id of game line", required = true, dataType = "string", paramType = "path")
   ))
   def game_updateLine: Route = path("games" / JavaUUID / "lines" / JavaUUID) { (id, lineId) =>
-    post {
+    put {
       entity(as[GameLineCreateRequest]) { request =>
         onSuccess(gameActor ? GameLineUpdateCmd(id, lineId, request)) {
-          case response: GameResponse => complete(StatusCodes.OK, response)
+          case response: GameLineResponse => complete(StatusCodes.OK, response)
         }
       }
     }
@@ -299,7 +304,44 @@ class GameService(gameActor: ActorRef)
   def game_deleteLine: Route = path("games" / JavaUUID / "lines" / JavaUUID) { (id, lineId) =>
     delete {
       onSuccess(gameActor ? GameLineDeleteCmd(id, lineId)) {
-        case None => complete(StatusCodes.OK)
+        case None => complete(StatusCodes.OK, None)
+      }
+    }
+  }
+
+  def getInstantwins: Source[Instantwin, NotUsed] = Source(for (i <- 0 until 1000) yield Instantwin(
+    id = UUID.randomUUID(),
+    game_id = UUID.randomUUID(),
+    prize_id = UUID.randomUUID(),
+    gameLine_id = UUID.randomUUID(),
+    activateDate = Instant.now.plusMillis(i * 1000)
+  ))
+
+
+  /**
+    * game.downloadInstantwins
+    *
+    * @return File
+    */
+  @Path("/{id}/instantwins")
+  @ApiOperation(value = "Download instantwins for game", notes = "", nickname = "game.downloadInstantwins", httpMethod = "GET")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return file game", response = classOf[File]),
+    new ApiResponse(code = 500, message = "Internal server error")
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
+  ))
+  def game_downloadInstantwins: Route = path("games" / JavaUUID / "instantwins") { id =>
+    get {
+      onSuccess((gameActor ? GameGetInstantwinRequest(id)).mapTo[List[Instantwin]]) { response =>
+          val mapStream =
+            Source.single("activate_date\tattribution_date\tgame_id\n")
+              .concat(Source(response).map((t: Instantwin) => s"${t.activateDate}\t${t.attributionDate}\t${t.game_id}\n"))
+              .map(ByteString.apply)
+          complete {
+          HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
+        }
       }
     }
   }

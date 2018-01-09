@@ -1,14 +1,18 @@
-package fr.sysf.sample
+package fr.sysf.sample.routes
 
 import java.util.UUID
 
+import akka.http.scaladsl.model.HttpMethods._
+import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
-import akka.http.scaladsl.server._
-import fr.sysf.sample.DefaultDirectives.{EntityNotFoundException, ErrorResponse, InvalidInputException, NotAuthorizedException}
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{Directive0, Route, _}
+import fr.sysf.sample.DefaultJsonFormats
+import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, ErrorResponse, InvalidInputException, NotAuthorizedException}
 import spray.json._
 
 
-object DefaultDirectives {
+object HttpSupport {
 
   // Error body
   case class ErrorResponse(code: Int, `type`: String, message: Option[String] = None, detail: Option[Map[String, String]] = None)
@@ -22,7 +26,7 @@ object DefaultDirectives {
 
 }
 
-trait DefaultDirectives extends DefaultJsonFormats with Directives with CorsSupport {
+trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {
 
   implicit val errorResponse: RootJsonFormat[ErrorResponse] = jsonFormat4(ErrorResponse)
 
@@ -63,5 +67,40 @@ trait DefaultDirectives extends DefaultJsonFormats with Directives with CorsSupp
   }
     .result()
 
+
+  def HealthCheck: Route =
+    path("healthcheck") {
+      get {
+        complete("ok")
+      }
 }
 
+
+  /*
+  def requestTimeout: Timeout = {
+    val t = conf.getString("akka.http.server.request-timeout")
+    val d = Duration(t)
+    FiniteDuration(d.length, d.unit)
+  }
+
+  implicit val timeout: Timeout = requestTimeout
+  */
+}
+
+trait CorsSupport {
+
+  private val addAccessControlHeaders: Directive0 = mapResponseHeaders { headers =>
+    `Access-Control-Allow-Origin`.* +:
+      `Access-Control-Allow-Credentials`(true) +:
+      `Access-Control-Allow-Headers`("Token", "Content-Type", "X-Requested-With") +:
+      headers
+  }
+
+  private def preflightRequestHandler: Route = options {
+    complete(HttpResponse(200).withHeaders(`Access-Control-Allow-Methods`(OPTIONS, POST, PUT, GET, DELETE)))
+  }
+
+  def corsHandler(r: Route): Route = addAccessControlHeaders {
+    preflightRequestHandler ~ r
+  }
+}

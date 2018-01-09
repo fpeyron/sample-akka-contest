@@ -6,7 +6,7 @@ import fr.sysf.sample.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 
-object Prize {
+object PrizeDomain {
 
 
   // Service
@@ -35,15 +35,15 @@ object Prize {
                             @ApiModelProperty(position = 2, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
                             `type`: PrizeType.Value,
                             @ApiModelProperty(position = 3, value = "title", example = "My new Prize")
-                            title: Option[String],
+                            title: Option[String] = None,
                             @ApiModelProperty(position = 4, value = "label", example = "My new label prize")
                             label: String,
                             @ApiModelProperty(position = 5, value = "description", example = "My new description prize")
-                            description: Option[String],
+                            description: Option[String] = None,
                             @ApiModelProperty(position = 6, value = "gift vendor code", example = "VENDOR")
-                            vendor_code: Option[String],
+                            vendor_code: Option[String] = None,
                             @ApiModelProperty(position = 7, value = "giftshop face value", example = "200")
-                            face_value: Option[Int]
+                            face_value: Option[Int] = None
                           )
 
   implicit object PrizeType extends Enumeration {

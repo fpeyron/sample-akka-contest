@@ -1,4 +1,4 @@
-package fr.sysf.sample.services
+package fr.sysf.sample.routes
 
 import javax.ws.rs.Path
 import javax.ws.rs.core.MediaType
@@ -9,27 +9,26 @@ import akka.http.scaladsl.server._
 import akka.util.Timeout
 import fr.sysf.sample.DefaultJsonFormats
 import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd}
-import fr.sysf.sample.models.Prize.{PrizeCreateRequest, PrizeGetRequest, PrizeJsonFormats, PrizeListRequest, PrizeResponse}
+import fr.sysf.sample.models.PrizeDomain.{PrizeCreateRequest, PrizeGetRequest, PrizeJsonFormats, PrizeListRequest, PrizeResponse}
 import io.swagger.annotations._
-
+import scala.concurrent.duration._
 
 /**
   *
-  * @param prizeActor PrizeActor
   */
 @Api(value = "/prizes", produces = MediaType.APPLICATION_JSON)
 @Path("/prizes")
-class PrizeService(prizeActor: ActorRef)
+trait PrizeRoute
   extends Directives with DefaultJsonFormats with PrizeJsonFormats {
 
-  import akka.pattern.ask
+  implicit val prizeActor: ActorRef
 
-  import scala.concurrent.duration._
+  import akka.pattern.ask
 
   implicit val timeout: Timeout = Timeout(2.seconds)
 
 
-  def route: Route = prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
+  def prizeRoute: Route = prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
 
 
   /**

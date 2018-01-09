@@ -1,21 +1,21 @@
 package fr.sysf.sample
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{ActorRef, ActorSystem}
 import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
-import fr.sysf.sample.actors.{GameActor, InstantwinActor, PrizeActor}
-import fr.sysf.sample.services.{GameService, PrizeService, SwaggerDocService}
+import fr.sysf.sample.actors.{GameActor, PrizeActor}
+import fr.sysf.sample.routes._
 
 import scala.concurrent.ExecutionContextExecutor
 
-object ApplicationMain extends App with RouteConcatenation with DefaultDirectives {
+object ApplicationMain extends App with RouteConcatenation with HttpSupport {
 
   // configurations
   val config = ConfigFactory.parseString(
-    s"""
+    """
        |akka {
        |  loglevel = INFO
        |  stdout-loglevel = INFO
@@ -35,24 +35,25 @@ object ApplicationMain extends App with RouteConcatenation with DefaultDirective
   implicit val materializer: ActorMaterializer = ActorMaterializer()
 
   // needed for the future map/flatMap in the end
-  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+  implicit val ec: ExecutionContextExecutor = system.dispatcher
 
   // needed for shutdown properly
   sys.addShutdownHook(system.terminate())
 
   // Start actors
-  val contestActor = system.actorOf(Props[GameActor])
-  val prizeActor = system.actorOf(Props[PrizeActor])
+  val gameActor: ActorRef = system.actorOf(GameActor.props, GameActor.name)
+  val prizeActor: ActorRef = system.actorOf(PrizeActor.props, PrizeActor.name)
 
   // start http services
-  //  val routes = new HelloService(hello).route ~ new ContestService(contact).route ~ SwaggerDocService.routes
-  val routes = SwaggerDocService.routes ~ new GameService(contestActor).route ~ new PrizeService(prizeActor).route
-  //val bindingFuture = Http().bindAndHandle(routes, address, port)
+  val mainRoute = new MainRoute(gameActor, prizeActor)
+  val bindingFuture = Http().bindAndHandle(mainRoute.routes, address, port)
 
   // logger
   val logger = Logging(system, getClass)
-
   logger.info(s"Server online at http://$address:$port/")
   logger.info(s"Swagger description http://$address:$port/api-docs/swagger.json")
-  Http().bindAndHandle(routes, address, port)
+}
+
+class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef) extends Directives with GameRoute with SwaggerRoute with PrizeRoute {
+  val routes: Route = gameRoute ~ swaggerRoute ~ prizeRoute
 }
