@@ -11,7 +11,7 @@ import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputE
 object PrizeActor {
 
   def props = Props(new PrizeActor)
-  def name = "prize-singleton"
+  val name = "prize-singleton"
 
   // Command
   sealed trait Cmd

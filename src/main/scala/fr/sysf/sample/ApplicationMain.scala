@@ -5,8 +5,8 @@ import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
-import com.typesafe.config.ConfigFactory
-import fr.sysf.sample.actors.{GameActor, PrizeActor}
+import com.typesafe.config.{Config, ConfigFactory}
+import fr.sysf.sample.actors.{ClusterListenerActor, GameActor, PrizeActor}
 import fr.sysf.sample.routes._
 
 import scala.concurrent.ExecutionContextExecutor
@@ -14,24 +14,12 @@ import scala.concurrent.ExecutionContextExecutor
 object ApplicationMain extends App with RouteConcatenation with HttpSupport {
 
   // configurations
-  val config = ConfigFactory.parseString(
-    """
-       |akka {
-       |  loglevel = INFO
-       |  stdout-loglevel = INFO
-       |}
-       |app {
-       |  http-service {
-       |    address = "0.0.0.0"
-       |    port = 8080
-       |  }
-       |}
-       """.stripMargin).withFallback(ConfigFactory.load())
-  val address = config.getString("app.http-service.address")
-  val port = config.getInt("app.http-service.port")
+  implicit val config: Config = ConfigFactory.load()
+  val address = config.getString("app.http.hostname")
+  val port = config.getInt("app.http.port")
 
   // needed to run the route
-  implicit val system: ActorSystem = ActorSystem("akka-http-sample", config)
+  implicit val system: ActorSystem = ActorSystem("fusion-game", config)
   implicit val materializer: ActorMaterializer = ActorMaterializer()
 
   // needed for the future map/flatMap in the end
@@ -43,6 +31,9 @@ object ApplicationMain extends App with RouteConcatenation with HttpSupport {
   // Start actors
   val gameActor: ActorRef = system.actorOf(GameActor.props, GameActor.name)
   val prizeActor: ActorRef = system.actorOf(PrizeActor.props, PrizeActor.name)
+
+  // Start Actor clusterListener
+  val clusterListenerActor = system.actorOf(ClusterListenerActor.props, ClusterListenerActor.name)
 
   // start http services
   val mainRoute = new MainRoute(gameActor, prizeActor)
