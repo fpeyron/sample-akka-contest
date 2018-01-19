@@ -10,25 +10,34 @@ import akka.util.Timeout
 import fr.sysf.sample.DefaultJsonFormats
 import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd}
 import fr.sysf.sample.models.PrizeDomain.{PrizeCreateRequest, PrizeGetRequest, PrizeJsonFormats, PrizeListRequest, PrizeResponse}
+import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import io.swagger.annotations._
+
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 /**
   *
   */
-@Api(value = "/prizes", produces = MediaType.APPLICATION_JSON)
+@Api(value = "/prizes", produces = MediaType.APPLICATION_JSON, authorizations = Array(
+  new Authorization(value = "basicAuth", scopes = Array(
+    new AuthorizationScope(scope = "read:prizes", description = "read your prizes for your country"),
+    new AuthorizationScope(scope = "write:prizes", description = "modify prizes for your country")
+  ))
+))
 @Path("/prizes")
 trait PrizeRoute
   extends Directives with DefaultJsonFormats with PrizeJsonFormats {
 
-  implicit val prizeActor: ActorRef
-
   import akka.pattern.ask
 
-  implicit val timeout: Timeout = Timeout(2.seconds)
+  implicit val ec: ExecutionContext
+  private implicit val timeout: Timeout = Timeout(2.seconds)
+  implicit val prizeActor: ActorRef
 
-
-  def prizeRoute: Route = prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
+  def prizeRoute: Route = AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
+    prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
+  }
 
 
   /**

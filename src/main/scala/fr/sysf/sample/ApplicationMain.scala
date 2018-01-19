@@ -9,7 +9,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import fr.sysf.sample.actors.{ClusterListenerActor, GameActor, PrizeActor}
 import fr.sysf.sample.routes._
 
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
 object ApplicationMain extends App with RouteConcatenation with HttpSupport {
 
@@ -45,6 +45,8 @@ object ApplicationMain extends App with RouteConcatenation with HttpSupport {
   logger.info(s"Swagger description http://$address:$port/api-docs/swagger.json")
 }
 
-class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef) extends Directives with GameRoute with SwaggerRoute with PrizeRoute {
-  val routes: Route = gameRoute ~ swaggerRoute ~ prizeRoute
+class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef)(implicit val ec:ExecutionContext)
+  extends HttpSupport with GameRoute with SwaggerRoute with PrizeRoute {
+
+  val routes: Route = gameRoute ~ swaggerRoute ~ prizeRoute  ~ HttpSupport.healthCheckRoute
 }

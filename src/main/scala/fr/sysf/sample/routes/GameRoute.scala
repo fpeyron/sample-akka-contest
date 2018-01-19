@@ -15,27 +15,37 @@ import fr.sysf.sample.DefaultJsonFormats
 import fr.sysf.sample.actors.GameActor._
 import fr.sysf.sample.models.GameDomain._
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
+import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import io.swagger.annotations._
+import scala.concurrent.duration._
+
+import scala.concurrent.ExecutionContext
 
 
 /**
   *
   */
-@Api(value = "/games", produces = javax.ws.rs.core.MediaType.APPLICATION_JSON)
+@Api(value = "/games", produces = javax.ws.rs.core.MediaType.APPLICATION_JSON, authorizations = Array(
+  new Authorization(value = "basicAuth", scopes = Array(
+    new AuthorizationScope(scope = "read:games", description = "read your games for your country"),
+    new AuthorizationScope(scope = "write:games", description = "modify games for your country")
+  ))
+))
 @Path("/games")
 trait GameRoute
-  extends Directives with DefaultJsonFormats with GameJsonFormats  {
+  extends Directives with DefaultJsonFormats with GameJsonFormats {
 
   import akka.pattern.ask
 
-  import scala.concurrent.duration._
-  implicit val gameActor: ActorRef
+  implicit val ec: ExecutionContext
   private implicit val timeout: Timeout = Timeout(2.seconds)
+  implicit val gameActor: ActorRef
 
-  def gameRoute: Route = game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
-    game_getLines ~ game_createLine ~ game_deleteLine ~ game_updateLine ~
-    game_downloadInstantwins
-
+  def gameRoute: Route = AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
+      game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
+      game_getLines ~ game_createLine ~ game_deleteLine ~ game_updateLine ~
+      game_downloadInstantwins
+  }
 
   /**
     * -------------------------------
@@ -335,11 +345,11 @@ trait GameRoute
   def game_downloadInstantwins: Route = path("games" / JavaUUID / "instantwins") { id =>
     get {
       onSuccess((gameActor ? GameGetInstantwinRequest(id)).mapTo[List[Instantwin]]) { response =>
-          val mapStream =
-            Source.single("activate_date\tattribution_date\tgame_id\n")
-              .concat(Source(response).map((t: Instantwin) => s"${t.activateDate}\t${t.attributionDate}\t${t.game_id}\n"))
-              .map(ByteString.apply)
-          complete {
+        val mapStream =
+          Source.single("activate_date\tattribution_date\tgame_id\n")
+            .concat(Source(response).map((t: Instantwin) => s"${t.activateDate}\t${t.attributionDate}\t${t.game_id}\n"))
+            .map(ByteString.apply)
+        complete {
           HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
         }
       }

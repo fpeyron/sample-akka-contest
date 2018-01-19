@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{Directive0, Route, _}
+import akka.http.scaladsl.server._
 import fr.sysf.sample.DefaultJsonFormats
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, ErrorResponse, InvalidInputException, NotAuthorizedException}
 import spray.json._
@@ -24,6 +24,12 @@ object HttpSupport {
 
   case class InvalidInputException(message: Option[String] = None, detail: Map[String, String]) extends RuntimeException
 
+  val healthCheckRoute: Route =
+    path("healthcheck") {
+      get {
+        complete("ok")
+      }
+    }
 }
 
 trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {
@@ -62,18 +68,14 @@ trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {
       case ValidationRejection(msg, _) =>
         complete(StatusCodes.BadRequest, ErrorResponse(code = StatusCodes.BadRequest.intValue, `type` = "ValidationRejection", message = Some(s"That wasn't valid! $msg")))
     }
-    .handleAll[MethodRejection] { methodRejections =>
-    complete(StatusCodes.MethodNotAllowed, ErrorResponse(code = StatusCodes.MethodNotAllowed.intValue, `type` = "MethodRejection", message = Some(s"Can't do that! Supported: ${methodRejections.map(_.supported.name).mkString(" or ")}!")))
+    .handleAll[AuthenticationFailedRejection] {_ =>
+      complete(StatusCodes.Forbidden, ErrorResponse(code = StatusCodes.Forbidden.intValue, `type` = "AuthorizationFailedRejection", message = Some("The resource requires authentication, which was not supplied with the request")))
+    //  case CredentialsRejected => complete(StatusCodes.Forbidden, ErrorResponse(code = StatusCodes.Forbidden.intValue, `type` = "AuthorizationFailedRejection", message = Some("The supplied authentication is invalid")))
+    }
+    .handleAll[MethodRejection] { methodRejection =>
+    complete(StatusCodes.MethodNotAllowed, ErrorResponse(code = StatusCodes.MethodNotAllowed.intValue, `type` = "MethodRejection", message = Some(s"Can't do that! Supported: ${methodRejection.map(_.supported.name).mkString(" or ")}!")))
   }
     .result()
-
-
-  def HealthCheck: Route =
-    path("healthcheck") {
-      get {
-        complete("ok")
-      }
-}
 
 
   /*
