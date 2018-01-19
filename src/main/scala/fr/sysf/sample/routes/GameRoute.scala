@@ -50,14 +50,14 @@ trait GameRoute
     */
   @ApiOperation(value = "list games by criteria", notes = "", nickname = "game.getAll", httpMethod = "GET")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Return list of games", responseContainer = "Seq", response = classOf[GameResponse]),
+    new ApiResponse(code = 200, message = "Return list of games", responseContainer = "Seq", response = classOf[GameForListResponse]),
     new ApiResponse(code = 500, message = "Internal server error")
   ))
   def game_getAll: Route = path("games") {
     get {
       parameters('type.?, 'status.?) { (typesOptional, statusOptional) =>
         complete {
-          (gameActor ? GameListRequest(types = typesOptional, status = statusOptional)).mapTo[Seq[GameResponse]]
+          (gameActor ? GameListRequest(types = typesOptional, status = statusOptional)).mapTo[Seq[GameForListResponse]]
         }
       }
     }
@@ -123,11 +123,11 @@ trait GameRoute
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "body", value = "game to update", required = true, dataTypeClass = classOf[GameCreateRequest], paramType = "body")
+    new ApiImplicitParam(name = "body", value = "game to update", required = true, dataTypeClass = classOf[GameUpdateRequest], paramType = "body")
   ))
   def game_update: Route = path("games" / JavaUUID) { id =>
     put {
-      entity(as[GameCreateRequest]) { request =>
+      entity(as[GameUpdateRequest]) { request =>
         onSuccess(gameActor ? GameUpdateCmd(id, request)) {
           case response: GameResponse => complete(StatusCodes.OK, response)
         }

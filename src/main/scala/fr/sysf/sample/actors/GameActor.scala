@@ -13,6 +13,7 @@ import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputE
 object GameActor {
 
   def props = Props(new GameActor)
+
   val name = "games-singleton"
 
   // Command
@@ -20,7 +21,7 @@ object GameActor {
 
   case class GameCreateCmd(gameCreateRequest: GameCreateRequest)
 
-  case class GameUpdateCmd(id: UUID, gameUpdateRequest: GameCreateRequest) extends Cmd
+  case class GameUpdateCmd(id: UUID, gameUpdateRequest: GameUpdateRequest) extends Cmd
 
   case class GameDeleteCmd(id: UUID) extends Cmd
 
@@ -39,7 +40,7 @@ object GameActor {
 
 class GameActor extends Actor with ActorLogging {
 
-  var state = Seq.empty[GameResponse]
+  var state = Seq.empty[Game]
 
 
   override def receive: Receive = {
@@ -49,6 +50,20 @@ class GameActor extends Actor with ActorLogging {
       val restrictedStatus = status.map(_.split(",").flatMap(GameStatusType.withNameOptional))
       sender ! state.filter(c => restrictedStatus.forall(_.contains(c.status)) && restrictedTypes.forall(_.contains(c.`type`)))
         .sortBy(c => c.start_date)
+        .map(r => GameForListResponse(
+          id = r.id,
+          `type` = r.`type`,
+          status = r.status,
+          parent_id = r.parent_id,
+          reference = r.reference,
+          portal_code = r.portal_code,
+          title = r.title,
+          start_date = r.start_date,
+          timezone = r.timezone,
+          end_date = r.end_date,
+          input_type = r.input_type,
+          input_point = r.input_point
+        ))
 
     } catch {
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
@@ -63,7 +78,24 @@ class GameActor extends Actor with ActorLogging {
         throw EntityNotFoundException(id = id)
       }
 
-      sender ! gameResponse.get
+      sender ! gameResponse.map(r => GameResponse(
+        id = r.id,
+        `type` = r.`type`,
+        status = r.status,
+        parent_id = r.parent_id,
+        reference = r.reference,
+        portal_code = r.portal_code,
+        title = r.title,
+        start_date = r.start_date,
+        timezone = r.timezone,
+        end_date = r.end_date,
+        input_type = r.input_type,
+        input_point = r.input_point,
+        input_eans = r.input_eans,
+        input_freecodes = r.input_freecodes,
+        limits = r.limits,
+        lines = r.lines
+      )).get
 
     } catch {
       case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
@@ -84,12 +116,12 @@ class GameActor extends Actor with ActorLogging {
 
       // Persist
       val newId = UUID.randomUUID
-      val game = GameResponse(
+      val game = Game(
         id = newId,
         `type` = request.`type`.map(GameType.withName) getOrElse GameType.Instant,
         status = GameStatusType.Draft,
         reference = request.reference.getOrElse(newId.toString),
-        country_code = request.country_code.map(_.toUpperCase).getOrElse("CA"),
+        country_code = "JP",
         portal_code = request.portal_code,
         title = request.title,
         start_date = request.start_date.getOrElse(Instant.now),
@@ -111,7 +143,24 @@ class GameActor extends Actor with ActorLogging {
       state = state :+ game
 
       // Return response
-      sender ! game
+      sender ! GameResponse(
+        id = game.id,
+        `type` = game.`type`,
+        status = game.status,
+        parent_id = game.parent_id,
+        reference = game.reference,
+        portal_code = game.portal_code,
+        title = game.title,
+        start_date = game.start_date,
+        timezone = game.timezone,
+        end_date = game.end_date,
+        input_type = game.input_type,
+        input_point = game.input_point,
+        input_eans = game.input_eans,
+        input_freecodes = game.input_freecodes,
+        limits = game.limits,
+        lines = game.lines
+      )
 
     } catch {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
@@ -139,7 +188,7 @@ class GameActor extends Actor with ActorLogging {
       }
 
       // Persist updrade
-      val gameUpdated = GameResponse(
+      val game = Game(
         id = entity.get.id,
         `type` = entity.get.`type`,
         status = entity.get.status,
@@ -163,8 +212,25 @@ class GameActor extends Actor with ActorLogging {
             value = f.value.getOrElse(1)
           ))).getOrElse(entity.get.limits)
       )
-      state = state.filterNot(_.id == gameUpdated.id) :+ gameUpdated
-      sender ! gameUpdated
+      state = state.filterNot(_.id == game.id) :+ game
+      sender ! GameResponse(
+        id = game.id,
+        `type` = game.`type`,
+        status = game.status,
+        parent_id = game.parent_id,
+        reference = game.reference,
+        portal_code = game.portal_code,
+        title = game.title,
+        start_date = game.start_date,
+        timezone = game.timezone,
+        end_date = game.end_date,
+        input_type = game.input_type,
+        input_point = game.input_point,
+        input_eans = game.input_eans,
+        input_freecodes = game.input_freecodes,
+        limits = game.limits,
+        lines = game.lines
+      )
 
     } catch {
       case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
@@ -424,12 +490,6 @@ class GameActor extends Actor with ActorLogging {
       if (request.reference.exists(_.length < 2))
         ("reference", s"INVALID_VALUE : should have more 2 chars") else null
     ) ++ Option(
-      if (request.country_code.isEmpty)
-        ("country_code", s"MANDATORY_VALUE") else null
-    ) ++ Option(
-      if (request.country_code.exists(_.length != 2))
-        ("country_code", s"INVALID_VALUE : should have 2 chars") else null
-    ) ++ Option(
       if (request.start_date.isEmpty)
         ("start_date", s"INVALID_VALUE : should be in the future") else null
     ) ++ Option(
@@ -468,15 +528,10 @@ class GameActor extends Actor with ActorLogging {
     })
   }
 
-  private def checkGameInputForUpdate(id: UUID, request: GameCreateRequest): Iterable[(String, String)] = {
+  private def checkGameInputForUpdate(id: UUID, request: GameUpdateRequest): Iterable[(String, String)] = {
     var index = 0
     //Validation input
     Option(
-      if (request.`type`.isDefined && !GameType.values.map(_.toString).contains(request.`type`.get))
-        ("type", s"UNKNOWN_VALUE : list of values : ${
-          GameType.all.mkString(",")
-        }") else null
-    ) ++ Option(
       if (request.reference.exists(_.length < 2))
         ("reference", s"INVALID_VALUE : should have more 2 chars") else null
     ) ++ Option(
