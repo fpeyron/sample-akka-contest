@@ -4,17 +4,19 @@ import java.time.Instant
 import java.util.UUID
 
 import fr.sysf.sample.DefaultJsonFormats
+import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
+
 
 object GameDomain {
 
   // Service
-  case class GameListRequest(types: Option[String], status: Option[String])
+  case class GameListRequest(uc: UserContext, types: Option[String], status: Option[String])
 
-  case class GameGetRequest(id: UUID)
+  case class GameGetRequest(uc: UserContext, id: UUID)
 
-  case class GameGetInstantwinRequest(game_id: UUID)
+  case class GameGetInstantwinRequest(uc:UserContext, game_id: UUID)
 
   case class GameCreateRequest(
                                 @ApiModelProperty(position = 1, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
@@ -84,41 +86,6 @@ object GameDomain {
                              )
 
   case class GameResponse(
-                   @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
-                   id: UUID,
-                   @ApiModelProperty(position = 2, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
-                   `type`: GameType.Value,
-                   @ApiModelProperty(position = 3, value = "status", required = true, example = "DRAFT", allowableValues = "DRAFT,ACTIVATE,ARCHIVED")
-                   status: GameStatusType.Value,
-                   @ApiModelProperty(position = 4, value = "parent game")
-                   parent_id: Option[UUID] = None,
-                   @ApiModelProperty(position = 5, value = "reference", required = true, example = "MY_CONTEST")
-                   reference: String,
-                   @ApiModelProperty(position = 6, value = "portal code", required = false, example = "WW_DANON")
-                   portal_code: Option[String] = None,
-                   @ApiModelProperty(position = 7, value = "title", example = "My new game")
-                   title: Option[String] = None,
-                   @ApiModelProperty(position = 8, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
-                   start_date: Instant,
-                   @ApiModelProperty(position = 9, value = "time zone", example = "+02:00")
-                   timezone: String,
-                   @ApiModelProperty(position = 10, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
-                   end_date: Instant,
-                   @ApiModelProperty(position = 11, value = "input type", required = true, example = "FREE", allowableValues = "FREE,POINT,SKU")
-                   input_type: GameInputType.Value,
-                   @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
-                   input_point: Option[Int] = None,
-                   @ApiModelProperty(position = 13, value = "input eans", required = false)
-                   input_eans: Option[Seq[String]] = None,
-                   @ApiModelProperty(position = 14, value = "input freecodes", required = false)
-                   input_freecodes: Option[Seq[String]] = None,
-                   @ApiModelProperty(position = 15, value = "participation limits")
-                   limits: Seq[GameLimitResponse] = Seq.empty,
-                   @ApiModelProperty(position = 16, value = "lines")
-                   lines: Seq[GameLineResponse] = Seq.empty
-                 )
-
-  case class Game(
                            @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
                            id: UUID,
                            @ApiModelProperty(position = 2, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
@@ -129,8 +96,6 @@ object GameDomain {
                            parent_id: Option[UUID] = None,
                            @ApiModelProperty(position = 5, value = "reference", required = true, example = "MY_CONTEST")
                            reference: String,
-                           @ApiModelProperty(position = 6, value = "country code", required = true, example = "CA")
-                           country_code: String,
                            @ApiModelProperty(position = 6, value = "portal code", required = false, example = "WW_DANON")
                            portal_code: Option[String] = None,
                            @ApiModelProperty(position = 7, value = "title", example = "My new game")
@@ -155,32 +120,52 @@ object GameDomain {
                            lines: Seq[GameLineResponse] = Seq.empty
                          )
 
+  case class Game(
+                   id: UUID,
+                   `type`: GameType.Value,
+                   status: GameStatusType.Value,
+                   parent_id: Option[UUID] = None,
+                   reference: String,
+                   country_code: String,
+                   portal_code: Option[String] = None,
+                   title: Option[String] = None,
+                   start_date: Instant,
+                   timezone: String,
+                   end_date: Instant,
+                   input_type: GameInputType.Value,
+                   input_point: Option[Int] = None,
+                   input_eans: Option[Seq[String]] = None,
+                   input_freecodes: Option[Seq[String]] = None,
+                   limits: Seq[GameLimitResponse] = Seq.empty,
+                   lines: Seq[GameLineResponse] = Seq.empty
+                 )
+
   case class GameForListResponse(
-                           @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
-                           id: UUID,
-                           @ApiModelProperty(position = 2, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
-                           `type`: GameType.Value,
-                           @ApiModelProperty(position = 3, value = "status", required = true, example = "DRAFT", allowableValues = "DRAFT,ACTIVATE,ARCHIVED")
-                           status: GameStatusType.Value,
-                           @ApiModelProperty(position = 4, value = "parent game")
-                           parent_id: Option[UUID] = None,
-                           @ApiModelProperty(position = 5, value = "reference", required = true, example = "MY_CONTEST")
-                           reference: String,
-                           @ApiModelProperty(position = 6, value = "portal code", required = false, example = "WW_DANON")
-                           portal_code: Option[String] = None,
-                           @ApiModelProperty(position = 7, value = "title", example = "My new game")
-                           title: Option[String] = None,
-                           @ApiModelProperty(position = 8, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
-                           start_date: Instant,
-                           @ApiModelProperty(position = 9, value = "time zone", example = "+02:00")
-                           timezone: String,
-                           @ApiModelProperty(position = 10, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
-                           end_date: Instant,
-                           @ApiModelProperty(position = 11, value = "input type", required = true, example = "FREE", allowableValues = "FREE,POINT,SKU")
-                           input_type: GameInputType.Value,
-                           @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
-                           input_point: Option[Int] = None
-                         )
+                                  @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
+                                  id: UUID,
+                                  @ApiModelProperty(position = 2, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
+                                  `type`: GameType.Value,
+                                  @ApiModelProperty(position = 3, value = "status", required = true, example = "DRAFT", allowableValues = "DRAFT,ACTIVATE,ARCHIVED")
+                                  status: GameStatusType.Value,
+                                  @ApiModelProperty(position = 4, value = "parent game")
+                                  parent_id: Option[UUID] = None,
+                                  @ApiModelProperty(position = 5, value = "reference", required = true, example = "MY_CONTEST")
+                                  reference: String,
+                                  @ApiModelProperty(position = 6, value = "portal code", required = false, example = "WW_DANON")
+                                  portal_code: Option[String] = None,
+                                  @ApiModelProperty(position = 7, value = "title", example = "My new game")
+                                  title: Option[String] = None,
+                                  @ApiModelProperty(position = 8, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
+                                  start_date: Instant,
+                                  @ApiModelProperty(position = 9, value = "time zone", example = "+02:00")
+                                  timezone: String,
+                                  @ApiModelProperty(position = 10, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
+                                  end_date: Instant,
+                                  @ApiModelProperty(position = 11, value = "input type", required = true, example = "FREE", allowableValues = "FREE,POINT,SKU")
+                                  input_type: GameInputType.Value,
+                                  @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
+                                  input_point: Option[Int] = None
+                                )
 
 
   case class GameLimitResponse(
@@ -211,7 +196,7 @@ object GameDomain {
                                   )
 
 
-  case class GameLineListRequest(gameId: UUID)
+  case class GameLineListRequest(uc:UserContext, gameId: UUID)
 
 
   case class GameLineResponse(

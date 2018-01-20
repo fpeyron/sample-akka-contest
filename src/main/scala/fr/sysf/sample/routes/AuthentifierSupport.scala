@@ -18,7 +18,7 @@ object AuthentifierSupport {
       case p@Credentials.Provided(username) =>
         Future {
           // potentially
-          users.filter(u => u.username == username && p.verify(u.password)).headOption.map(u => UserContext(username = u.username, countryCode = u.country_code))
+          users.filter(u => u.username == username && p.verify(u.password)).headOption.map(u => UserContext(username = u.username, country_code = u.country_code))
         }
       case _ => Future.successful(None)
     }
@@ -31,12 +31,12 @@ object AuthentifierSupport {
     * @param password   The hashed password to verify against
     */
   sealed case class UserEntry(username: String, password: String, country_code: String)
-  sealed case class UserContext(username: String, countryCode: String)
+  sealed case class UserContext(username: String, country_code: String)
 
   private val users = List(
-    UserEntry("admin_fr", "p4ssw0rd", "fr"),
-    UserEntry("admin_jp", "p4ssw0rd", "ca"),
-    UserEntry("admin_ca", "p4ssw0rd", "ca")
+    UserEntry("admin_fr", "p4ssw0rd", "FR"),
+    UserEntry("admin_jp", "p4ssw0rd", "JP"),
+    UserEntry("admin_ca", "p4ssw0rd", "CA")
   )
 
 }

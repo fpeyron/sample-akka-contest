@@ -49,7 +49,7 @@ trait PrizeRoute
     new ApiResponse(code = 200, message = "Return list of prizes", responseContainer = "Seq", response = classOf[PrizeResponse]),
     new ApiResponse(code = 500, message = "Internal server error")
   ))
-  def prize_getAll: Route = path("prizes") {
+  def prize_getAll(implicit uc: UserContext): Route = path("prizes") {
     get {
       complete {
         (prizeActor ? PrizeListRequest).mapTo[Seq[PrizeResponse]]
@@ -72,7 +72,7 @@ trait PrizeRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of prize", required = true, dataType = "string", paramType = "path")
   ))
-  def prize_get: Route = path("prizes" / JavaUUID) { id =>
+  def prize_get(implicit uc: UserContext): Route = path("prizes" / JavaUUID) { id =>
     get {
       onSuccess(prizeActor ? PrizeGetRequest(id)) {
         case response: PrizeResponse => complete(StatusCodes.OK, response)
@@ -93,7 +93,7 @@ trait PrizeRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "body", value = "prize to create", required = true, dataTypeClass = classOf[PrizeCreateRequest], paramType = "body")
   ))
-  def prize_create: Route = path("prizes") {
+  def prize_create(implicit uc: UserContext): Route = path("prizes") {
     post {
       entity(as[PrizeCreateRequest]) { request =>
         onSuccess(prizeActor ? PrizeCreateCmd(request)) {
@@ -119,7 +119,7 @@ trait PrizeRoute
     new ApiImplicitParam(name = "id", value = "id of prize", required = true, dataType = "string", paramType = "path"),
     new ApiImplicitParam(name = "body", value = "prize to update", required = true, dataTypeClass = classOf[PrizeCreateRequest], paramType = "body")
   ))
-  def prize_update: Route = path("prizes" / JavaUUID) { id =>
+  def prize_update(implicit uc: UserContext): Route = path("prizes" / JavaUUID) { id =>
     put {
       entity(as[PrizeCreateRequest]) { request =>
         onSuccess(prizeActor ? PrizeUpdateCmd(id, request)) {
@@ -144,7 +144,7 @@ trait PrizeRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of prize to delete", required = true, dataType = "string", paramType = "path")
   ))
-  def prize_delete: Route = path("prizes" / JavaUUID) { id =>
+  def prize_delete(implicit uc: UserContext): Route = path("prizes" / JavaUUID) { id =>
     delete {
       onSuccess(prizeActor ? PrizeDeleteCmd(id)) {
         case None => complete(StatusCodes.OK, None)

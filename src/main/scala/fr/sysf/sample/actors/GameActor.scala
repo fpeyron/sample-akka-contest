@@ -7,6 +7,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import fr.sysf.sample.actors.GameActor._
 import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
 import fr.sysf.sample.models.GameDomain._
+import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
 
 
@@ -19,21 +20,21 @@ object GameActor {
   // Command
   sealed trait Cmd
 
-  case class GameCreateCmd(gameCreateRequest: GameCreateRequest)
+  case class GameCreateCmd(uc: UserContext, gameCreateRequest: GameCreateRequest)
 
-  case class GameUpdateCmd(id: UUID, gameUpdateRequest: GameUpdateRequest) extends Cmd
+  case class GameUpdateCmd(uc: UserContext, id: UUID, gameUpdateRequest: GameUpdateRequest) extends Cmd
 
-  case class GameDeleteCmd(id: UUID) extends Cmd
+  case class GameDeleteCmd(uc: UserContext, id: UUID) extends Cmd
 
-  case class GameActivateCmd(id: UUID) extends Cmd
+  case class GameActivateCmd(uc: UserContext, id: UUID) extends Cmd
 
-  case class GameArchiveCmd(id: UUID) extends Cmd
+  case class GameArchiveCmd(uc: UserContext, id: UUID) extends Cmd
 
-  case class GameLineCreateCmd(id: UUID, request: GameLineCreateRequest) extends Cmd
+  case class GameLineCreateCmd(uc: UserContext, id: UUID, request: GameLineCreateRequest) extends Cmd
 
-  case class GameLineUpdateCmd(id: UUID, lineId: UUID, request: GameLineCreateRequest) extends Cmd
+  case class GameLineUpdateCmd(uc: UserContext, id: UUID, lineId: UUID, request: GameLineCreateRequest) extends Cmd
 
-  case class GameLineDeleteCmd(id: UUID, lineId: UUID) extends Cmd
+  case class GameLineDeleteCmd(uc: UserContext, id: UUID, lineId: UUID) extends Cmd
 
 }
 
@@ -45,10 +46,10 @@ class GameActor extends Actor with ActorLogging {
 
   override def receive: Receive = {
 
-    case GameListRequest(types, status) => try {
+    case GameListRequest(uc, types, status) => try {
       val restrictedTypes = types.map(_.split(",").flatMap(GameType.withNameOptional))
       val restrictedStatus = status.map(_.split(",").flatMap(GameStatusType.withNameOptional))
-      sender ! state.filter(c => restrictedStatus.forall(_.contains(c.status)) && restrictedTypes.forall(_.contains(c.`type`)))
+      sender ! state.filter(c => uc.country_code == c.country_code &&  restrictedStatus.forall(_.contains(c.status)) && restrictedTypes.forall(_.contains(c.`type`)))
         .sortBy(c => c.start_date)
         .map(r => GameForListResponse(
           id = r.id,
@@ -70,10 +71,10 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GameGetRequest(id) => try {
+    case GameGetRequest(uc, id) => try {
 
       // check existing game
-      val gameResponse = state.find(c => c.id == id)
+      val gameResponse = state.find(c => c.id == id && c.country_code == uc.country_code)
       if (gameResponse.isEmpty) {
         throw EntityNotFoundException(id = id)
       }
@@ -103,10 +104,17 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case cmd: GameGetInstantwinRequest => getInstantwinActor(cmd.game_id) forward cmd
+    case cmd: GameGetInstantwinRequest =>
+      // check existing game
+      val gameResponse = state.find(c => c.id == cmd.game_id && c.country_code == cmd.uc.country_code)
+      if (gameResponse.isEmpty) {
+        throw EntityNotFoundException(id = cmd.game_id)
+      }
+
+      getInstantwinActor(cmd.game_id) forward cmd
 
 
-    case GameCreateCmd(request) => try {
+    case GameCreateCmd(uc, request) => try {
 
       // Validation input
       val request_error = checkGameInputForCreation(request)
@@ -121,7 +129,7 @@ class GameActor extends Actor with ActorLogging {
         `type` = request.`type`.map(GameType.withName) getOrElse GameType.Instant,
         status = GameStatusType.Draft,
         reference = request.reference.getOrElse(newId.toString),
-        country_code = "JP",
+        country_code = uc.country_code,
         portal_code = request.portal_code,
         title = request.title,
         start_date = request.start_date.getOrElse(Instant.now),
@@ -168,10 +176,10 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GameUpdateCmd(id, request) => try {
+    case GameUpdateCmd(uc, id, request) => try {
 
       // check existing game
-      val entity = state.find(c => c.id == id)
+      val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
       if (entity.isEmpty) {
         throw EntityNotFoundException(id)
       }
@@ -239,10 +247,10 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GameDeleteCmd(id) => try {
+    case GameDeleteCmd(uc, id) => try {
 
       // check existing game
-      val game = state.find(c => c.id == id)
+      val game = state.find(c => c.id == id && c.country_code == uc.country_code)
       if (game.isEmpty) {
         throw EntityNotFoundException(id)
       }
@@ -273,10 +281,10 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GameActivateCmd(id) => try {
+    case GameActivateCmd(uc, id) => try {
 
       // check existing game
-      val game = state.find(c => c.id == id)
+      val game = state.find(c => c.id == id && c.country_code == uc.country_code)
       if (game.isEmpty) {
         throw EntityNotFoundException(id)
       }
@@ -301,10 +309,10 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GameArchiveCmd(id) => try {
+    case GameArchiveCmd(uc, id) => try {
 
       // check existing game
-      val game = state.find(c => c.id == id)
+      val game = state.find(c => c.id == id && c.country_code == uc.country_code)
       if (game.isEmpty) {
         throw EntityNotFoundException(id)
       }
@@ -329,10 +337,10 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GameLineListRequest(id) => try {
+    case GameLineListRequest(uc, id) => try {
 
       // check existing game
-      val gameResponse = state.find(c => c.id == id)
+      val gameResponse = state.find(c => c.id == id && c.country_code == uc.country_code)
       if (gameResponse.isEmpty) {
         throw EntityNotFoundException(id = id)
       }
@@ -345,10 +353,10 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GameLineCreateCmd(id, request) => try {
+    case GameLineCreateCmd(uc, id, request) => try {
 
       // check existing game
-      val entity = state.find(c => c.id == id)
+      val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
       if (entity.isEmpty) {
         throw EntityNotFoundException(id)
       }
@@ -387,10 +395,10 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GameLineUpdateCmd(id, lineId, request) => try {
+    case GameLineUpdateCmd(uc, id, lineId, request) => try {
 
       // check existing game
-      val entity = state.find(c => c.id == id)
+      val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
       if (entity.isEmpty) {
         throw EntityNotFoundException(id)
       }
@@ -435,10 +443,10 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GameLineDeleteCmd(id, lineId) => try {
+    case GameLineDeleteCmd(uc, id, lineId) => try {
 
       // check existing game
-      val entity = state.find(c => c.id == id)
+      val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
       if (entity.isEmpty) {
         throw EntityNotFoundException(id)
       }

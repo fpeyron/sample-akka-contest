@@ -31,7 +31,7 @@ class InstantwinActor(game_id: UUID) extends Actor with ActorLogging {
 
   override def receive: Receive = {
 
-    case GameGetInstantwinRequest(_) =>
+    case GameGetInstantwinRequest(_, game_id) =>
       sender() ! state.filter(_.game_id == game_id).sortBy(_.attributionDate).toList
 
 
