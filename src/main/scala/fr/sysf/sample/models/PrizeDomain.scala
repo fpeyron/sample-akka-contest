@@ -33,7 +33,7 @@ object PrizeDomain {
   case class PrizeResponse(
                             @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
                             id: UUID,
-                            @ApiModelProperty(position = 2, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
+                            @ApiModelProperty(position = 2, value = "type", dataType = "string", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
                             `type`: PrizeType.Value,
                             @ApiModelProperty(position = 3, value = "title", example = "My new Prize")
                             title: Option[String] = None,

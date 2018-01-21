@@ -13,9 +13,10 @@ import fr.sysf.sample.actors.GameActor._
 import fr.sysf.sample.models.GameDto._
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
+import fr.sysf.sample.routes.HttpSupport.ErrorResponse
 import io.swagger.annotations._
-import scala.concurrent.duration._
 
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
 
@@ -57,10 +58,14 @@ trait GameRoute
     */
   @ApiOperation(value = "list games by criteria", notes = "", nickname = "game.getAll", httpMethod = "GET")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Return list of games", responseContainer = "Seq", response = classOf[GameForListResponse]),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 200, message = "Return list of games", responseContainer = "list", response = classOf[GameForListResponse]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
-  def game_getAll(implicit uc: UserContext): Route = path("games") {
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "type", value = "types of game", required = false, dataType = "string", paramType = "query"),
+    new ApiImplicitParam(name = "status", value = "status of game", required = false, dataType = "string", paramType = "query")
+  ))
+  def game_getAll(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games") {
     get {
       parameters('type.?, 'status.?) { (typesOptional, statusOptional) =>
         complete {
@@ -79,13 +84,13 @@ trait GameRoute
   @ApiOperation(value = "get game", notes = "", nickname = "game.get", httpMethod = "GET")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return game", response = classOf[GameResponse]),
-    new ApiResponse(code = 404, message = "Game is not found"),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 404, message = "Game is not found", response = classOf[ErrorResponse]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
   ))
-  def game_get(implicit uc: UserContext): Route = path("games" / JavaUUID) { id =>
+  def game_get(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID) { id =>
     get {
       onSuccess(gameActor ? GameGetRequest(uc, id)) {
         case response: GameResponse => complete(StatusCodes.OK, response)
@@ -101,12 +106,12 @@ trait GameRoute
   @ApiOperation(value = "create game", notes = "", nickname = "game.create", httpMethod = "POST")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return game created", response = classOf[GameResponse]),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "body", value = "game to create", required = true, dataTypeClass = classOf[GameCreateRequest], paramType = "body")
   ))
-  def game_create(implicit uc: UserContext): Route = path("games") {
+  def game_create(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games") {
     post {
       entity(as[GameCreateRequest]) { request =>
         onSuccess(gameActor ? GameCreateCmd(uc, request)) {
@@ -125,14 +130,14 @@ trait GameRoute
   @ApiOperation(value = "update game", notes = "", nickname = "game.update", httpMethod = "PUT")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return game", response = classOf[GameResponse]),
-    new ApiResponse(code = 404, message = "Game is not found"),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 404, message = "Game is not found", response = classOf[ErrorResponse]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path"),
     new ApiImplicitParam(name = "body", value = "game to update", required = true, dataTypeClass = classOf[GameUpdateRequest], paramType = "body")
   ))
-  def game_update(implicit uc: UserContext): Route = path("games" / JavaUUID) { id =>
+  def game_update(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID) { id =>
     put {
       entity(as[GameUpdateRequest]) { request =>
         onSuccess(gameActor ? GameUpdateCmd(uc, id, request)) {
@@ -151,13 +156,13 @@ trait GameRoute
   @ApiOperation(value = "delete game", notes = "", nickname = "game.delete", httpMethod = "DELETE")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return when game is deleted", response = classOf[Void]),
-    new ApiResponse(code = 404, message = "Game is not found"),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 404, message = "Game is not found", response = classOf[ErrorResponse]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game to create", required = true, dataType = "string", paramType = "path")
   ))
-  def game_delete(implicit uc: UserContext): Route = path("games" / JavaUUID) { id =>
+  def game_delete(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID) { id =>
     delete {
       onSuccess(gameActor ? GameDeleteCmd(uc, id)) {
         case None => complete(StatusCodes.OK, None)
@@ -174,13 +179,13 @@ trait GameRoute
   @ApiOperation(value = "activate game", notes = "", nickname = "game.activate", httpMethod = "PUT")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return when game is activated"),
-    new ApiResponse(code = 404, message = "Game is not found"),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 404, message = "Game is not found", response = classOf[ErrorResponse]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game to activate", required = true, dataType = "string", paramType = "path")
   ))
-  def game_activate(implicit uc: UserContext): Route = path("games" / JavaUUID / "action-activate") { id =>
+  def game_activate(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "action-activate") { id =>
     delete {
       onSuccess(gameActor ? GameActivateCmd(uc, id)) {
         case None => complete(StatusCodes.OK)
@@ -196,14 +201,14 @@ trait GameRoute
   @Path("/{id}/action-archive")
   @ApiOperation(value = "activate game", notes = "", nickname = "game.archive", httpMethod = "PUT")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Return when game is archived"),
-    new ApiResponse(code = 404, message = "Game is not found"),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 200, message = "Return when game is archived", response = classOf[ErrorResponse]),
+    new ApiResponse(code = 404, message = "Game is not found", response = classOf[ErrorResponse]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game to archive", required = true, dataType = "string", paramType = "path")
   ))
-  def game_archive(implicit uc: UserContext): Route = path("games" / JavaUUID / "action-archive") { id =>
+  def game_archive(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "action-archive") { id =>
     delete {
       onSuccess(gameActor ? GameArchiveCmd(uc, id)) {
         case None => complete(StatusCodes.OK)
@@ -228,12 +233,12 @@ trait GameRoute
   @ApiOperation(value = "list of line for game", notes = "", nickname = "game.getLines", httpMethod = "GET")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return list of game lines", responseContainer = "Seq", response = classOf[GameLineResponse]),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
   ))
-  def game_getLines(implicit uc: UserContext): Route = path("games" / JavaUUID / "lines") { id =>
+  def game_getLines(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "lines") { id =>
     get {
       complete {
         (gameActor ? GameLineListRequest(uc, id)).mapTo[Seq[GameLineResponse]]
@@ -251,12 +256,12 @@ trait GameRoute
   @ApiOperation(value = "create line for game", notes = "", nickname = "game.createLine", httpMethod = "POST")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return game line created", response = classOf[GameLineResponse]),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
   ))
-  def game_createLine(implicit uc: UserContext): Route = path("games" / JavaUUID / "lines") { id =>
+  def game_createLine(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "lines") { id =>
     post {
       entity(as[GameLineCreateRequest]) { request =>
         onSuccess(gameActor ? GameLineCreateCmd(uc, id, request)) {
@@ -276,13 +281,13 @@ trait GameRoute
   @ApiOperation(value = "create line for game", notes = "", nickname = "game.updateLine", httpMethod = "PUT")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return game line updated", response = classOf[GameLineResponse]),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path"),
     new ApiImplicitParam(name = "lineId", value = "id of game line", required = true, dataType = "string", paramType = "path")
   ))
-  def game_updateLine(implicit uc: UserContext): Route = path("games" / JavaUUID / "lines" / JavaUUID) { (id, lineId) =>
+  def game_updateLine(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "lines" / JavaUUID) { (id, lineId) =>
     put {
       entity(as[GameLineCreateRequest]) { request =>
         onSuccess(gameActor ? GameLineUpdateCmd(uc, id, lineId, request)) {
@@ -302,13 +307,13 @@ trait GameRoute
   @ApiOperation(value = "create line for game", notes = "", nickname = "game.deleteLine", httpMethod = "DELETE")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return when game line is deleted", response = classOf[Void]),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path"),
     new ApiImplicitParam(name = "lineId", value = "id of game line", required = true, dataType = "string", paramType = "path")
   ))
-  def game_deleteLine(implicit uc: UserContext): Route = path("games" / JavaUUID / "lines" / JavaUUID) { (id, lineId) =>
+  def game_deleteLine(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "lines" / JavaUUID) { (id, lineId) =>
     delete {
       onSuccess(gameActor ? GameLineDeleteCmd(uc, id, lineId)) {
         case None => complete(StatusCodes.OK, None)
@@ -327,12 +332,12 @@ trait GameRoute
   @ApiOperation(value = "Download instantwins for game", notes = "", nickname = "game.downloadInstantwins", httpMethod = "GET")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return file game", response = classOf[File]),
-    new ApiResponse(code = 500, message = "Internal server error")
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
   ))
-  def game_downloadInstantwins(implicit uc: UserContext): Route = path("games" / JavaUUID / "instantwins") { id =>
+  def game_downloadInstantwins(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "instantwins") { id =>
     get {
       onSuccess((gameActor ? GameGetInstantwinRequest(uc, id)).mapTo[List[Instantwin]]) { response =>
         val mapStream =
