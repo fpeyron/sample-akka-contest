@@ -6,7 +6,8 @@ import java.util.UUID
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import fr.sysf.sample.actors.GameActor._
 import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
-import fr.sysf.sample.models.GameDomain._
+import fr.sysf.sample.models.GameDto._
+import fr.sysf.sample.models.GameEntity.Game
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
 

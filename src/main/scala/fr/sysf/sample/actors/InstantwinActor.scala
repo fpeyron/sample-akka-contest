@@ -5,7 +5,7 @@ import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, Props}
 import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
-import fr.sysf.sample.models.GameDomain.{GameGetInstantwinRequest, GameLineResponse}
+import fr.sysf.sample.models.GameDto.{GameGetInstantwinRequest, GameLineResponse}
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
 
 

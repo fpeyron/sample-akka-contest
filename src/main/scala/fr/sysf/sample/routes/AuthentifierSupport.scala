@@ -33,6 +33,8 @@ object AuthentifierSupport {
   sealed case class UserEntry(username: String, password: String, country_code: String)
   sealed case class UserContext(username: String, country_code: String)
 
+  implicit def userEntryToUserContext(u:UserEntry): UserContext = UserContext(username = u.username, country_code = u.country_code)
+
   private val users = List(
     UserEntry("admin_fr", "p4ssw0rd", "FR"),
     UserEntry("admin_jp", "p4ssw0rd", "JP"),

@@ -10,7 +10,7 @@ import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
 import fr.sysf.sample.DefaultJsonFormats
 import fr.sysf.sample.actors.GameActor._
-import fr.sysf.sample.models.GameDomain._
+import fr.sysf.sample.models.GameDto._
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import io.swagger.annotations._

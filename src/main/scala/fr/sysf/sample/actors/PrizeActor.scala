@@ -5,6 +5,7 @@ import java.util.UUID
 import akka.actor.{Actor, ActorLogging, Props}
 import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd}
 import fr.sysf.sample.models.PrizeDomain.{PrizeCreateRequest, PrizeGetRequest, PrizeListRequest, PrizeResponse, PrizeType}
+import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
 
 
@@ -16,11 +17,11 @@ object PrizeActor {
   // Command
   sealed trait Cmd
 
-  case class PrizeCreateCmd(contestCreateRequest: PrizeCreateRequest)
+  case class PrizeCreateCmd(uc: UserContext, contestCreateRequest: PrizeCreateRequest)
 
-  case class PrizeUpdateCmd(id: UUID, contestUpdateRequest: PrizeCreateRequest) extends Cmd
+  case class PrizeUpdateCmd(uc: UserContext, id: UUID, contestUpdateRequest: PrizeCreateRequest) extends Cmd
 
-  case class PrizeDeleteCmd(id: UUID) extends Cmd
+  case class PrizeDeleteCmd(uc: UserContext, id: UUID) extends Cmd
 }
 
 class PrizeActor extends Actor with ActorLogging {
@@ -40,7 +41,7 @@ class PrizeActor extends Actor with ActorLogging {
     }
 
 
-    case PrizeGetRequest(id) => try {
+    case PrizeGetRequest(_, id) => try {
 
       // check existing contest
       val contestResponse = state.find(c => c.id == id)
@@ -56,7 +57,7 @@ class PrizeActor extends Actor with ActorLogging {
     }
 
 
-    case PrizeCreateCmd(request) => try {
+    case PrizeCreateCmd(_, request) => try {
 
       /*
       // Validation input
@@ -88,7 +89,7 @@ class PrizeActor extends Actor with ActorLogging {
     }
 
 
-    case PrizeUpdateCmd(id, request) => try {
+    case PrizeUpdateCmd(_, id, request) => try {
 
       // check existing contest
       val entity = state.find(c => c.id == id)
@@ -125,7 +126,7 @@ class PrizeActor extends Actor with ActorLogging {
     }
 
 
-    case PrizeDeleteCmd(id) => try {
+    case PrizeDeleteCmd(_, id) => try {
 
       // check existing contest
       val contest = state.find(c => c.id == id)

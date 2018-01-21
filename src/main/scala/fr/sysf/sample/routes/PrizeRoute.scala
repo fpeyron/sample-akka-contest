@@ -49,7 +49,7 @@ trait PrizeRoute
     new ApiResponse(code = 200, message = "Return list of prizes", responseContainer = "Seq", response = classOf[PrizeResponse]),
     new ApiResponse(code = 500, message = "Internal server error")
   ))
-  def prize_getAll(implicit uc: UserContext): Route = path("prizes") {
+  def prize_getAll: Route = path("prizes") {
     get {
       complete {
         (prizeActor ? PrizeListRequest).mapTo[Seq[PrizeResponse]]
@@ -74,7 +74,7 @@ trait PrizeRoute
   ))
   def prize_get(implicit uc: UserContext): Route = path("prizes" / JavaUUID) { id =>
     get {
-      onSuccess(prizeActor ? PrizeGetRequest(id)) {
+      onSuccess(prizeActor ? PrizeGetRequest(uc, id)) {
         case response: PrizeResponse => complete(StatusCodes.OK, response)
       }
     }
@@ -96,7 +96,7 @@ trait PrizeRoute
   def prize_create(implicit uc: UserContext): Route = path("prizes") {
     post {
       entity(as[PrizeCreateRequest]) { request =>
-        onSuccess(prizeActor ? PrizeCreateCmd(request)) {
+        onSuccess(prizeActor ? PrizeCreateCmd(uc, request)) {
           case response: PrizeResponse => complete(StatusCodes.OK, response)
         }
       }
@@ -122,7 +122,7 @@ trait PrizeRoute
   def prize_update(implicit uc: UserContext): Route = path("prizes" / JavaUUID) { id =>
     put {
       entity(as[PrizeCreateRequest]) { request =>
-        onSuccess(prizeActor ? PrizeUpdateCmd(id, request)) {
+        onSuccess(prizeActor ? PrizeUpdateCmd(uc, id, request)) {
           case response: PrizeResponse => complete(StatusCodes.OK, response)
         }
       }
@@ -146,7 +146,7 @@ trait PrizeRoute
   ))
   def prize_delete(implicit uc: UserContext): Route = path("prizes" / JavaUUID) { id =>
     delete {
-      onSuccess(prizeActor ? PrizeDeleteCmd(id)) {
+      onSuccess(prizeActor ? PrizeDeleteCmd(uc, id)) {
         case None => complete(StatusCodes.OK, None)
       }
     }

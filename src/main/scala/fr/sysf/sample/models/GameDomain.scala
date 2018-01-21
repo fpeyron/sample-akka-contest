@@ -4,12 +4,35 @@ import java.time.Instant
 import java.util.UUID
 
 import fr.sysf.sample.DefaultJsonFormats
+import fr.sysf.sample.models.GameDto.{GameInputType, GameLimitResponse, GameLineResponse, GameStatusType, GameType}
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 
+object GameEntity {
 
-object GameDomain {
+  case class Game(
+                   id: UUID,
+                   `type`: GameType.Value,
+                   status: GameStatusType.Value,
+                   parent_id: Option[UUID] = None,
+                   reference: String,
+                   country_code: String,
+                   portal_code: Option[String] = None,
+                   title: Option[String] = None,
+                   start_date: Instant,
+                   timezone: String,
+                   end_date: Instant,
+                   input_type: GameInputType.Value,
+                   input_point: Option[Int] = None,
+                   input_eans: Option[Seq[String]] = None,
+                   input_freecodes: Option[Seq[String]] = None,
+                   limits: Seq[GameLimitResponse] = Seq.empty,
+                   lines: Seq[GameLineResponse] = Seq.empty
+                 )
+}
+
+object GameDto {
 
   // Service
   case class GameListRequest(uc: UserContext, types: Option[String], status: Option[String])
@@ -119,26 +142,6 @@ object GameDomain {
                            @ApiModelProperty(position = 16, value = "lines")
                            lines: Seq[GameLineResponse] = Seq.empty
                          )
-
-  case class Game(
-                   id: UUID,
-                   `type`: GameType.Value,
-                   status: GameStatusType.Value,
-                   parent_id: Option[UUID] = None,
-                   reference: String,
-                   country_code: String,
-                   portal_code: Option[String] = None,
-                   title: Option[String] = None,
-                   start_date: Instant,
-                   timezone: String,
-                   end_date: Instant,
-                   input_type: GameInputType.Value,
-                   input_point: Option[Int] = None,
-                   input_eans: Option[Seq[String]] = None,
-                   input_freecodes: Option[Seq[String]] = None,
-                   limits: Seq[GameLimitResponse] = Seq.empty,
-                   lines: Seq[GameLineResponse] = Seq.empty
-                 )
 
   case class GameForListResponse(
                                   @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
