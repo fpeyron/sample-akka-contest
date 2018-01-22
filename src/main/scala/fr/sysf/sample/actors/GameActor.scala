@@ -18,25 +18,23 @@ object GameActor {
 
   val name = "games-singleton"
 
+  // Query
+  sealed trait Query
+  case class GameListQuery(uc: UserContext, types: Option[String], status: Option[String]) extends Query
+  case class GameGetQuery(uc: UserContext, id: UUID) extends Query
+  case class GameGetInstantwinQuery(uc: UserContext, game_id: UUID) extends Query
+  case class GameLineListQuery(uc: UserContext, gameId: UUID) extends Query
+
   // Command
   sealed trait Cmd
-
-  case class GameCreateCmd(uc: UserContext, gameCreateRequest: GameCreateRequest)
-
+  case class GameCreateCmd(uc: UserContext, gameCreateRequest: GameCreateRequest) extends Cmd
   case class GameUpdateCmd(uc: UserContext, id: UUID, gameUpdateRequest: GameUpdateRequest) extends Cmd
-
   case class GameDeleteCmd(uc: UserContext, id: UUID) extends Cmd
-
   case class GameActivateCmd(uc: UserContext, id: UUID) extends Cmd
-
   case class GameArchiveCmd(uc: UserContext, id: UUID) extends Cmd
-
   case class GameLineCreateCmd(uc: UserContext, id: UUID, request: GameLineCreateRequest) extends Cmd
-
   case class GameLineUpdateCmd(uc: UserContext, id: UUID, lineId: UUID, request: GameLineCreateRequest) extends Cmd
-
   case class GameLineDeleteCmd(uc: UserContext, id: UUID, lineId: UUID) extends Cmd
-
 }
 
 
@@ -47,7 +45,7 @@ class GameActor extends Actor with ActorLogging {
 
   override def receive: Receive = {
 
-    case GameListRequest(uc, types, status) => try {
+    case GameListQuery(uc, types, status) => try {
       val restrictedTypes = types.map(_.split(",").flatMap(GameType.withNameOptional))
       val restrictedStatus = status.map(_.split(",").flatMap(GameStatusType.withNameOptional))
       sender ! state.filter(c => uc.country_code == c.country_code &&  restrictedStatus.forall(_.contains(c.status)) && restrictedTypes.forall(_.contains(c.`type`)))
@@ -72,7 +70,7 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GameGetRequest(uc, id) => try {
+    case GameGetQuery(uc, id) => try {
 
       // check existing game
       val gameResponse = state.find(c => c.id == id && c.country_code == uc.country_code)
@@ -105,7 +103,7 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case cmd: GameGetInstantwinRequest =>
+    case cmd: GameGetInstantwinQuery =>
       // check existing game
       val gameResponse = state.find(c => c.id == cmd.game_id && c.country_code == cmd.uc.country_code)
       if (gameResponse.isEmpty) {
@@ -338,7 +336,7 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GameLineListRequest(uc, id) => try {
+    case GameLineListQuery(uc, id) => try {
 
       // check existing game
       val gameResponse = state.find(c => c.id == id && c.country_code == uc.country_code)
@@ -610,7 +608,7 @@ class GameActor extends Actor with ActorLogging {
   def getInstantwinActor(game_id: UUID): ActorRef = context.child(InstantwinActor.name(game_id)).getOrElse(createInstantwinActor(game_id))
 
   def forwardToInstantwinActor: Actor.Receive = {
-    case cmd: GameGetInstantwinRequest =>
+    case cmd: GameGetInstantwinQuery =>
       context.child(InstantwinActor.name(cmd.game_id)).fold(createAndForward(cmd, cmd.game_id))(forwardCommand(cmd))
   }
 

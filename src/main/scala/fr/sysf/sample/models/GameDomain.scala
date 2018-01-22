@@ -5,7 +5,6 @@ import java.util.UUID
 
 import fr.sysf.sample.DefaultJsonFormats
 import fr.sysf.sample.models.GameDto.{GameInputType, GameLimitResponse, GameLineResponse, GameStatusType, GameType}
-import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 
@@ -34,13 +33,6 @@ object GameEntity {
 }
 
 object GameDto {
-
-  // Service
-  case class GameListRequest(uc: UserContext, types: Option[String], status: Option[String])
-
-  case class GameGetRequest(uc: UserContext, id: UUID)
-
-  case class GameGetInstantwinRequest(uc: UserContext, game_id: UUID)
 
   case class GameCreateRequest(
                                 @ApiModelProperty(position = 1, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
@@ -198,9 +190,6 @@ object GameDto {
                                     @ApiModelProperty(position = 4, value = "quantity", example = "10")
                                     quantity: Option[Int]
                                   )
-
-
-  case class GameLineListRequest(uc: UserContext, gameId: UUID)
 
 
   case class GameLineResponse(

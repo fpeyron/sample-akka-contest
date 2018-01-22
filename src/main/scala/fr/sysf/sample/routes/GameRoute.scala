@@ -69,7 +69,7 @@ trait GameRoute
     get {
       parameters('type.?, 'status.?) { (typesOptional, statusOptional) =>
         complete {
-          (gameActor ? GameListRequest(uc = uc, types = typesOptional, status = statusOptional)).mapTo[Seq[GameForListResponse]]
+          (gameActor ? GameListQuery(uc = uc, types = typesOptional, status = statusOptional)).mapTo[Seq[GameForListResponse]]
         }
       }
     }
@@ -92,7 +92,7 @@ trait GameRoute
   ))
   def game_get(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID) { id =>
     get {
-      onSuccess(gameActor ? GameGetRequest(uc, id)) {
+      onSuccess(gameActor ? GameGetQuery(uc, id)) {
         case response: GameResponse => complete(StatusCodes.OK, response)
       }
     }
@@ -241,7 +241,7 @@ trait GameRoute
   def game_getLines(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "lines") { id =>
     get {
       complete {
-        (gameActor ? GameLineListRequest(uc, id)).mapTo[Seq[GameLineResponse]]
+        (gameActor ? GameLineListQuery(uc, id)).mapTo[Seq[GameLineResponse]]
       }
     }
   }
@@ -339,7 +339,7 @@ trait GameRoute
   ))
   def game_downloadInstantwins(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "instantwins") { id =>
     get {
-      onSuccess((gameActor ? GameGetInstantwinRequest(uc, id)).mapTo[List[Instantwin]]) { response =>
+      onSuccess((gameActor ? GameGetInstantwinQuery(uc, id)).mapTo[List[Instantwin]]) { response =>
         val mapStream =
           Source.single("activate_date\tattribution_date\tgame_id\n")
             .concat(Source(response).map((t: Instantwin) => s"${t.activateDate}\t${t.attributionDate}\t${t.game_id}\n"))

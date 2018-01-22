@@ -4,14 +4,16 @@ import java.time.Instant
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, Props}
+import fr.sysf.sample.actors.GameActor.GameGetInstantwinQuery
 import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
-import fr.sysf.sample.models.GameDto.{GameGetInstantwinRequest, GameLineResponse}
+import fr.sysf.sample.models.GameDto.GameLineResponse
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
 
 
 object InstantwinActor {
 
   def props(gameId: UUID) = Props(new InstantwinActor(gameId))
+
   def name(gameId: UUID) = s"instantwin-$gameId"
 
   // Command
@@ -31,7 +33,7 @@ class InstantwinActor(game_id: UUID) extends Actor with ActorLogging {
 
   override def receive: Receive = {
 
-    case GameGetInstantwinRequest(_, game_id) =>
+    case GameGetInstantwinQuery(_, game_id) =>
       sender() ! state.filter(_.game_id == game_id).sortBy(_.attributionDate).toList
 
 

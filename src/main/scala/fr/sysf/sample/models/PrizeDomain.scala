@@ -3,7 +3,6 @@ package fr.sysf.sample.models
 import java.util.UUID
 
 import fr.sysf.sample.DefaultJsonFormats
-import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 
@@ -11,10 +10,6 @@ object PrizeDomain {
 
 
   // Service
-  case class PrizeListRequest(uc: UserContext)
-
-  case class PrizeGetRequest(uc: UserContext, id: UUID)
-
   case class PrizeCreateRequest(
                                  @ApiModelProperty(position = 1, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
                                  `type`: Option[String],

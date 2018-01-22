@@ -8,8 +8,8 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
 import fr.sysf.sample.DefaultJsonFormats
-import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd}
-import fr.sysf.sample.models.PrizeDomain.{PrizeCreateRequest, PrizeGetRequest, PrizeJsonFormats, PrizeListRequest, PrizeResponse}
+import fr.sysf.sample.actors.PrizeActor._
+import fr.sysf.sample.models.PrizeDomain.{PrizeCreateRequest, PrizeJsonFormats, PrizeResponse}
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.ErrorResponse
 import io.swagger.annotations._
@@ -53,7 +53,7 @@ trait PrizeRoute
   def prize_getAll: Route = path("prizes") {
     get {
       complete {
-        (prizeActor ? PrizeListRequest).mapTo[Seq[PrizeResponse]]
+        (prizeActor ? PrizeListQuery).mapTo[Seq[PrizeResponse]]
       }
     }
   }
@@ -75,7 +75,7 @@ trait PrizeRoute
   ))
   def prize_get(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("prizes" / JavaUUID) { id =>
     get {
-      onSuccess(prizeActor ? PrizeGetRequest(uc, id)) {
+      onSuccess(prizeActor ? PrizeGetQuery(uc, id)) {
         case response: PrizeResponse => complete(StatusCodes.OK, response)
       }
     }

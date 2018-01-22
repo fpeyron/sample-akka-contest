@@ -3,8 +3,8 @@ package fr.sysf.sample.actors
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, Props}
-import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd}
-import fr.sysf.sample.models.PrizeDomain.{PrizeCreateRequest, PrizeGetRequest, PrizeListRequest, PrizeResponse, PrizeType}
+import fr.sysf.sample.actors.PrizeActor._
+import fr.sysf.sample.models.PrizeDomain.{PrizeCreateRequest, PrizeResponse, PrizeType}
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
 
@@ -14,13 +14,17 @@ object PrizeActor {
   def props = Props(new PrizeActor)
   val name = "prize-singleton"
 
+  // Query
+  sealed trait Query
+  case class PrizeListQuery(uc: UserContext)
+
+  case class PrizeGetQuery(uc: UserContext, id: UUID)
+
+
   // Command
   sealed trait Cmd
-
   case class PrizeCreateCmd(uc: UserContext, contestCreateRequest: PrizeCreateRequest)
-
   case class PrizeUpdateCmd(uc: UserContext, id: UUID, contestUpdateRequest: PrizeCreateRequest) extends Cmd
-
   case class PrizeDeleteCmd(uc: UserContext, id: UUID) extends Cmd
 }
 
@@ -33,7 +37,7 @@ class PrizeActor extends Actor with ActorLogging {
   def receive: Receive = {
 
 
-    case PrizeListRequest => try {
+    case PrizeListQuery => try {
       sender ! state.sortBy(c => c.label)
 
     } catch {
@@ -41,7 +45,7 @@ class PrizeActor extends Actor with ActorLogging {
     }
 
 
-    case PrizeGetRequest(_, id) => try {
+    case PrizeGetQuery(_, id) => try {
 
       // check existing contest
       val contestResponse = state.find(c => c.id == id)
