@@ -55,38 +55,30 @@ object GameDto {
                                 input_type: Option[String],
                                 @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
                                 input_point: Option[Int],
-                                @ApiModelProperty(position = 13, value = "input eans", required = false)
-                                input_eans: Option[Seq[String]],
-                                @ApiModelProperty(position = 14, value = "input freecodes", required = false)
-                                input_freecodes: Option[Seq[String]],
-                                @ApiModelProperty(position = 15, value = "participation limit")
+                                @ApiModelProperty(position = 13, value = "participation limit")
                                 limits: Option[Seq[GameLimitRequest]]
                               )
 
   case class GameUpdateRequest(
-                                @ApiModelProperty(position = 2, value = "reference", required = true, example = "MY_CONTEST")
+                                @ApiModelProperty(position = 1, value = "reference", required = true, example = "MY_CONTEST")
                                 reference: Option[String],
-                                @ApiModelProperty(position = 3, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
+                                @ApiModelProperty(position = 2, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
                                 parent_id: Option[UUID],
-                                @ApiModelProperty(position = 5, value = "portal code", required = false, example = "WW_DANON")
+                                @ApiModelProperty(position = 3, value = "portal code", required = false, example = "WW_DANON")
                                 portal_code: Option[String],
-                                @ApiModelProperty(position = 6, value = "title", example = "My new game")
+                                @ApiModelProperty(position = 4, value = "title", example = "My new game")
                                 title: Option[String],
-                                @ApiModelProperty(position = 7, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
+                                @ApiModelProperty(position = 5, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
                                 start_date: Option[Instant],
-                                @ApiModelProperty(position = 8, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
+                                @ApiModelProperty(position = 6, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
                                 end_date: Option[Instant],
-                                @ApiModelProperty(position = 9, value = "time zone", example = "+02:00")
+                                @ApiModelProperty(position = 7, value = "time zone", example = "+02:00")
                                 timezone: Option[String],
-                                @ApiModelProperty(position = 10, value = "input type", required = false, example = "FREE", allowableValues = "FREE,POINT,SKU")
+                                @ApiModelProperty(position = 8, value = "input type", required = false, example = "FREE", allowableValues = "FREE,POINT,SKU")
                                 input_type: Option[String],
-                                @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
+                                @ApiModelProperty(position = 9, value = "input point", required = false, example = "10")
                                 input_point: Option[Int],
-                                @ApiModelProperty(position = 13, value = "input eans", required = false)
-                                input_eans: Option[Seq[String]],
-                                @ApiModelProperty(position = 14, value = "input freecodes", required = false)
-                                input_freecodes: Option[Seq[String]],
-                                @ApiModelProperty(position = 15, value = "participation limit")
+                                @ApiModelProperty(position = 10, value = "participation limit")
                                 limits: Option[Seq[GameLimitRequest]]
                               )
 
@@ -127,10 +119,6 @@ object GameDto {
                            @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
                            input_point: Option[Int] = None,
                            @ApiModelProperty(position = 13, value = "input eans", required = false)
-                           input_eans: Option[Seq[String]] = None,
-                           @ApiModelProperty(position = 14, value = "input freecodes", required = false)
-                           input_freecodes: Option[Seq[String]] = None,
-                           @ApiModelProperty(position = 15, value = "participation limits")
                            limits: Seq[GameLimitResponse] = Seq.empty,
                            @ApiModelProperty(position = 16, value = "lines")
                            lines: Seq[GameLineResponse] = Seq.empty
@@ -157,7 +145,7 @@ object GameDto {
                                   timezone: String,
                                   @ApiModelProperty(position = 10, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
                                   end_date: Instant,
-                                  @ApiModelProperty(position = 11, value = "input type", dataType = "string", required = true, example = "FREE", allowableValues = "FREE,POINT,SKU")
+                                  @ApiModelProperty(position = 11, value = "input type", dataType = "string", required = true, example = "POINT", allowableValues = "FREE,POINT,SKU")
                                   input_type: GameInputType.Value,
                                   @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
                                   input_point: Option[Int] = None
@@ -260,8 +248,8 @@ object GameDto {
 
   trait GameJsonFormats extends DefaultJsonFormats {
     implicit val gameLimitRequest: RootJsonFormat[GameLimitRequest] = jsonFormat4(GameLimitRequest)
-    implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat13(GameCreateRequest)
-    implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat12(GameUpdateRequest)
+    implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat11(GameCreateRequest)
+    implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat10(GameUpdateRequest)
     implicit val gameLineCreateRequest: RootJsonFormat[GameLineCreateRequest] = jsonFormat4(GameLineCreateRequest)
 
     implicit val gameType: RootJsonFormat[GameType.Value] = enumFormat(GameType)
@@ -273,7 +261,7 @@ object GameDto {
     implicit val gameLimitResponse: RootJsonFormat[GameLimitResponse] = jsonFormat4(GameLimitResponse)
     implicit val gameLineResponse: RootJsonFormat[GameLineResponse] = jsonFormat5(GameLineResponse)
 
-    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat16(GameResponse)
+    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat14(GameResponse)
     implicit val gameForListResponse: RootJsonFormat[GameForListResponse] = jsonFormat12(GameForListResponse)
   }
 

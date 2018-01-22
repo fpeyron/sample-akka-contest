@@ -39,9 +39,10 @@ trait GameRoute
   implicit val gameActor: ActorRef
 
   def gameRoute: Route = AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
-      game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
+    game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
       game_getLines ~ game_createLine ~ game_deleteLine ~ game_updateLine ~
-      game_downloadInstantwins
+      game_getEans ~ game_createEans ~ game_addEan ~ game_deleteEan
+    game_downloadInstantwins
   }
 
   /**
@@ -303,7 +304,7 @@ trait GameRoute
     * @return Void
     */
   @Path("/{id}/lines/{lineId}")
-  @ApiOperation(value = "create line for game", notes = "", nickname = "game.deleteLine", httpMethod = "DELETE")
+  @ApiOperation(value = "Delete line for game", notes = "", nickname = "game.deleteLine", httpMethod = "DELETE")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return when game line is deleted", response = classOf[Void]),
     new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
@@ -320,6 +321,12 @@ trait GameRoute
     }
   }
 
+
+  /**
+    * -------------------------------
+    * InstantWin
+    * -------------------------------
+    */
 
 
   /**
@@ -346,6 +353,111 @@ trait GameRoute
         complete {
           HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
         }
+      }
+    }
+  }
+
+
+  /**
+    * -------------------------------
+    * GameEan
+    * -------------------------------
+    */
+
+
+  /**
+    * game.getEans
+    *
+    * @return Seq[String]
+    */
+  @Path("/{id}/eans")
+  @ApiOperation(value = "list of eans for game", notes = "", nickname = "game.getEans", httpMethod = "GET")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return list of game eans", responseContainer = "Seq", response = classOf[String]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
+  ))
+  def game_getEans(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "eans") { id =>
+    get {
+      complete {
+        (gameActor ? GameEanListQuery(uc, id)).mapTo[Seq[String]]
+      }
+    }
+  }
+
+
+  /**
+    * game.creatEans
+    *
+    * @return Void
+    */
+  @Path("/{id}/eans")
+  @ApiOperation(value = "create line for game", notes = "", nickname = "game.createLine", httpMethod = "POST")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return game line created", response = classOf[Void]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
+  ))
+  def game_createEans(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "eans") { id =>
+    post {
+      entity(as[Seq[String]]) { request =>
+        onSuccess(gameActor ? GameEanCreateCmd(uc, id, request)) {
+          case None => complete(StatusCodes.OK, None)
+        }
+      }
+    }
+  }
+
+
+  /**
+    * game.addEan
+    *
+    * @return Void
+    */
+  @Path("/{id}/eans/{ean}")
+  @ApiOperation(value = "add ean for game", notes = "", nickname = "game.addEan", httpMethod = "PUT")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return game line updated", response = classOf[Void]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "ean", value = "ean", required = true, dataType = "string", paramType = "path")
+  ))
+  def game_addEan(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "eans" / Segment) { (id, ean) =>
+    put {
+      entity(as[GameLineCreateRequest]) { request =>
+        onSuccess(gameActor ? GameEanAddCmd(uc, id, ean)) {
+          case None => complete(StatusCodes.OK, None)
+        }
+      }
+    }
+  }
+
+
+  /**
+    * game.deleteEan
+    *
+    * @return Void
+    */
+  @Path("/{id}/eans/{ean}")
+  @ApiOperation(value = "delete ean for game", notes = "", nickname = "game.deleteEan", httpMethod = "DELETE")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return when game ean is deleted", response = classOf[Void]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "ean", value = "ean to delete", required = true, dataType = "string", paramType = "path")
+  ))
+  def game_deleteEan(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "lines" / Segment) { (id, ean) =>
+    delete {
+      onSuccess(gameActor ? GameEanDeleteCmd(uc, id, ean)) {
+        case None => complete(StatusCodes.OK, None)
       }
     }
   }
