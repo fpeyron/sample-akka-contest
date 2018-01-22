@@ -2,7 +2,7 @@ package fr.sysf.sample.models
 
 import java.util.UUID
 
-import fr.sysf.sample.DefaultJsonFormats
+import fr.sysf.sample.routes.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 

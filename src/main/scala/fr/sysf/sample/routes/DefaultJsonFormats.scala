@@ -1,4 +1,4 @@
-package fr.sysf.sample
+package fr.sysf.sample.routes
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDate}
@@ -70,7 +70,6 @@ trait DefaultJsonFormats extends DefaultJsonProtocol with SprayJsonSupport {
 
   /**
     *
-    * @param enu
     * @tparam T
     * @return
     */

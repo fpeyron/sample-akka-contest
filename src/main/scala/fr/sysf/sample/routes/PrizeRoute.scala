@@ -7,7 +7,7 @@ import akka.actor.ActorRef
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
-import fr.sysf.sample.DefaultJsonFormats
+import fr.sysf.sample.Config
 import fr.sysf.sample.actors.PrizeActor._
 import fr.sysf.sample.models.PrizeDomain.{PrizeCreateRequest, PrizeJsonFormats, PrizeResponse}
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
@@ -15,7 +15,6 @@ import fr.sysf.sample.routes.HttpSupport.ErrorResponse
 import io.swagger.annotations._
 
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
 
 /**
   *
@@ -33,7 +32,7 @@ trait PrizeRoute
   import akka.pattern.ask
 
   implicit val ec: ExecutionContext
-  private implicit val timeout: Timeout = Timeout(2.seconds)
+  private implicit val timeout: Timeout = Config.Api.timeout
   implicit val prizeActor: ActorRef
 
   def prizeRoute: Route = AuthentifierSupport.asAuthentified { implicit uc: UserContext =>

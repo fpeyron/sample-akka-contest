@@ -8,7 +8,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
-import fr.sysf.sample.DefaultJsonFormats
+import fr.sysf.sample.Config
 import fr.sysf.sample.actors.GameActor._
 import fr.sysf.sample.models.GameDto._
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
@@ -16,7 +16,6 @@ import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.ErrorResponse
 import io.swagger.annotations._
 
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
 
@@ -36,7 +35,7 @@ trait GameRoute
   import akka.pattern.ask
 
   implicit val ec: ExecutionContext
-  private implicit val timeout: Timeout = Timeout(2.seconds)
+  private implicit val timeout: Timeout = Config.Api.timeout
   implicit val gameActor: ActorRef
 
   def gameRoute: Route = AuthentifierSupport.asAuthentified { implicit uc: UserContext =>

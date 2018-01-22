@@ -7,7 +7,6 @@ import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
-import fr.sysf.sample.DefaultJsonFormats
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, ErrorResponse, InvalidInputException, NotAuthorizedException}
 import spray.json._
 
