@@ -11,6 +11,7 @@ import akka.util.{ByteString, Timeout}
 import fr.sysf.sample.Config
 import fr.sysf.sample.actors.GameActor._
 import fr.sysf.sample.models.GameDto._
+import fr.sysf.sample.models.GameEntity.GameLine
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.ErrorResponse
@@ -41,7 +42,7 @@ trait GameRoute
   def gameRoute: Route = AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
     game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
       game_getLines ~ game_createLine ~ game_deleteLine ~ game_updateLine ~
-      game_getEans ~ game_createEans ~ game_addEan ~ game_deleteEan
+      game_getEans ~ game_createEans ~ game_addEan ~ //game_deleteEan
     game_downloadInstantwins
   }
 
@@ -430,7 +431,7 @@ trait GameRoute
   ))
   def game_addEan(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "eans" / Segment) { (id, ean) =>
     put {
-      entity(as[GameLineCreateRequest]) { request =>
+      entity(as[GameLineCreateRequest]) { _ =>
         onSuccess(gameActor ? GameEanAddCmd(uc, id, ean)) {
           case None => complete(StatusCodes.OK, None)
         }
@@ -454,7 +455,7 @@ trait GameRoute
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path"),
     new ApiImplicitParam(name = "ean", value = "ean to delete", required = true, dataType = "string", paramType = "path")
   ))
-  def game_deleteEan(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "lines" / Segment) { (id, ean) =>
+  def game_deleteEan(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "eans" / Segment) { (id, ean) =>
     delete {
       onSuccess(gameActor ? GameEanDeleteCmd(uc, id, ean)) {
         case None => complete(StatusCodes.OK, None)
