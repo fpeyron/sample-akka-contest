@@ -10,8 +10,8 @@ object InstantwinDomain {
                          game_id: UUID,
                          gameLine_id: UUID,
                          prize_id: UUID,
-                         activateDate: Instant,
-                         attributionDate: Option[Instant] = None,
+                         activate_date: Instant,
+                         attribution_date: Option[Instant] = None,
                          state: InstantWinStateType.Value = InstantWinStateType.Open
                        )
 

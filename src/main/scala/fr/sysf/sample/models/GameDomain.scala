@@ -3,7 +3,8 @@ package fr.sysf.sample.models
 import java.time.Instant
 import java.util.UUID
 
-import fr.sysf.sample.models.GameDto.{GameInputType, GameLimitResponse, GameLineResponse, GameStatusType, GameType}
+import fr.sysf.sample.models.GameDto.{GameInputType, GameLimitType, GameLimitUnit, GameStatusType, GameType}
+import fr.sysf.sample.models.GameEntity.{GameLimit, GameLine}
 import fr.sysf.sample.routes.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
@@ -26,9 +27,33 @@ object GameEntity {
                    input_point: Option[Int] = None,
                    input_eans: Option[Seq[String]] = None,
                    input_freecodes: Option[Seq[String]] = None,
-                   limits: Seq[GameLimitResponse] = Seq.empty,
-                   lines: Seq[GameLineResponse] = Seq.empty
+                   limits: Seq[GameLimit] = Seq.empty,
+                   lines: Seq[GameLine] = Seq.empty
                  )
+
+  case class GameLimit(
+                        @ApiModelProperty(position = 1, value = "type of limit", dataType = "string", required = true, example = "PARTICIPATION", allowableValues = "PARTICIPATION,WIN")
+                        `type`: GameLimitType.Value,
+                        @ApiModelProperty(position = 2, value = "unit of limit", dataType = "string", required = true, example = "SECOND", allowableValues = "SECOND,DAY,SESSION")
+                        unit: GameLimitUnit.Value,
+                        @ApiModelProperty(position = 3, value = "value of unit", example = "1")
+                        unit_value: Option[Int],
+                        @ApiModelProperty(position = 4, value = "value", example = "10")
+                        value: Int
+                      )
+
+  case class GameLine(
+                       @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
+                       id: UUID,
+                       @ApiModelProperty(position = 2, value = "prize id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
+                       prize_id: UUID,
+                       @ApiModelProperty(position = 3, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
+                       start_date: Instant,
+                       @ApiModelProperty(position = 4, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
+                       end_date: Instant,
+                       @ApiModelProperty(position = 5, value = "quantity", example = "10")
+                       quantity: Int
+                     )
 
 }
 
@@ -119,9 +144,9 @@ object GameDto {
                            @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
                            input_point: Option[Int] = None,
                            @ApiModelProperty(position = 13, value = "input eans", required = false)
-                           limits: Seq[GameLimitResponse] = Seq.empty,
+                           limits: Seq[GameLimit] = Seq.empty,
                            @ApiModelProperty(position = 16, value = "lines")
-                           lines: Seq[GameLineResponse] = Seq.empty
+                           lines: Seq[GameLine] = Seq.empty
                          )
 
   case class GameForListResponse(
@@ -152,17 +177,6 @@ object GameDto {
                                 )
 
 
-  case class GameLimitResponse(
-                                @ApiModelProperty(position = 1, value = "type of limit", dataType = "string", required = true, example = "PARTICIPATION", allowableValues = "PARTICIPATION,WIN")
-                                `type`: GameLimitType.Value,
-                                @ApiModelProperty(position = 2, value = "unit of limit", dataType = "string", required = true, example = "SECOND", allowableValues = "SECOND,DAY,SESSION")
-                                unit: GameLimitUnit.Value,
-                                @ApiModelProperty(position = 3, value = "value of unit", example = "1")
-                                unit_value: Option[Int],
-                                @ApiModelProperty(position = 4, value = "value", example = "10")
-                                value: Int
-                              )
-
   /**
     * --------------------------------------------
     * Game Line
@@ -178,20 +192,6 @@ object GameDto {
                                     @ApiModelProperty(position = 4, value = "quantity", example = "10")
                                     quantity: Option[Int]
                                   )
-
-
-  case class GameLineResponse(
-                               @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
-                               id: UUID,
-                               @ApiModelProperty(position = 2, value = "prize id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
-                               prize_id: UUID,
-                               @ApiModelProperty(position = 3, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
-                               start_date: Instant,
-                               @ApiModelProperty(position = 4, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
-                               end_date: Instant,
-                               @ApiModelProperty(position = 5, value = "quantity", example = "10")
-                               quantity: Int
-                             )
 
 
   implicit object GameType extends Enumeration {
@@ -258,8 +258,8 @@ object GameDto {
     implicit val gameStatus: RootJsonFormat[GameStatusType.Value] = enumFormat(GameStatusType)
 
     implicit val gameLimitUnit: RootJsonFormat[GameLimitUnit.Value] = enumFormat(GameLimitUnit)
-    implicit val gameLimitResponse: RootJsonFormat[GameLimitResponse] = jsonFormat4(GameLimitResponse)
-    implicit val gameLineResponse: RootJsonFormat[GameLineResponse] = jsonFormat5(GameLineResponse)
+    implicit val gameLimitResponse: RootJsonFormat[GameLimit] = jsonFormat4(GameLimit)
+    implicit val gameLineResponse: RootJsonFormat[GameLine] = jsonFormat5(GameLine)
 
     implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat14(GameResponse)
     implicit val gameForListResponse: RootJsonFormat[GameForListResponse] = jsonFormat12(GameForListResponse)

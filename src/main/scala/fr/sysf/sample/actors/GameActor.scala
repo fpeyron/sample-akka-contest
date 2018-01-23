@@ -7,7 +7,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import fr.sysf.sample.actors.GameActor._
 import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
 import fr.sysf.sample.models.GameDto._
-import fr.sysf.sample.models.GameEntity.Game
+import fr.sysf.sample.models.GameEntity.{Game, GameLimit, GameLine}
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
 
@@ -140,7 +140,7 @@ class GameActor extends Actor with ActorLogging {
         input_type = request.input_type.map(GameInputType.withName).getOrElse(GameInputType.Other),
         input_point = request.input_point,
         limits = request.limits.getOrElse(Seq.empty)
-          .map(f => GameLimitResponse(
+          .map(f => GameLimit(
             `type` = f.`type`.map(GameLimitType.withName).getOrElse(GameLimitType.Participation),
             unit = f.unit.map(GameLimitUnit.withName).getOrElse(GameLimitUnit.Session),
             unit_value = f.unit_value,
@@ -208,7 +208,7 @@ class GameActor extends Actor with ActorLogging {
         input_type = request.input_type.map(GameInputType.withName).getOrElse(GameInputType.Other),
         input_point = request.input_point.orElse(entity.get.input_point),
         limits = request.limits.map(
-          _.map(f => GameLimitResponse(
+          _.map(f => GameLimit(
             `type` = f.`type`.map(GameLimitType.withName).getOrElse(GameLimitType.Participation),
             unit = f.unit.map(GameLimitUnit.withName).getOrElse(GameLimitUnit.Session),
             unit_value = f.unit_value,
@@ -367,7 +367,7 @@ class GameActor extends Actor with ActorLogging {
 
       // Persist
       val newId = UUID.randomUUID
-      val gameLine = GameLineResponse(
+      val gameLine = GameLine(
         id = newId,
         prize_id = request.prize_id.get,
         start_date = request.start_date.getOrElse(entity.get.start_date),
@@ -414,7 +414,7 @@ class GameActor extends Actor with ActorLogging {
       //}
 
       // Persist
-      val gameLine = GameLineResponse(
+      val gameLine = GameLine(
         id = entityLine.get.id,
         prize_id = request.prize_id.getOrElse(entityLine.get.prize_id),
         start_date = request.start_date.getOrElse(entityLine.get.start_date),

@@ -233,7 +233,7 @@ trait GameRoute
   @Path("/{id}/lines")
   @ApiOperation(value = "list of line for game", notes = "", nickname = "game.getLines", httpMethod = "GET")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Return list of game lines", responseContainer = "Seq", response = classOf[GameLineResponse]),
+    new ApiResponse(code = 200, message = "Return list of game lines", responseContainer = "Seq", response = classOf[GameLine]),
     new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
@@ -242,7 +242,7 @@ trait GameRoute
   def game_getLines(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "lines") { id =>
     get {
       complete {
-        (gameActor ? GameLineListQuery(uc, id)).mapTo[Seq[GameLineResponse]]
+        (gameActor ? GameLineListQuery(uc, id)).mapTo[Seq[GameLine]]
       }
     }
   }
@@ -256,7 +256,7 @@ trait GameRoute
   @Path("/{id}/lines")
   @ApiOperation(value = "create line for game", notes = "", nickname = "game.createLine", httpMethod = "POST")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Return game line created", response = classOf[GameLineResponse]),
+    new ApiResponse(code = 200, message = "Return game line created", response = classOf[GameLine]),
     new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
@@ -266,7 +266,7 @@ trait GameRoute
     post {
       entity(as[GameLineCreateRequest]) { request =>
         onSuccess(gameActor ? GameLineCreateCmd(uc, id, request)) {
-          case response: GameLineResponse => complete(StatusCodes.OK, response)
+          case response: GameLine => complete(StatusCodes.OK, response)
         }
       }
     }
@@ -281,7 +281,7 @@ trait GameRoute
   @Path("/{id}/lines/{lineId}")
   @ApiOperation(value = "create line for game", notes = "", nickname = "game.updateLine", httpMethod = "PUT")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Return game line updated", response = classOf[GameLineResponse]),
+    new ApiResponse(code = 200, message = "Return game line updated", response = classOf[GameLine]),
     new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
@@ -292,7 +292,7 @@ trait GameRoute
     put {
       entity(as[GameLineCreateRequest]) { request =>
         onSuccess(gameActor ? GameLineUpdateCmd(uc, id, lineId, request)) {
-          case response: GameLineResponse => complete(StatusCodes.OK, response)
+          case response: GameLine => complete(StatusCodes.OK, response)
         }
       }
     }
@@ -349,7 +349,7 @@ trait GameRoute
       onSuccess((gameActor ? GameGetInstantwinQuery(uc, id)).mapTo[List[Instantwin]]) { response =>
         val mapStream =
           Source.single("activate_date\tattribution_date\tgame_id\n")
-            .concat(Source(response).map((t: Instantwin) => s"${t.activateDate}\t${t.attributionDate}\t${t.game_id}\n"))
+            .concat(Source(response).map((t: Instantwin) => s"${t.activate_date}\t${t.attribution_date}\t${t.game_id}\n"))
             .map(ByteString.apply)
         complete {
           HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)

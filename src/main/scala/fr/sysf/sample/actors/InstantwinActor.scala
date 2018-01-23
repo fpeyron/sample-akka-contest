@@ -6,7 +6,7 @@ import java.util.UUID
 import akka.actor.{Actor, ActorLogging, Props}
 import fr.sysf.sample.actors.GameActor.GameGetInstantwinQuery
 import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
-import fr.sysf.sample.models.GameDto.GameLineResponse
+import fr.sysf.sample.models.GameEntity.GameLine
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
 
 
@@ -19,9 +19,9 @@ object InstantwinActor {
   // Command
   sealed trait Cmd
 
-  case class InstanwinCreateCmd(request: GameLineResponse)
+  case class InstanwinCreateCmd(request: GameLine)
 
-  case class InstanwinUpdateCmd(request: GameLineResponse)
+  case class InstanwinUpdateCmd(request: GameLine)
 
   case class InstanwinDeleteCmd(line_id: Option[UUID] = None)
 
@@ -33,8 +33,8 @@ class InstantwinActor(game_id: UUID) extends Actor with ActorLogging {
 
   override def receive: Receive = {
 
-    case GameGetInstantwinQuery(_, game_id) =>
-      sender() ! state.filter(_.game_id == game_id).sortBy(_.attributionDate).toList
+    case GameGetInstantwinQuery(_, `game_id`) =>
+      sender() ! state.filter(_.game_id == game_id).sortBy(_.attribution_date).toList
 
 
     case InstanwinCreateCmd(request) =>
@@ -46,7 +46,7 @@ class InstantwinActor(game_id: UUID) extends Actor with ActorLogging {
               game_id = game_id,
               gameLine_id = request.id,
               prize_id = request.prize_id,
-              activateDate = date
+              activate_date = date
             )
           }
 
@@ -59,7 +59,7 @@ class InstantwinActor(game_id: UUID) extends Actor with ActorLogging {
               game_id = game_id,
               gameLine_id = request.id,
               prize_id = request.prize_id,
-              activateDate = date
+              activate_date = date
             )
           }
 
