@@ -40,6 +40,12 @@ dependencyOverrides += "de.heikoseeberger"            %% "constructr-coordinatio
 dependencyOverrides += "org.codehaus.plexus"          % "plexus-utils"                    % "3.0.17"
 dependencyOverrides += "com.google.guava"             % "guava"                           % "20.0"
 
+// ----------------
+// Run
+// ----------------
+mainClass in (Compile, run) := Some("fr.sysf.sample.Main")
+fork in run := true
+
 
 // ----------------
 // Docker packaging
