@@ -16,7 +16,7 @@ object GameActor {
 
   def props = Props(new GameActor)
 
-  val name = "games-singleton"
+  val Name = "games-singleton"
 
   // Query
   sealed trait Query
