@@ -42,8 +42,8 @@ trait GameRoute
   def gameRoute: Route = AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
     game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
       game_getLines ~ game_createLine ~ game_deleteLine ~ game_updateLine ~
-      game_getEans ~ game_createEans ~ game_addEan ~ //game_deleteEan
-    game_downloadInstantwins
+      game_getEans ~ game_createEans ~ game_addEan ~ game_deleteEan ~
+      game_downloadInstantwins
   }
 
   /**
@@ -395,9 +395,9 @@ trait GameRoute
     * @return Void
     */
   @Path("/{id}/eans")
-  @ApiOperation(value = "create line for game", notes = "", nickname = "game.createLine", httpMethod = "POST")
+  @ApiOperation(value = "create ean for game", notes = "", nickname = "game.createEans", httpMethod = "POST")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Return game line created", response = classOf[Void]),
+    new ApiResponse(code = 200, message = "Return after game eans created", response = classOf[Void]),
     new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
