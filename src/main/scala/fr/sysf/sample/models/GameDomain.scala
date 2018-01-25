@@ -18,7 +18,6 @@ object GameEntity {
                    parent_id: Option[UUID] = None,
                    reference: String,
                    country_code: String,
-                   portal_code: Option[String] = None,
                    title: Option[String] = None,
                    start_date: Instant,
                    timezone: String,
@@ -66,8 +65,6 @@ object GameDto {
                                 reference: Option[String],
                                 @ApiModelProperty(position = 3, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
                                 parent_id: Option[UUID],
-                                @ApiModelProperty(position = 5, value = "portal code", required = false, example = "WW_DANON")
-                                portal_code: Option[String],
                                 @ApiModelProperty(position = 6, value = "title", example = "My new game")
                                 title: Option[String],
                                 @ApiModelProperty(position = 7, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
@@ -89,8 +86,6 @@ object GameDto {
                                 reference: Option[String],
                                 @ApiModelProperty(position = 2, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
                                 parent_id: Option[UUID],
-                                @ApiModelProperty(position = 3, value = "portal code", required = false, example = "WW_DANON")
-                                portal_code: Option[String],
                                 @ApiModelProperty(position = 4, value = "title", example = "My new game")
                                 title: Option[String],
                                 @ApiModelProperty(position = 5, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
@@ -129,8 +124,6 @@ object GameDto {
                            parent_id: Option[UUID] = None,
                            @ApiModelProperty(position = 5, value = "reference", required = true, example = "MY_CONTEST")
                            reference: String,
-                           @ApiModelProperty(position = 6, value = "portal code", required = false, example = "WW_DANON")
-                           portal_code: Option[String] = None,
                            @ApiModelProperty(position = 7, value = "title", example = "My new game")
                            title: Option[String] = None,
                            @ApiModelProperty(position = 8, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
@@ -160,8 +153,6 @@ object GameDto {
                                   parent_id: Option[UUID] = None,
                                   @ApiModelProperty(position = 5, value = "reference", required = true, example = "MY_CONTEST")
                                   reference: String,
-                                  @ApiModelProperty(position = 6, value = "portal code", required = false, example = "WW_DANON")
-                                  portal_code: Option[String] = None,
                                   @ApiModelProperty(position = 7, value = "title", example = "My new game")
                                   title: Option[String] = None,
                                   @ApiModelProperty(position = 8, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
@@ -248,8 +239,8 @@ object GameDto {
 
   trait GameJsonFormats extends DefaultJsonFormats {
     implicit val gameLimitRequest: RootJsonFormat[GameLimitRequest] = jsonFormat4(GameLimitRequest)
-    implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat11(GameCreateRequest)
-    implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat10(GameUpdateRequest)
+    implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat10(GameCreateRequest)
+    implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat9(GameUpdateRequest)
     implicit val gameLineCreateRequest: RootJsonFormat[GameLineCreateRequest] = jsonFormat4(GameLineCreateRequest)
 
     implicit val gameType: RootJsonFormat[GameType.Value] = enumFormat(GameType)
@@ -261,8 +252,8 @@ object GameDto {
     implicit val gameLimitResponse: RootJsonFormat[GameLimit] = jsonFormat4(GameLimit)
     implicit val gameLineResponse: RootJsonFormat[GameLine] = jsonFormat5(GameLine)
 
-    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat14(GameResponse)
-    implicit val gameForListResponse: RootJsonFormat[GameForListResponse] = jsonFormat12(GameForListResponse)
+    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat13(GameResponse)
+    implicit val gameForListResponse: RootJsonFormat[GameForListResponse] = jsonFormat11(GameForListResponse)
   }
 
 }
