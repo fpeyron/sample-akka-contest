@@ -41,7 +41,7 @@ trait GameRoute
 
   def gameRoute: Route = AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
     game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
-      game_getPrizes ~ game_createPrize ~ game_deletePrize ~ game_updatePrize ~
+      game_getPrizes ~ game_addPrize ~ game_deletePrize ~ game_updatePrize ~
       game_downloadInstantwins
   }
 
@@ -249,12 +249,12 @@ trait GameRoute
 
 
   /**
-    * game.createPrize
+    * game.addPrize
     *
     * @return GamePrizeResponse
     */
   @Path("/{id}/prizes")
-  @ApiOperation(value = "create prize for game", notes = "", nickname = "game.createPrize", httpMethod = "POST")
+  @ApiOperation(value = "add prize for game", notes = "", nickname = "game.addPrize", httpMethod = "POST")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return game prize created", response = classOf[GamePrize]),
     new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
@@ -262,7 +262,7 @@ trait GameRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
   ))
-  def game_createPrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "prizes") { id =>
+  def game_addPrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "prizes") { id =>
     post {
       entity(as[GamePrizeCreateRequest]) { request =>
         onSuccess(gameActor ? GamePrizeCreateCmd(uc, id, request)) {

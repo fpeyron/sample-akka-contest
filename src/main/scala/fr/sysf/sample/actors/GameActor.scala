@@ -33,8 +33,8 @@ object GameActor {
   case class GameActivateCmd(uc: UserContext, id: UUID) extends Cmd
   case class GameArchiveCmd(uc: UserContext, id: UUID) extends Cmd
   case class GamePrizeCreateCmd(uc: UserContext, id: UUID, request: GamePrizeCreateRequest) extends Cmd
-  case class GamePrizeUpdateCmd(uc: UserContext, id: UUID, prizeId: UUID, request: GamePrizeCreateRequest) extends Cmd
-  case class GamePrizeDeleteCmd(uc: UserContext, id: UUID, prizeId: UUID) extends Cmd
+  case class GamePrizeUpdateCmd(uc: UserContext, id: UUID, gamePrizeId: UUID, request: GamePrizeCreateRequest) extends Cmd
+  case class GamePrizeDeleteCmd(uc: UserContext, id: UUID, gamePrizeId: UUID) extends Cmd
 }
 
 
@@ -450,19 +450,24 @@ class GameActor extends Actor with ActorLogging {
       // check existing game
       val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
       if (entity.isEmpty) {
-        throw EntityNotFoundException(id)
+        throw EntityNotFoundException(id, Some(s"game not found : ${id.toString}"))
       }
 
 
-      // check existing game
+      // check existing gamePrize
       val entityPrize = entity.get.prizes.find(c => c.id == prizeId)
       if (entityPrize.isEmpty) {
-        throw EntityNotFoundException(id)
+        throw EntityNotFoundException(id, Some(s"prize not found : ${id.toString}"))
       }
 
       // check status
       if (entity.get.status == GameStatusType.Archived) {
         throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
+      }
+
+      // Validate startDate
+      if (entity.get.status == GameStatusType.Activated && entityPrize.get.start_date.isBefore(Instant.now)) {
+        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_DATE"))
       }
 
       // Validation input
@@ -472,7 +477,7 @@ class GameActor extends Actor with ActorLogging {
       //}
 
       // Persist
-      state = state.filterNot(_.id == id) :+ entity.get.copy(prizes = entity.get.prizes.filter(_.id == prizeId))
+      state = state.filterNot(_.id == id) :+ entity.get.copy(prizes = entity.get.prizes.filterNot(_.id == prizeId))
 
       // Delete instantwins
       getInstantwinActor(id) ! InstanwinDeleteCmd(Some(prizeId))
