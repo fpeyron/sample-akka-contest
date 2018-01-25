@@ -19,9 +19,11 @@ object PrizeDomain {
                                  label: Option[String],
                                  @ApiModelProperty(position = 4, value = "description", example = "My new description prize")
                                  description: Option[String],
-                                 @ApiModelProperty(position = 5, value = "gift vendor code", example = "VENDOR")
+                                 @ApiModelProperty(position = 5, value = "picture", example = "myPicture.jpg")
+                                 picture: Option[String],
+                                 @ApiModelProperty(position = 6, value = "gift vendor code", example = "VENDOR")
                                  vendor_code: Option[String],
-                                 @ApiModelProperty(position = 6, value = "giftshop face value", example = "200")
+                                 @ApiModelProperty(position = 7, value = "giftshop face value", example = "200")
                                  face_value: Option[Int]
                                )
 
@@ -36,9 +38,11 @@ object PrizeDomain {
                             label: String,
                             @ApiModelProperty(position = 5, value = "description", example = "My new description prize")
                             description: Option[String] = None,
-                            @ApiModelProperty(position = 6, value = "gift vendor code", example = "VENDOR")
+                            @ApiModelProperty(position = 5, value = "picture", example = "myPicture.jpg")
+                            picture: Option[String],
+                            @ApiModelProperty(position = 7, value = "gift vendor code", example = "VENDOR")
                             vendor_code: Option[String] = None,
-                            @ApiModelProperty(position = 7, value = "giftshop face value", example = "200")
+                            @ApiModelProperty(position = 8, value = "giftshop face value", example = "200")
                             face_value: Option[Int] = None
                           )
 
@@ -51,10 +55,10 @@ object PrizeDomain {
   }
 
   trait PrizeJsonFormats extends DefaultJsonFormats {
-    implicit val prizeCreateRequest: RootJsonFormat[PrizeCreateRequest] = jsonFormat6(PrizeCreateRequest)
+    implicit val prizeCreateRequest: RootJsonFormat[PrizeCreateRequest] = jsonFormat7(PrizeCreateRequest)
 
     implicit val prizeType: RootJsonFormat[PrizeType.Value] = enumFormat(PrizeType)
-    implicit val prizeResponse: RootJsonFormat[PrizeResponse] = jsonFormat7(PrizeResponse)
+    implicit val prizeResponse: RootJsonFormat[PrizeResponse] = jsonFormat8(PrizeResponse)
   }
 
 }
