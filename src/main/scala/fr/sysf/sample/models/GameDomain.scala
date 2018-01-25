@@ -78,8 +78,12 @@ object GameDto {
                                 @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
                                 input_point: Option[Int],
                                 @ApiModelProperty(position = 13, value = "participation limit")
-                                limits: Option[Seq[GameLimitRequest]]
-                              )
+                                limits: Option[Seq[GameLimitRequest]],
+                                @ApiModelProperty(position = 14, value = "input eans")
+                                input_eans: Option[Seq[String]] = None,
+                                @ApiModelProperty(position = 15, value = "input freecodes")
+                                input_freecodes: Option[Seq[String]] = None
+  )
 
   case class GameUpdateRequest(
                                 @ApiModelProperty(position = 1, value = "reference", required = true, example = "MY_CONTEST")
@@ -99,7 +103,11 @@ object GameDto {
                                 @ApiModelProperty(position = 9, value = "input point", required = false, example = "10")
                                 input_point: Option[Int],
                                 @ApiModelProperty(position = 10, value = "participation limit")
-                                limits: Option[Seq[GameLimitRequest]]
+                                limits: Option[Seq[GameLimitRequest]],
+                                @ApiModelProperty(position = 14, value = "input eans")
+                                input_eans: Option[Seq[String]] = None,
+                                @ApiModelProperty(position = 15, value = "input freecodes")
+                                input_freecodes: Option[Seq[String]] = None
                               )
 
   case class GameLimitRequest(
@@ -138,8 +146,12 @@ object GameDto {
                            input_point: Option[Int] = None,
                            @ApiModelProperty(position = 13, value = "input eans", required = false)
                            limits: Seq[GameLimit] = Seq.empty,
-                           @ApiModelProperty(position = 16, value = "prizes")
-                           prizes: Seq[GamePrize] = Seq.empty
+                           @ApiModelProperty(position = 14, value = "prizes")
+                           prizes: Seq[GamePrize] = Seq.empty,
+                           @ApiModelProperty(position = 15, value = "input eans")
+                           input_eans: Option[Seq[String]] = None,
+                           @ApiModelProperty(position = 16, value = "input freecodes")
+                           input_freecodes: Option[Seq[String]] = None
                          )
 
   case class GameForListResponse(
@@ -239,8 +251,8 @@ object GameDto {
 
   trait GameJsonFormats extends DefaultJsonFormats {
     implicit val gameLimitRequest: RootJsonFormat[GameLimitRequest] = jsonFormat4(GameLimitRequest)
-    implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat10(GameCreateRequest)
-    implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat9(GameUpdateRequest)
+    implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat12(GameCreateRequest)
+    implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat11(GameUpdateRequest)
     implicit val gamePrizeCreateRequest: RootJsonFormat[GamePrizeCreateRequest] = jsonFormat4(GamePrizeCreateRequest)
 
     implicit val gameType: RootJsonFormat[GameType.Value] = enumFormat(GameType)
@@ -252,7 +264,7 @@ object GameDto {
     implicit val gameLimitResponse: RootJsonFormat[GameLimit] = jsonFormat4(GameLimit)
     implicit val gamePrizeResponse: RootJsonFormat[GamePrize] = jsonFormat5(GamePrize)
 
-    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat13(GameResponse)
+    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat15(GameResponse)
     implicit val gameForListResponse: RootJsonFormat[GameForListResponse] = jsonFormat11(GameForListResponse)
   }
 

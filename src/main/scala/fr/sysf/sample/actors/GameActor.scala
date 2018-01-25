@@ -24,7 +24,6 @@ object GameActor {
   case class GameGetQuery(uc: UserContext, id: UUID) extends Query
   case class GameGetInstantwinQuery(uc: UserContext, game_id: UUID) extends Query
   case class GamePrizeListQuery(uc: UserContext, gameId: UUID) extends Query
-  case class GameEanListQuery(uc: UserContext, gameId: UUID) extends Query
 
   // Command
   sealed trait Cmd
@@ -36,9 +35,6 @@ object GameActor {
   case class GamePrizeCreateCmd(uc: UserContext, id: UUID, request: GamePrizeCreateRequest) extends Cmd
   case class GamePrizeUpdateCmd(uc: UserContext, id: UUID, prizeId: UUID, request: GamePrizeCreateRequest) extends Cmd
   case class GamePrizeDeleteCmd(uc: UserContext, id: UUID, prizeId: UUID) extends Cmd
-  case class GameEanCreateCmd(uc: UserContext, id: UUID, request: Seq[String]) extends Cmd
-  case class GameEanAddCmd(uc: UserContext, id: UUID, ean: String) extends Cmd
-  case class GameEanDeleteCmd(uc: UserContext, id: UUID, ean: String) extends Cmd
 }
 
 
@@ -103,7 +99,7 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case cmd: GameGetInstantwinQuery =>
+    case cmd: GameGetInstantwinQuery => try {
       // check existing game
       val gameResponse = state.find(c => c.id == cmd.game_id && c.country_code == cmd.uc.country_code)
       if (gameResponse.isEmpty) {
@@ -111,6 +107,11 @@ class GameActor extends Actor with ActorLogging {
       }
 
       getInstantwinActor(cmd.game_id) forward cmd
+    }
+    catch {
+    case e: EntityNotFoundException => sender() ! scala.util.Failure(e)
+    case e: Exception => sender() ! scala.util.Failure(e); throw e
+  }
 
 
     case GameCreateCmd(uc, request) => try {
@@ -142,7 +143,9 @@ class GameActor extends Actor with ActorLogging {
             unit = f.unit.map(GameLimitUnit.withName).getOrElse(GameLimitUnit.Session),
             unit_value = f.unit_value,
             value = f.value.getOrElse(1)
-          ))
+          )),
+        input_eans = request.input_eans,
+        input_freecodes = request.input_freecodes
       )
       state = state :+ game
 
@@ -160,7 +163,9 @@ class GameActor extends Actor with ActorLogging {
         input_type = game.input_type,
         input_point = game.input_point,
         limits = game.limits,
-        prizes = game.prizes
+        prizes = game.prizes,
+        input_eans = game.input_eans,
+        input_freecodes = game.input_freecodes
       )
 
     } catch {
@@ -208,7 +213,9 @@ class GameActor extends Actor with ActorLogging {
             unit = f.unit.map(GameLimitUnit.withName).getOrElse(GameLimitUnit.Session),
             unit_value = f.unit_value,
             value = f.value.getOrElse(1)
-          ))).getOrElse(entity.get.limits)
+          ))).getOrElse(entity.get.limits),
+        input_eans = request.input_eans.orElse(entity.get.input_eans),
+        input_freecodes = request.input_freecodes.orElse(entity.get.input_freecodes)
       )
       state = state.filterNot(_.id == game.id) :+ game
       sender ! GameResponse(
@@ -224,7 +231,9 @@ class GameActor extends Actor with ActorLogging {
         input_type = game.input_type,
         input_point = game.input_point,
         limits = game.limits,
-        prizes = game.prizes
+        prizes = game.prizes,
+        input_eans = game.input_eans,
+        input_freecodes = game.input_freecodes
       )
 
     } catch {
@@ -469,98 +478,6 @@ class GameActor extends Actor with ActorLogging {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
-
-
-    case GameEanListQuery(uc, id) => try {
-
-      // check existing game
-      val gameResponse = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (gameResponse.isEmpty) {
-        throw EntityNotFoundException(id = id)
-      }
-
-      sender ! gameResponse.get.input_eans.getOrElse(Seq.empty)
-
-    } catch {
-      case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
-    }
-
-
-    case GameEanCreateCmd(uc, id, request) => try {
-
-      // check existing game
-      val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (entity.isEmpty) {
-        throw EntityNotFoundException(id)
-      }
-
-      // check status
-      if (entity.get.status == GameStatusType.Archived) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
-      }
-
-      // Persist
-      state = state.filterNot(_.id == id) ++ state.filter(_.id == id).map(_.copy(input_eans = Some(request)))
-
-      // Return response
-      sender ! None
-
-    } catch {
-      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
-    }
-
-
-    case GameEanAddCmd(uc, id, request) => try {
-
-      // check existing game
-      val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (entity.isEmpty) {
-        throw EntityNotFoundException(id)
-      }
-
-      // check status
-      if (entity.get.status == GameStatusType.Archived) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
-      }
-
-      // Persist
-      state = state.filterNot(_.id == id) ++ state.filter(_.id == id).map(l => l.copy(input_eans = Some(l.input_eans.getOrElse(Seq.empty) :+ request)))
-
-      // Return response
-      sender ! None
-
-    } catch {
-      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
-    }
-
-
-    case GameEanDeleteCmd(uc, id, request) => try {
-
-      // check existing game
-      val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (entity.isEmpty) {
-        throw EntityNotFoundException(id)
-      }
-
-      // check status
-      if (entity.get.status == GameStatusType.Archived) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
-      }
-
-      // Persist
-      state = state.filterNot(_.id == id) ++ state.filter(_.id == id).map(l => l.copy(input_eans = l.input_eans.filterNot(_ == request)))
-
-      // Return response
-      sender ! None
-
-    } catch {
-      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
-    }
-
 
   }
 
