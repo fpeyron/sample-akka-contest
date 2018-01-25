@@ -20,7 +20,7 @@ object GameActor {
 
   // Query
   sealed trait Query
-  case class GameListQuery(uc: UserContext, types: Option[String], status: Option[String]) extends Query
+  case class GameListQuery(uc: UserContext, types: Option[String], status: Option[String], parent: Option[String]) extends Query
   case class GameGetQuery(uc: UserContext, id: UUID) extends Query
   case class GameGetInstantwinQuery(uc: UserContext, game_id: UUID) extends Query
   case class GamePrizeListQuery(uc: UserContext, gameId: UUID) extends Query
@@ -45,10 +45,16 @@ class GameActor extends Actor with ActorLogging {
 
   override def receive: Receive = {
 
-    case GameListQuery(uc, types, status) => try {
+    case GameListQuery(uc, types, status, parent) => try {
       val restrictedTypes = types.map(_.split(",").flatMap(GameType.withNameOptional))
       val restrictedStatus = status.map(_.split(",").flatMap(GameStatusType.withNameOptional))
-      sender ! state.filter(c => uc.country_code == c.country_code &&  restrictedStatus.forall(_.contains(c.status)) && restrictedTypes.forall(_.contains(c.`type`)))
+      val restrictedParent = parent.map(UUID.fromString(_))
+      sender ! state.filter(c =>
+        uc.country_code == c.country_code &&
+          restrictedStatus.forall(_.contains(c.status)) &&
+          restrictedTypes.forall(_.contains(c.`type`)) &&
+          restrictedParent.forall(_ == c.parent_id)
+      )
         .sortBy(c => c.start_date)
         .map(r => GameForListResponse(
           id = r.id,

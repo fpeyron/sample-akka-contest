@@ -63,13 +63,14 @@ trait GameRoute
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "type", value = "types of game", required = false, dataType = "string", paramType = "query"),
-    new ApiImplicitParam(name = "status", value = "status of game", required = false, dataType = "string", paramType = "query")
+    new ApiImplicitParam(name = "status", value = "status of game", required = false, dataType = "string", paramType = "query"),
+    new ApiImplicitParam(name = "parent", value = "game parent", required = false, dataType = "string", paramType = "query")
   ))
   def game_getAll(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games") {
     get {
-      parameters('type.?, 'status.?) { (typesOptional, statusOptional) =>
+      parameters('type.?, 'status.?, 'parent.?) { (typesOptional, statusOptional, parentOptional) =>
         complete {
-          (gameActor ? GameListQuery(uc = uc, types = typesOptional, status = statusOptional)).mapTo[Seq[GameForListResponse]]
+          (gameActor ? GameListQuery(uc = uc, types = typesOptional, status = statusOptional, parent = parentOptional)).mapTo[Seq[GameForListResponse]]
         }
       }
     }
