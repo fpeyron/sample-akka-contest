@@ -1,0 +1,18 @@
+language: scala
+
+jdk: openjdk8
+
+scala:
+   - 2.12.4
+
+services:
+  - docker
+
+script:
+  #- sbt ++$TRAVIS_SCALA_VERSION test
+  - sbt ++$TRAVIS_SCALA_VERSION docker:publishLocal
+  - pip install --user awscli
+  - export PATH=$PATH:/$HOME/.local/bin
+  - $(aws ecr get-login --no-include-email --region eu-west-1)
+  - docker tag fusion-provider-game:latest $AWS_ACCOUNT_NUMBER.dkr.ecr.eu-west-1.amazonaws.com/fusion-provider-game:latest
+  - docker push $AWS_ACCOUNT_NUMBER.dkr.ecr.eu-west-1.amazonaws.com/fusion-provider-game:latest
