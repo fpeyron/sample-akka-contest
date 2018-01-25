@@ -79,6 +79,7 @@ class PrizeActor extends Actor with ActorLogging {
         title = request.title,
         label = request.label.getOrElse("Unknown"),
         description = request.description,
+        picture = request.picture,
         vendor_code = request.vendor_code,
         face_value = request.face_value
       )
@@ -116,6 +117,7 @@ class PrizeActor extends Actor with ActorLogging {
         title = request.title.map(Some(_)).getOrElse(entity.get.title),
         label = request.label.getOrElse(entity.get.label),
         description = request.description.map(Some(_)).getOrElse(entity.get.description),
+        picture = request.picture.orElse(entity.get.picture),
         vendor_code = request.vendor_code.map(Some(_)).getOrElse(entity.get.vendor_code),
         face_value = request.face_value.map(Some(_)).getOrElse(entity.get.face_value)
       )
