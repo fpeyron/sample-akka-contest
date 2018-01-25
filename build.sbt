@@ -1,3 +1,4 @@
+import com.typesafe.sbt.packager.docker.Cmd
 import sbt.enablePlugins
 
 organization := "com.betc.sample"
@@ -55,8 +56,11 @@ enablePlugins(DockerPlugin, JavaAppPackaging)
 packageName               in Docker := name.value
 version                   in Docker := version.value
 maintainer                in Docker   := "technical support <florent.peyron@gmail.com>"
-dockerCmd                 := Seq("apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*")
-dockerBaseImage           := "openjdk:8u151-jre"
+//dockerBaseImage           := "openjdk:8u151-jre-slim"
+//dockerCommands := Seq(dockerCommands.value.head, Cmd("RUN", "apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*")) ++ dockerCommands.value.tail
+dockerBaseImage            := "openjdk:8u151-jre-alpine"
+dockerCommands := Seq(dockerCommands.value.head, Cmd("RUN", "apk add --no-cache curl bash && rm -rf /var/cache/apk/*")) ++ dockerCommands.value.tail
 dockerExposedPorts         := Seq(8080,2550,5000)
 dockerUpdateLatest        := true
-dockerEntrypoint           := Seq("sh","-c","HOST_IP=$(/usr/bin/curl -s --connect-timeout 1 169.254.169.254/latest/meta-data/local-ipv4) && SERVICE_AKKA_HOST=$HOST_IP ; echo SERVICE_AKKA_HOST:$SERVICE_AKKA_HOST ; " + s"bin/${name.value.toLowerCase} -Dconfig.resource=application.conf" + " -Dakka.remote.netty.tcp.hostname=$SERVICE_AKKA_HOST")
+dockerEntrypoint          := Seq("sh","-c","HOST_IP=$(/usr/bin/curl -s --connect-timeout 1 169.254.169.254/latest/meta-data/local-ipv4) && SERVICE_AKKA_HOST=$HOST_IP ; echo SERVICE_AKKA_HOST:$SERVICE_AKKA_HOST ; " + s"bin/${name.value.toLowerCase} -Dconfig.resource=application.conf" + " -Dakka.remote.netty.tcp.hostname=$SERVICE_AKKA_HOST")
+

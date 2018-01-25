@@ -1,0 +1,53 @@
+version: '3.0'
+services:
+  sample-redis:
+    container_name: sample-redis
+    image: redis:latest
+    #command: consul agent -server -client=0.0.0.0 -bootstrap-expect=1 -data-dir=/tmp/consul -ui
+    hostname: sample-redis
+    networks:
+      - sample
+    #ports:
+      #- "16379:6379"
+
+  sample-akka1:
+    container_name: sample-akka1
+    image: fusion-provider-game:latest
+    hostname: sample-akka1
+    networks:
+      - sample
+    depends_on:
+      - sample-redis
+    ports:
+      - "5001:5000"
+      - "5011:5010"
+      - "2550"
+    environment:
+      - REDIS_HOST=sample-redis
+      - REDIS_PORT=6379
+      - SERVICE_AKKA_HOST=sample-akka1
+      - SERVICE_AKKA_PORT=2550
+
+  sample-akka2:
+    container_name: sample-akka2
+    image: fusion-provider-game:latest
+    hostname: sample-akka2
+    networks:
+      - sample
+    depends_on:
+      - sample-redis
+    ports:
+      - "5002:5000"
+      - "5012:5010"
+      - "2550"
+    environment:
+      - REDIS_HOST=sample-redis
+      - REDIS_PORT=6379
+      - SERVICE_AKKA_HOST=sample-akka2
+      - SERVICE_AKKA_PORT=2550
+
+
+networks:
+  sample:
+    external:
+      name: sample
