@@ -73,7 +73,7 @@ object GameDto {
                                 end_date: Option[Instant],
                                 @ApiModelProperty(position = 9, value = "time zone", example = "+02:00")
                                 timezone: Option[String],
-                                @ApiModelProperty(position = 10, value = "input type", required = false, example = "FREE", allowableValues = "FREE,POINT,SKU")
+                                @ApiModelProperty(position = 10, value = "input type", required = false, example = "OTHER", allowableValues = "OTHER,POINT,SKU")
                                 input_type: Option[String],
                                 @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
                                 input_point: Option[Int],
@@ -98,7 +98,7 @@ object GameDto {
                                 end_date: Option[Instant],
                                 @ApiModelProperty(position = 7, value = "time zone", example = "+02:00")
                                 timezone: Option[String],
-                                @ApiModelProperty(position = 8, value = "input type", required = false, example = "FREE", allowableValues = "FREE,POINT,SKU")
+                                @ApiModelProperty(position = 8, value = "input type", required = false, example = "OTHER", allowableValues = "OTHER,POINT,SKU")
                                 input_type: Option[String],
                                 @ApiModelProperty(position = 9, value = "input point", required = false, example = "10")
                                 input_point: Option[Int],
@@ -140,7 +140,7 @@ object GameDto {
                            timezone: String,
                            @ApiModelProperty(position = 10, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
                            end_date: Instant,
-                           @ApiModelProperty(position = 11, value = "input type", dataType = "string", required = true, example = "FREE", allowableValues = "FREE,POINT,SKU")
+                           @ApiModelProperty(position = 11, value = "input type", dataType = "string", required = true, example = "OTHER", allowableValues = "OTHER,POINT,SKU")
                            input_type: GameInputType.Value,
                            @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
                            input_point: Option[Int] = None,
@@ -173,7 +173,7 @@ object GameDto {
                                   timezone: String,
                                   @ApiModelProperty(position = 10, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
                                   end_date: Instant,
-                                  @ApiModelProperty(position = 11, value = "input type", dataType = "string", required = true, example = "POINT", allowableValues = "FREE,POINT,SKU")
+                                  @ApiModelProperty(position = 11, value = "input type", dataType = "string", required = true, example = "POINT", allowableValues = "OTHER,POINT,SKU")
                                   input_type: GameInputType.Value,
                                   @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
                                   input_point: Option[Int] = None
@@ -235,9 +235,9 @@ object GameDto {
   implicit object GameLimitUnit extends Enumeration {
     val Second: GameLimitUnit.Value = Value("SECOND")
     val Day: GameLimitUnit.Value = Value("DAY")
-    val Session: GameLimitUnit.Value = Value("SESSION")
+    val Game: GameLimitUnit.Value = Value("GAME")
 
-    val all = Seq(Second, Day, Session)
+    val all = Seq(Second, Day, Game)
   }
 
   implicit object GameInputType extends Enumeration {

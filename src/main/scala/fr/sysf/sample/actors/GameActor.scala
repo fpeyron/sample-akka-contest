@@ -140,7 +140,7 @@ class GameActor extends Actor with ActorLogging {
         limits = request.limits.getOrElse(Seq.empty)
           .map(f => GameLimit(
             `type` = f.`type`.map(GameLimitType.withName).getOrElse(GameLimitType.Participation),
-            unit = f.unit.map(GameLimitUnit.withName).getOrElse(GameLimitUnit.Session),
+            unit = f.unit.map(GameLimitUnit.withName).getOrElse(GameLimitUnit.Game),
             unit_value = f.unit_value,
             value = f.value.getOrElse(1)
           )),
@@ -210,7 +210,7 @@ class GameActor extends Actor with ActorLogging {
         limits = request.limits.map(
           _.map(f => GameLimit(
             `type` = f.`type`.map(GameLimitType.withName).getOrElse(GameLimitType.Participation),
-            unit = f.unit.map(GameLimitUnit.withName).getOrElse(GameLimitUnit.Session),
+            unit = f.unit.map(GameLimitUnit.withName).getOrElse(GameLimitUnit.Game),
             unit_value = f.unit_value,
             value = f.value.getOrElse(1)
           ))).getOrElse(entity.get.limits),
@@ -586,10 +586,10 @@ class GameActor extends Actor with ActorLogging {
           GameLimitUnit.all.mkString(",")
         }") else null
     ) ++ Option(
-      if (requestLimit.unit.isDefined && requestLimit.unit.get != GameLimitUnit.Session.toString && requestLimit.unit_value.exists(_ < 1))
+      if (requestLimit.unit.isDefined && requestLimit.unit.get != GameLimitUnit.Game.toString && requestLimit.unit_value.exists(_ < 1))
         (s"limit.$index.unit_value", s"INVALID_VALUE : value > 0") else null
     ) ++ Option(
-      if (requestLimit.unit.isDefined && requestLimit.unit.get != GameLimitUnit.Session.toString && requestLimit.value.exists(_ < 1))
+      if (requestLimit.unit.isDefined && requestLimit.unit.get != GameLimitUnit.Game.toString && requestLimit.value.exists(_ < 1))
         (s"limit.$index.value", s"INVALID_VALUE : value and > 0") else null
     )
   }
