@@ -24,9 +24,9 @@ object HttpSupport {
   case class InvalidInputException(message: Option[String] = None, detail: Map[String, String]) extends RuntimeException
 
   val healthCheckRoute: Route =
-    path("healthcheck") {
+    path("health") {
       get {
-        complete("ok")
+        complete(HttpResponse(StatusCodes.OK, entity = """{"code": 200}"""))
       }
     }
 }

@@ -62,5 +62,5 @@ object ApplicationMain extends App with RouteConcatenation with HttpSupport {
 class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef)(implicit val ec:ExecutionContext)
   extends HttpSupport with GameRoute with SwaggerRoute with PrizeRoute {
 
-  val routes: Route = gameRoute ~ swaggerRoute ~ prizeRoute  ~ HttpSupport.healthCheckRoute
+  val routes: Route = gameRoute ~ prizeRoute ~ HttpSupport.healthCheckRoute ~ swaggerRoute
 }
