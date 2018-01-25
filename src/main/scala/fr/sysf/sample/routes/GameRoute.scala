@@ -348,8 +348,8 @@ trait GameRoute
     get {
       onSuccess((gameActor ? GameGetInstantwinQuery(uc, id)).mapTo[List[Instantwin]]) { response =>
         val mapStream =
-          Source.single("activate_date\tattribution_date\tgame_id\n")
-            .concat(Source(response).map((t: Instantwin) => s"${t.activate_date}\t${t.attribution_date}\t${t.game_id}\n"))
+          Source.single("activate_date\tattribution_date\tgamePrize_id\nprize_id\n")
+            .concat(Source(response).map((t: Instantwin) => s"${t.activate_date}\t${t.attribution_date}\t${t.gamePrize_id}\t${t.prize_id}\n"))
             .map(ByteString.apply)
         complete {
           HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)

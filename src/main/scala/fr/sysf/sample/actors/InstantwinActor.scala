@@ -8,6 +8,7 @@ import fr.sysf.sample.actors.GameActor.GameGetInstantwinQuery
 import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
 import fr.sysf.sample.models.GameEntity.GamePrize
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
+import fr.sysf.sample.routes.HttpSupport.InvalidInputException
 
 
 object InstantwinActor {
@@ -37,7 +38,7 @@ class InstantwinActor(game_id: UUID) extends Actor with ActorLogging {
       sender() ! state.filter(_.game_id == game_id).sortBy(_.attribution_date).toList
 
 
-    case InstanwinCreateCmd(request) =>
+    case InstanwinCreateCmd(request) => try {
       state = state ++
         generateInstantWinDates(request.quantity, request.start_date, request.end_date)
           .map { date =>
@@ -49,8 +50,13 @@ class InstantwinActor(game_id: UUID) extends Actor with ActorLogging {
               activate_date = date
             )
           }
+    } catch {
+      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+    }
 
-    case InstanwinUpdateCmd(request) =>
+
+    case InstanwinUpdateCmd(request) => try {
       state.filterNot(s => s.game_id == game_id && s.gamePrize_id == request.id) ++
         generateInstantWinDates(request.quantity, request.start_date, request.end_date)
           .map { date =>
@@ -62,9 +68,19 @@ class InstantwinActor(game_id: UUID) extends Actor with ActorLogging {
               activate_date = date
             )
           }
+    } catch {
+      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+    }
 
-    case InstanwinDeleteCmd(gamePrize_id) =>
+    case InstanwinDeleteCmd(gamePrize_id) => try {
       state = state.filterNot(s => s.game_id == game_id && gamePrize_id.forall(_ == s.gamePrize_id))
+
+      sender ! None
+    } catch {
+      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+    }
 
   }
 

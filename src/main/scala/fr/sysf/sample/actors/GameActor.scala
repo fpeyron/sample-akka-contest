@@ -272,6 +272,7 @@ class GameActor extends Actor with ActorLogging {
 
       // Delete instantwins
       //forwardToInstantwinActor(InstanwinDeleteCmd())
+      getInstantwinActor(id) ! InstanwinDeleteCmd(None)
 
 
       sender ! None
@@ -480,6 +481,8 @@ class GameActor extends Actor with ActorLogging {
       state = state.filterNot(_.id == id) :+ entity.get.copy(prizes = entity.get.prizes.filterNot(_.id == prizeId))
 
       // Delete instantwins
+      //forwardToInstantwinActor InstanwinDeleteCmd(Some(prizeId))
+      //getInstantwinActor(id) forward InstanwinDeleteCmd(Some(prizeId))
       getInstantwinActor(id) ! InstanwinDeleteCmd(Some(prizeId))
 
       // Return response
