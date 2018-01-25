@@ -93,7 +93,7 @@ trait CorsSupport {
   private val addAccessControlHeaders: Directive0 = mapResponseHeaders { headers =>
     `Access-Control-Allow-Origin`.* +:
       `Access-Control-Allow-Credentials`(true) +:
-      `Access-Control-Allow-Headers`("Token", "Content-Type", "X-Requested-With") +:
+      `Access-Control-Allow-Headers`("Authorization", "Content-Type", "X-Requested-With") +:
       headers
   }
 

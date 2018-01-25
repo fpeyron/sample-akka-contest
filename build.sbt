@@ -37,8 +37,8 @@ libraryDependencies += "com.github.everpeace"         %% "constructr-coordinatio
 dependencyOverrides += "com.typesafe.akka"            %% "akka-stream"                    % akkaVersion
 dependencyOverrides += "com.typesafe.akka"            %% "akka-actor"                     % akkaVersion
 dependencyOverrides += "de.heikoseeberger"            %% "constructr-coordination"        % ConstructrAkka
-//dependencyOverrides += "org.codehaus.plexus"          % "plexus-utils"                    % "3.0.17"
-//dependencyOverrides += "com.google.guava"             % "guava"                           % "20.0"
+dependencyOverrides += "org.codehaus.plexus"          % "plexus-utils"                    % "3.0.17"
+dependencyOverrides += "com.google.guava"             % "guava"                           % "20.0"
 
 // ----------------
 // Run

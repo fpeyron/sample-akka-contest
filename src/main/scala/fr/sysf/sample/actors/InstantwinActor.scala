@@ -6,7 +6,7 @@ import java.util.UUID
 import akka.actor.{Actor, ActorLogging, Props}
 import fr.sysf.sample.actors.GameActor.GameGetInstantwinQuery
 import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
-import fr.sysf.sample.models.GameEntity.GameLine
+import fr.sysf.sample.models.GameEntity.GamePrize
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
 
 
@@ -19,11 +19,11 @@ object InstantwinActor {
   // Command
   sealed trait Cmd
 
-  case class InstanwinCreateCmd(request: GameLine)
+  case class InstanwinCreateCmd(request: GamePrize)
 
-  case class InstanwinUpdateCmd(request: GameLine)
+  case class InstanwinUpdateCmd(request: GamePrize)
 
-  case class InstanwinDeleteCmd(line_id: Option[UUID] = None)
+  case class InstanwinDeleteCmd(GamePrize_id: Option[UUID] = None)
 
 }
 
@@ -44,27 +44,27 @@ class InstantwinActor(game_id: UUID) extends Actor with ActorLogging {
             Instantwin(
               id = UUID.randomUUID(),
               game_id = game_id,
-              gameLine_id = request.id,
+              gamePrize_id = request.id,
               prize_id = request.prize_id,
               activate_date = date
             )
           }
 
     case InstanwinUpdateCmd(request) =>
-      state.filterNot(s => s.game_id == game_id && s.gameLine_id == request.id) ++
+      state.filterNot(s => s.game_id == game_id && s.gamePrize_id == request.id) ++
         generateInstantWinDates(request.quantity, request.start_date, request.end_date)
           .map { date =>
             Instantwin(
               id = UUID.randomUUID(),
               game_id = game_id,
-              gameLine_id = request.id,
+              gamePrize_id = request.id,
               prize_id = request.prize_id,
               activate_date = date
             )
           }
 
-    case InstanwinDeleteCmd(gameLine_id) =>
-      state = state.filterNot(s => s.game_id == game_id && gameLine_id.forall(_ == s.gameLine_id))
+    case InstanwinDeleteCmd(gamePrize_id) =>
+      state = state.filterNot(s => s.game_id == game_id && gamePrize_id.forall(_ == s.gamePrize_id))
 
   }
 

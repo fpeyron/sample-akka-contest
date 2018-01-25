@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import fr.sysf.sample.models.GameDto.{GameInputType, GameLimitType, GameLimitUnit, GameStatusType, GameType}
-import fr.sysf.sample.models.GameEntity.{GameLimit, GameLine}
+import fr.sysf.sample.models.GameEntity.{GameLimit, GamePrize}
 import fr.sysf.sample.routes.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
@@ -27,7 +27,7 @@ object GameEntity {
                    input_eans: Option[Seq[String]] = None,
                    input_freecodes: Option[Seq[String]] = None,
                    limits: Seq[GameLimit] = Seq.empty,
-                   lines: Seq[GameLine] = Seq.empty
+                   prizes: Seq[GamePrize] = Seq.empty
                  )
 
   case class GameLimit(
@@ -41,7 +41,7 @@ object GameEntity {
                         value: Int
                       )
 
-  case class GameLine(
+  case class GamePrize(
                        @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
                        id: UUID,
                        @ApiModelProperty(position = 2, value = "prize id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
@@ -138,8 +138,8 @@ object GameDto {
                            input_point: Option[Int] = None,
                            @ApiModelProperty(position = 13, value = "input eans", required = false)
                            limits: Seq[GameLimit] = Seq.empty,
-                           @ApiModelProperty(position = 16, value = "lines")
-                           lines: Seq[GameLine] = Seq.empty
+                           @ApiModelProperty(position = 16, value = "prizes")
+                           prizes: Seq[GamePrize] = Seq.empty
                          )
 
   case class GameForListResponse(
@@ -170,10 +170,10 @@ object GameDto {
 
   /**
     * --------------------------------------------
-    * Game Line
+    * Game Prize
     * --------------------------------------------
     */
-  case class GameLineCreateRequest(
+  case class GamePrizeCreateRequest(
                                     @ApiModelProperty(position = 1, value = "prize id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
                                     prize_id: Option[UUID],
                                     @ApiModelProperty(position = 2, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
@@ -241,7 +241,7 @@ object GameDto {
     implicit val gameLimitRequest: RootJsonFormat[GameLimitRequest] = jsonFormat4(GameLimitRequest)
     implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat10(GameCreateRequest)
     implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat9(GameUpdateRequest)
-    implicit val gameLineCreateRequest: RootJsonFormat[GameLineCreateRequest] = jsonFormat4(GameLineCreateRequest)
+    implicit val gamePrizeCreateRequest: RootJsonFormat[GamePrizeCreateRequest] = jsonFormat4(GamePrizeCreateRequest)
 
     implicit val gameType: RootJsonFormat[GameType.Value] = enumFormat(GameType)
     implicit val gameInputType: RootJsonFormat[GameInputType.Value] = enumFormat(GameInputType)
@@ -250,7 +250,7 @@ object GameDto {
 
     implicit val gameLimitUnit: RootJsonFormat[GameLimitUnit.Value] = enumFormat(GameLimitUnit)
     implicit val gameLimitResponse: RootJsonFormat[GameLimit] = jsonFormat4(GameLimit)
-    implicit val gameLineResponse: RootJsonFormat[GameLine] = jsonFormat5(GameLine)
+    implicit val gamePrizeResponse: RootJsonFormat[GamePrize] = jsonFormat5(GamePrize)
 
     implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat13(GameResponse)
     implicit val gameForListResponse: RootJsonFormat[GameForListResponse] = jsonFormat11(GameForListResponse)

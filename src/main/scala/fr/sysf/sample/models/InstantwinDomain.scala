@@ -8,7 +8,7 @@ object InstantwinDomain {
   case class Instantwin(
                          id: UUID,
                          game_id: UUID,
-                         gameLine_id: UUID,
+                         gamePrize_id: UUID,
                          prize_id: UUID,
                          activate_date: Instant,
                          attribution_date: Option[Instant] = None,
