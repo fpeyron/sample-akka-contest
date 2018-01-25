@@ -1,7 +1,7 @@
 import sbt.enablePlugins
 
 organization := "com.betc.sample"
-name := "sample-contest"
+name := "fusion-provider-game"
 
 lazy val akkaVersion = "2.5.8"
 lazy val akkaHttpVersion = "10.0.11"
