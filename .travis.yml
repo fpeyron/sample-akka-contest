@@ -14,5 +14,7 @@ script:
   - pip install --user awscli
   - export PATH=$PATH:/$HOME/.local/bin
   - $(aws ecr get-login --no-include-email --region eu-west-1)
-  - docker tag fusion-provider-game:latest $AWS_ACCOUNT_NUMBER.dkr.ecr.eu-west-1.amazonaws.com/fusion-provider-game:latest
-  - docker push $AWS_ACCOUNT_NUMBER.dkr.ecr.eu-west-1.amazonaws.com/fusion-provider-game:latest
+  - for tag in $(docker image ls fusion-provider-game --format {{.Tag}}); do
+      docker tag fusion-provider-game:latest $AWS_ACCOUNT_NUMBER.dkr.ecr.eu-west-1.amazonaws.com/fusion-provider-game:$tag
+      docker push $AWS_ACCOUNT_NUMBER.dkr.ecr.eu-west-1.amazonaws.com/fusion-provider-game:$tag
+    done
