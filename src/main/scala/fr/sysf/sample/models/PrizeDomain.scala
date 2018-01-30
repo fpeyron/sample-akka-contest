@@ -2,12 +2,36 @@ package fr.sysf.sample.models
 
 import java.util.UUID
 
+import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
 import fr.sysf.sample.routes.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 
 object PrizeDomain {
 
+  case class Prize(
+                    id: UUID,
+                    country_code: String,
+                    `type`: PrizeType.Value,
+                    title: Option[String] = None,
+                    label: String,
+                    description: Option[String] = None,
+                    picture: Option[String] = None,
+                    vendor_code: Option[String] = None,
+                    face_value: Option[Int] = None
+                  )
+
+  implicit object PrizeType extends Enumeration {
+    val Point: PrizeType.Value = Value("POINT")
+    val Gift: PrizeType.Value = Value("GIFT")
+    val GiftShop: PrizeType.Value = Value("GIFTSHOP")
+
+    val all = Seq(Point, Gift, GiftShop)
+  }
+
+}
+
+object PrizeDao {
 
   // Service
   case class PrizeCreateRequest(
@@ -27,6 +51,7 @@ object PrizeDomain {
                                  face_value: Option[Int]
                                )
 
+
   case class PrizeResponse(
                             @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
                             id: UUID,
@@ -39,20 +64,15 @@ object PrizeDomain {
                             @ApiModelProperty(position = 5, value = "description", example = "My new description prize")
                             description: Option[String] = None,
                             @ApiModelProperty(position = 5, value = "picture", example = "myPicture.jpg")
-                            picture: Option[String],
+                            picture: Option[String] = None,
                             @ApiModelProperty(position = 7, value = "gift vendor code", example = "VENDOR")
                             vendor_code: Option[String] = None,
                             @ApiModelProperty(position = 8, value = "giftshop face value", example = "200")
                             face_value: Option[Int] = None
-                          )
-
-  implicit object PrizeType extends Enumeration {
-    val Point: PrizeType.Value = Value("POINT")
-    val Gift: PrizeType.Value = Value("GIFT")
-    val GiftShop: PrizeType.Value = Value("GIFTSHOP")
-
-    val all = Seq(Point, Gift, GiftShop)
+                          ) {
+    def this(prize: Prize) = this(prize.id, prize.`type`, prize.title, prize.label, prize.description, prize.picture, prize.vendor_code, prize.face_value)
   }
+
 
   trait PrizeJsonFormats extends DefaultJsonFormats {
     implicit val prizeCreateRequest: RootJsonFormat[PrizeCreateRequest] = jsonFormat7(PrizeCreateRequest)

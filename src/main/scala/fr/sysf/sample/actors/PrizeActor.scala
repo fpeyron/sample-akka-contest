@@ -4,56 +4,63 @@ import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, Props}
 import fr.sysf.sample.actors.PrizeActor._
-import fr.sysf.sample.models.PrizeDomain.{PrizeCreateRequest, PrizeResponse, PrizeType}
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
+import fr.sysf.sample.{ActorUtil, Repository}
+import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd}
+import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeResponse}
+import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 
 object PrizeActor {
 
-  def props = Props(new PrizeActor)
+  def props(implicit repository: Repository) = Props(new PrizeActor)
   val name = "prize-singleton"
 
   // Query
   sealed trait Query
-  case class PrizeListQuery(uc: UserContext)
-
-  case class PrizeGetQuery(uc: UserContext, id: UUID)
-
+  case class PrizeListQuery(uc: UserContext, game_id: Option[String]) extends Query
+  case class PrizeGetQuery(uc: UserContext, id: UUID) extends Query
 
   // Command
   sealed trait Cmd
-  case class PrizeCreateCmd(uc: UserContext, contestCreateRequest: PrizeCreateRequest)
+  case class PrizeCreateCmd(uc: UserContext, contestCreateRequest: PrizeCreateRequest) extends Cmd
   case class PrizeUpdateCmd(uc: UserContext, id: UUID, contestUpdateRequest: PrizeCreateRequest) extends Cmd
   case class PrizeDeleteCmd(uc: UserContext, id: UUID) extends Cmd
 }
 
-class PrizeActor extends Actor with ActorLogging {
+class PrizeActor(implicit val repository: Repository) extends Actor with ActorLogging {
 
-
-  var state = Seq.empty[PrizeResponse]
+  import context.dispatcher
+  import akka.pattern.pipe
 
 
   def receive: Receive = {
 
 
-    case PrizeListQuery => try {
-      sender ! state.sortBy(c => c.label)
+    case PrizeListQuery(uc, game_id) => try {
+
+      sender ! repository.prize.fetchBy(country_code = Some(uc.country_code), game_id = game_id.flatMap(ActorUtil.string2UUID)).map(new PrizeResponse(_))
 
     } catch {
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
 
-    case PrizeGetQuery(_, id) => try {
+    case PrizeGetQuery(uc, id) => try {
 
-      // check existing contest
-      val contestResponse = state.find(c => c.id == id)
-      if (contestResponse.isEmpty) {
-        throw EntityNotFoundException(id = id)
-      }
+      repository.prize.getById(id).map{ prize =>
 
-      sender ! contestResponse.get
+        // check existing prize
+        if (! prize.exists(_.country_code == uc.country_code)) {
+          throw EntityNotFoundException(id = id)
+        } else {
+          prize.map(new PrizeResponse(_)).get
+        }
+      }. pipeTo(sender)
 
     } catch {
       case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
@@ -61,7 +68,7 @@ class PrizeActor extends Actor with ActorLogging {
     }
 
 
-    case PrizeCreateCmd(_, request) => try {
+    case PrizeCreateCmd(uc, request) => try {
 
       /*
       // Validation input
@@ -73,8 +80,9 @@ class PrizeActor extends Actor with ActorLogging {
 
       // Persist
       val newId = UUID.randomUUID
-      val contest = PrizeResponse(
+      val prize = Prize(
         id = newId,
+        country_code = uc.country_code,
         `type` = request.`type`.map(PrizeType.withName) getOrElse PrizeType.Gift,
         title = request.title,
         label = request.label.getOrElse("Unknown"),
@@ -83,24 +91,25 @@ class PrizeActor extends Actor with ActorLogging {
         vendor_code = request.vendor_code,
         face_value = request.face_value
       )
-      state = state :+ contest
 
-      // Return response
-      sender ! contest
+      Await.result(repository.prize.create(prize), Duration.Inf)
 
+      // Return prize
+
+      sender ! new PrizeResponse(prize)
     } catch {
-      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: InvalidInputException => sender ! akka.actor.Status.Failure(e)
+      case e: Exception => sender ! akka.actor.Status.Failure(e); throw e
     }
 
 
-    case PrizeUpdateCmd(_, id, request) => try {
+    case PrizeUpdateCmd(uc, id, request) => try {
 
       // check existing contest
-      val entity = state.find(c => c.id == id)
-      if (entity.isEmpty) {
-        throw EntityNotFoundException(id)
-      }
+      val entity: Prize = Await.result(repository.prize.getById(id).map {
+        case Some(u) if u.country_code == uc.country_code => u
+        case None => throw EntityNotFoundException(id = id)
+      }, Duration.Inf)
 
       /*
       // Check input payload
@@ -111,19 +120,21 @@ class PrizeActor extends Actor with ActorLogging {
       */
 
       // Persist updrade
-      val entityUpdated = PrizeResponse(
-        id = entity.get.id,
-        `type` = entity.get.`type`,
-        title = request.title.map(Some(_)).getOrElse(entity.get.title),
-        label = request.label.getOrElse(entity.get.label),
-        description = request.description.map(Some(_)).getOrElse(entity.get.description),
-        picture = request.picture.orElse(entity.get.picture),
-        vendor_code = request.vendor_code.map(Some(_)).getOrElse(entity.get.vendor_code),
-        face_value = request.face_value.map(Some(_)).getOrElse(entity.get.face_value)
+      val entityUpdated = Prize(
+        id = entity.id,
+        country_code = entity.country_code,
+        `type` = entity.`type`,
+        title = request.title.map(Some(_)).getOrElse(entity.title),
+        label = request.label.getOrElse(entity.label),
+        description = request.description.map(Some(_)).getOrElse(entity.description),
+        picture = request.picture.orElse(entity.picture),
+        vendor_code = request.vendor_code.map(Some(_)).getOrElse(entity.vendor_code),
+        face_value = request.face_value.map(Some(_)).getOrElse(entity.face_value)
       )
 
-      state = state.filterNot(_.id == entityUpdated.id) :+ entityUpdated
-      sender ! entityUpdated
+      Await.result(repository.prize.update(entityUpdated), Duration.Inf)
+
+      sender() ! new PrizeResponse(entityUpdated)
 
     } catch {
       case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
@@ -132,16 +143,16 @@ class PrizeActor extends Actor with ActorLogging {
     }
 
 
-    case PrizeDeleteCmd(_, id) => try {
+    case PrizeDeleteCmd(uc, id) => try {
 
       // check existing contest
-      val contest = state.find(c => c.id == id)
-      if (contest.isEmpty) {
-        throw EntityNotFoundException(id)
-      }
+      Await.result(repository.prize.getById(id).map {
+        case Some(u) if u.country_code == uc.country_code => u
+        case None => throw EntityNotFoundException(id = id)
+      }, Duration.Inf)
 
+      Await.result(repository.prize.delete(id), Duration.Inf)
 
-      state = state.filterNot(_.id == id)
       sender ! None
     }
     catch {
@@ -149,7 +160,6 @@ class PrizeActor extends Actor with ActorLogging {
       case e: NotAuthorizedException => sender() ! scala.util.Failure(e)
       case e: Exception => sender() ! scala.util.Failure(e); throw e
     }
-
 
   }
 }

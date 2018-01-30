@@ -3,73 +3,82 @@ package fr.sysf.sample.actors
 import java.time.{Instant, ZoneId}
 import java.util.UUID
 
+import akka.NotUsed
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.Source
 import fr.sysf.sample.actors.GameActor._
 import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
 import fr.sysf.sample.models.GameDto._
 import fr.sysf.sample.models.GameEntity.{Game, GameLimit, GamePrize}
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
+import fr.sysf.sample.{ActorUtil, Repository}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 
 object GameActor {
 
-  def props = Props(new GameActor)
+  def props(implicit repository: Repository, materializer: ActorMaterializer) = Props(new GameActor)
 
   val Name = "games-singleton"
 
   // Query
   sealed trait Query
+
   case class GameListQuery(uc: UserContext, types: Option[String], status: Option[String], parent: Option[String]) extends Query
+
   case class GameGetQuery(uc: UserContext, id: UUID) extends Query
-  case class GameGetInstantwinQuery(uc: UserContext, game_id: UUID) extends Query
-  case class GamePrizeListQuery(uc: UserContext, gameId: UUID) extends Query
+
+  case class GameGetInstantwinQuery(uc: UserContext, id: UUID) extends Query
+
+  case class GameListPrizesQuery(uc: UserContext, id: UUID) extends Query
 
   // Command
   sealed trait Cmd
+
   case class GameCreateCmd(uc: UserContext, gameCreateRequest: GameCreateRequest) extends Cmd
+
   case class GameUpdateCmd(uc: UserContext, id: UUID, gameUpdateRequest: GameUpdateRequest) extends Cmd
+
   case class GameDeleteCmd(uc: UserContext, id: UUID) extends Cmd
+
   case class GameActivateCmd(uc: UserContext, id: UUID) extends Cmd
+
   case class GameArchiveCmd(uc: UserContext, id: UUID) extends Cmd
-  case class GamePrizeCreateCmd(uc: UserContext, id: UUID, request: GamePrizeCreateRequest) extends Cmd
-  case class GamePrizeUpdateCmd(uc: UserContext, id: UUID, gamePrizeId: UUID, request: GamePrizeCreateRequest) extends Cmd
-  case class GamePrizeDeleteCmd(uc: UserContext, id: UUID, gamePrizeId: UUID) extends Cmd
+
+  case class GameAddPrizeCmd(uc: UserContext, id: UUID, request: GamePrizeCreateRequest) extends Cmd
+
+  case class GameUpdatePrizeCmd(uc: UserContext, id: UUID, gamePrizeId: UUID, request: GamePrizeCreateRequest) extends Cmd
+
+  case class GameRemovePrizeCmd(uc: UserContext, id: UUID, gamePrizeId: UUID) extends Cmd
+
 }
 
 
-class GameActor extends Actor with ActorLogging {
+class GameActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer) extends Actor with ActorLogging {
 
-  var state = Seq.empty[Game]
-
+  import akka.pattern.pipe
+  import context.dispatcher
 
   override def receive: Receive = {
 
     case GameListQuery(uc, types, status, parent) => try {
-      val restrictedTypes = types.map(_.split(",").flatMap(GameType.withNameOptional))
-      val restrictedStatus = status.map(_.split(",").flatMap(GameStatusType.withNameOptional))
-      val restrictedParent = parent.map(UUID.fromString(_))
-      sender ! state.filter(c =>
-        uc.country_code == c.country_code &&
-          restrictedStatus.forall(_.contains(c.status)) &&
-          restrictedTypes.forall(_.contains(c.`type`)) &&
-          restrictedParent.forall(_ == c.parent_id)
-      )
-        .sortBy(c => c.start_date)
-        .map(r => GameForListResponse(
-          id = r.id,
-          `type` = r.`type`,
-          status = r.status,
-          parent_id = r.parent_id,
-          reference = r.reference,
-          title = r.title,
-          start_date = r.start_date,
-          timezone = r.timezone,
-          end_date = r.end_date,
-          input_type = r.input_type,
-          input_point = r.input_point
-        ))
+      val restrictedTypes = types.map(_.split(",").flatMap(GameType.withNameOptional).toSeq)
+      val restrictedStatus = status.map(_.split(",").flatMap(GameStatusType.withNameOptional).toSeq)
+      val restrictedParent = parent.flatMap(ActorUtil.string2UUID)
 
+      val sourceList: Source[GameForListResponse, NotUsed] = repository.game.fetchBy(
+        country_code = Some(uc.country_code),
+        types = restrictedTypes.getOrElse(Seq.empty[GameType.Value]),
+        status = restrictedStatus.getOrElse(Seq.empty[GameStatusType.Value]),
+        parent = restrictedParent
+      )
+        .map(new GameForListResponse(_))
+
+      sender ! sourceList
     } catch {
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
@@ -77,27 +86,14 @@ class GameActor extends Actor with ActorLogging {
 
     case GameGetQuery(uc, id) => try {
 
-      // check existing game
-      val gameResponse = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (gameResponse.isEmpty) {
-        throw EntityNotFoundException(id = id)
-      }
-
-      sender ! gameResponse.map(r => GameResponse(
-        id = r.id,
-        `type` = r.`type`,
-        status = r.status,
-        parent_id = r.parent_id,
-        reference = r.reference,
-        title = r.title,
-        start_date = r.start_date,
-        timezone = r.timezone,
-        end_date = r.end_date,
-        input_type = r.input_type,
-        input_point = r.input_point,
-        limits = r.limits,
-        prizes = r.prizes
-      )).get
+      repository.game.getById(id).map { game =>
+        // check existing game
+        if (!game.exists(_.country_code == uc.country_code)) {
+          throw EntityNotFoundException(id = id)
+        } else {
+          game.map(new GameResponse(_)).get
+        }
+      }.pipeTo(sender)
 
     } catch {
       case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
@@ -105,30 +101,15 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case cmd: GameGetInstantwinQuery => try {
-      // check existing game
-      val gameResponse = state.find(c => c.id == cmd.game_id && c.country_code == cmd.uc.country_code)
-      if (gameResponse.isEmpty) {
-        throw EntityNotFoundException(id = cmd.game_id)
-      }
-
-      getInstantwinActor(cmd.game_id) forward cmd
-    }
-    catch {
-    case e: EntityNotFoundException => sender() ! scala.util.Failure(e)
-    case e: Exception => sender() ! scala.util.Failure(e); throw e
-  }
-
-
     case GameCreateCmd(uc, request) => try {
 
-      // Validation input
+      // check existing game
       val request_error = checkGameInputForCreation(request)
       if (request_error.nonEmpty) {
         throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
       }
 
-      // Persist
+      // Generate Record
       val newId = UUID.randomUUID
       val game = Game(
         id = newId,
@@ -150,29 +131,29 @@ class GameActor extends Actor with ActorLogging {
             unit_value = f.unit_value,
             value = f.value.getOrElse(1)
           )),
-        input_eans = request.input_eans,
-        input_freecodes = request.input_freecodes
+        input_eans = request.input_eans.getOrElse(Seq.empty),
+        input_freecodes = request.input_freecodes.getOrElse(Seq.empty)
       )
-      state = state :+ game
+
+      // Check existing reference
+      if (Await.result(repository.game.findEntityByReference(game.reference), Duration.Inf)
+        .exists(r => r.country_code == game.country_code && r.status != GameStatusType.Archived)) {
+        throw InvalidInputException(detail = Map("reference" -> "ALREADY_EXISTS : already exists with same reference and status ACTIVE"))
+      }
+
+      // Check existing parent
+      if (game.parent_id.isDefined) {
+        val parent = Await.result(repository.game.getById(game.parent_id.get), Duration.Inf)
+        if (!parent.exists(r => r.country_code == game.country_code)) {
+          throw InvalidInputException(detail = Map("parent_id" -> "ENTITY_NOT_FOUND : should already exists"))
+        }
+      }
+
+      // Persist
+      Await.result(repository.game.create(game), Duration.Inf)
 
       // Return response
-      sender ! GameResponse(
-        id = game.id,
-        `type` = game.`type`,
-        status = game.status,
-        parent_id = game.parent_id,
-        reference = game.reference,
-        title = game.title,
-        start_date = game.start_date,
-        timezone = game.timezone,
-        end_date = game.end_date,
-        input_type = game.input_type,
-        input_point = game.input_point,
-        limits = game.limits,
-        prizes = game.prizes,
-        input_eans = game.input_eans,
-        input_freecodes = game.input_freecodes
-      )
+      sender ! new GameResponse(game)
 
     } catch {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
@@ -182,65 +163,67 @@ class GameActor extends Actor with ActorLogging {
 
     case GameUpdateCmd(uc, id, request) => try {
 
+      // Get existing game
+      val game = Await.result(repository.game.getById(id), Duration.Inf)
+
       // check existing game
-      val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (entity.isEmpty) {
-        throw EntityNotFoundException(id)
+      if (!game.exists(_.country_code == uc.country_code)) {
+        throw EntityNotFoundException(id = id)
       }
 
       // check status
-      if (entity.get.status != GameStatusType.Draft) {
+      if (game.get.status != GameStatusType.Draft) {
         throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
       }
 
       // Check input payload
-      val request_error = checkGameInputForUpdate(id, request)
+      val request_error = checkGameInputForUpdate(request)
       if (request_error.nonEmpty) {
         throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
       }
 
-      // Persist updrade
-      val game = Game(
-        id = entity.get.id,
-        `type` = entity.get.`type`,
-        status = entity.get.status,
-        reference = request.reference.getOrElse(entity.get.reference),
-        country_code = entity.get.country_code,
-        title = request.title.map(Some(_)).getOrElse(entity.get.title),
-        start_date = request.start_date.getOrElse(entity.get.start_date),
-        end_date = request.end_date.getOrElse(entity.get.end_date),
+      // Check existing reference
+      if (request.reference.exists(_ != game.get.reference) &&
+        Await.result(repository.game.findEntityByReference(request.reference.get), Duration.Inf)
+          .exists(r => r.country_code == game.get.country_code && r.status != GameStatusType.Archived)) {
+        throw InvalidInputException(detail = Map("reference" -> "ALREADY_EXISTS : already exists with same reference and status ACTIVE"))
+      }
+
+      // Check existing parent
+      if (game.get.parent_id.isDefined) {
+        val parent = Await.result(repository.game.getById(game.get.parent_id.get), Duration.Inf)
+        if (!parent.exists(r => r.country_code == game.get.country_code)) {
+          throw InvalidInputException(detail = Map("parent_id" -> "ENTITY_NOT_FOUND : should already exists"))
+        }
+      }
+      // Persist
+      val gameToUpdate = Game(
+        id = game.get.id,
+        `type` = game.get.`type`,
+        status = game.get.status,
+        reference = request.reference.getOrElse(game.get.reference),
+        country_code = game.get.country_code,
+        title = request.title.map(Some(_)).getOrElse(game.get.title),
+        start_date = request.start_date.getOrElse(game.get.start_date),
+        end_date = request.end_date.getOrElse(game.get.end_date),
         timezone = request.timezone.getOrElse("UTC"),
         parent_id = request.parent_id,
         input_type = request.input_type.map(GameInputType.withName).getOrElse(GameInputType.Other),
-        input_point = request.input_point.orElse(entity.get.input_point),
+        input_point = request.input_point.orElse(game.get.input_point),
         limits = request.limits.map(
           _.map(f => GameLimit(
             `type` = f.`type`.map(GameLimitType.withName).getOrElse(GameLimitType.Participation),
             unit = f.unit.map(GameLimitUnit.withName).getOrElse(GameLimitUnit.Game),
             unit_value = f.unit_value,
             value = f.value.getOrElse(1)
-          ))).getOrElse(entity.get.limits),
-        input_eans = request.input_eans.orElse(entity.get.input_eans),
-        input_freecodes = request.input_freecodes.orElse(entity.get.input_freecodes)
+          ))).getOrElse(game.get.limits),
+        input_eans = request.input_eans.getOrElse(game.get.input_eans),
+        input_freecodes = request.input_freecodes.getOrElse(game.get.input_freecodes)
       )
-      state = state.filterNot(_.id == game.id) :+ game
-      sender ! GameResponse(
-        id = game.id,
-        `type` = game.`type`,
-        status = game.status,
-        parent_id = game.parent_id,
-        reference = game.reference,
-        title = game.title,
-        start_date = game.start_date,
-        timezone = game.timezone,
-        end_date = game.end_date,
-        input_type = game.input_type,
-        input_point = game.input_point,
-        limits = game.limits,
-        prizes = game.prizes,
-        input_eans = game.input_eans,
-        input_freecodes = game.input_freecodes
-      )
+      Await.result(repository.game.update(gameToUpdate), Duration.Inf)
+
+      // Return response
+      sender ! new GameResponse(gameToUpdate)
 
     } catch {
       case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
@@ -251,31 +234,27 @@ class GameActor extends Actor with ActorLogging {
 
     case GameDeleteCmd(uc, id) => try {
 
+      // Get existing game
+      val game = Await.result(repository.game.getById(id), Duration.Inf)
+
       // check existing game
-      val game = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (game.isEmpty) {
-        throw EntityNotFoundException(id)
-      }
+      if (!game.exists(_.country_code == uc.country_code)) throw EntityNotFoundException(id = id)
 
       // check status
-      if (game.get.status != GameStatusType.Draft) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
-      }
+      if (game.get.status != GameStatusType.Draft) throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
 
-      // check dependency
-      if (state.exists(_.parent_id == id)) {
-        throw NotAuthorizedException(id = id, message = Some("HAS_DEPENDENCIES"))
-      }
-
-      // Persist
-      state = state.filterNot(_.id == id)
+      // Check dependency
+      if (game.get.parent_id.isDefined) throw NotAuthorizedException(id = id, message = Some("HAS_DEPENDENCIES"))
 
       // Delete instantwins
       //forwardToInstantwinActor(InstanwinDeleteCmd())
-      getInstantwinActor(id) ! InstanwinDeleteCmd(None)
 
+      // Persist
+      Await.result(repository.game.delete(id), Duration.Inf)
 
+      // Return response
       sender ! None
+
     }
     catch {
       case e: EntityNotFoundException => sender() ! scala.util.Failure(e)
@@ -286,24 +265,21 @@ class GameActor extends Actor with ActorLogging {
 
     case GameActivateCmd(uc, id) => try {
 
+      // Get existing game
+      val game = Await.result(repository.game.getById(id), Duration.Inf)
+
       // check existing game
-      val game = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (game.isEmpty) {
-        throw EntityNotFoundException(id)
-      }
+      if (!game.exists(_.country_code == uc.country_code)) throw EntityNotFoundException(id = id)
 
       // check status
-      if (game.get.status != GameStatusType.Draft) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
-      }
+      if (game.get.status != GameStatusType.Draft) throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
 
-      // check dependency
-      if (state.exists(_.parent_id == id)) {
-        throw NotAuthorizedException(id = id, message = Some("HAS_DEPENDENCIES"))
-      }
+      // Persist
+      Await.result(repository.game.updateStatus(id, GameStatusType.Activated), Duration.Inf)
 
-      state = state.filterNot(_.id == game.get.id) :+ game.get.copy(status = GameStatusType.Activated)
+      // Return response
       sender ! None
+
     }
     catch {
       case e: EntityNotFoundException => sender() ! scala.util.Failure(e)
@@ -314,24 +290,21 @@ class GameActor extends Actor with ActorLogging {
 
     case GameArchiveCmd(uc, id) => try {
 
+      // Get existing game
+      val game = Await.result(repository.game.getById(id), Duration.Inf)
+
       // check existing game
-      val game = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (game.isEmpty) {
-        throw EntityNotFoundException(id)
-      }
+      if (!game.exists(_.country_code == uc.country_code)) throw EntityNotFoundException(id = id)
 
       // check status
-      if (game.get.status == GameStatusType.Archived) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
-      }
+      if (game.get.status == GameStatusType.Archived) throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
 
-      // check dependency
-      if (state.exists(_.parent_id == id)) {
-        throw NotAuthorizedException(id = id, message = Some("HAS_DEPENDENCIES"))
-      }
+      // Change status
+      Await.result(repository.game.updateStatus(id, GameStatusType.Archived), Duration.Inf)
 
-      state = state.filterNot(_.id == game.get.id) :+ game.get.copy(status = GameStatusType.Archived)
+      // Return response
       sender ! None
+
     }
     catch {
       case e: EntityNotFoundException => sender() ! scala.util.Failure(e)
@@ -340,15 +313,16 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GamePrizeListQuery(uc, id) => try {
+    case GameListPrizesQuery(uc, id) => try {
 
-      // check existing game
-      val gameResponse = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (gameResponse.isEmpty) {
-        throw EntityNotFoundException(id = id)
-      }
-
-      sender ! gameResponse.get.prizes
+      repository.game.getById(id).map { game =>
+        // check existing game
+        if (!game.exists(_.country_code == uc.country_code)) {
+          throw EntityNotFoundException(id = id)
+        } else {
+          game.get.prizes
+        }
+      }.pipeTo(sender)
 
     } catch {
       case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
@@ -356,37 +330,39 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GamePrizeCreateCmd(uc, id, request) => try {
+    case GameAddPrizeCmd(uc, id, request) => try {
+
+      // Get existing game
+      val game = Await.result(repository.game.getById(id), Duration.Inf)
 
       // check existing game
-      val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (entity.isEmpty) {
-        throw EntityNotFoundException(id)
+      if (!game.exists(_.country_code == uc.country_code)) {
+        throw EntityNotFoundException(id = id)
       }
 
       // check status
-      if (entity.get.status == GameStatusType.Archived) {
+      if (game.get.status == GameStatusType.Archived) {
         throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
       }
 
-      // Validation input
-      //val request_error = checkGameInputForCreation(request)
-      //if (request_error.nonEmpty) {
-      //  throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
-      //}
+      // Check input payload
+      val request_error = checkGamePrizeInputForCreation(game.get, request)
+      if (request_error.nonEmpty) {
+        throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
+      }
 
       // Persist
       val newId = UUID.randomUUID
       val gamePrize = GamePrize(
         id = newId,
         prize_id = request.prize_id.get,
-        start_date = request.start_date.getOrElse(entity.get.start_date),
-        end_date = request.end_date.getOrElse(entity.get.end_date),
+        start_date = request.start_date.getOrElse(game.get.start_date),
+        end_date = request.end_date.getOrElse(game.get.end_date),
         quantity = request.quantity.getOrElse(1)
       )
-      state = state.filterNot(_.id == id) :+ entity.get.copy(prizes = entity.get.prizes :+ gamePrize)
+      Await.result(repository.game.addPrize(id, gamePrize), Duration.Inf)
 
-      // Generate instantwins
+      // to generate instantwins (asynchronous)
       getInstantwinActor(id) ! InstanwinCreateCmd(gamePrize)
 
       // Return response
@@ -398,47 +374,50 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GamePrizeUpdateCmd(uc, id, prizeId, request) => try {
+    case GameUpdatePrizeCmd(uc, id, prizeId, request) => try {
+
+      // Get existing game
+      val game = Await.result(repository.game.getById(id), Duration.Inf)
+      val gamePrize: Option[GamePrize] = game.flatMap(_.prizes.find(_.id == prizeId))
 
       // check existing game
-      val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (entity.isEmpty) {
-        throw EntityNotFoundException(id)
+      if (!game.exists(_.country_code == uc.country_code)) {
+        throw EntityNotFoundException(id = id)
       }
 
-      // check existing game
-      val entityPrize = entity.get.prizes.find(c => c.id == prizeId)
-      if (entityPrize.isEmpty) {
-        throw EntityNotFoundException(id)
+      // Get existing game
+      if (gamePrize.isEmpty) {
+        throw EntityNotFoundException(id = prizeId)
       }
 
       // check status
-      if (entity.get.status == GameStatusType.Archived) {
+      if (game.get.status == GameStatusType.Archived) {
         throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
       }
 
-      // Validation input
-      //val request_error = checkGameInputForCreation(request)
-      //if (request_error.nonEmpty) {
-      //  throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
-      //}
+      // Check input payload
+      val request_error = checkGamePrizeInputForCreation(game.get, request)
+      if (request_error.nonEmpty) {
+        throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
+      }
 
       // Persist
-      val gamePrize = GamePrize(
-        id = entityPrize.get.id,
-        prize_id = request.prize_id.getOrElse(entityPrize.get.prize_id),
-        start_date = request.start_date.getOrElse(entityPrize.get.start_date),
-        end_date = request.end_date.getOrElse(entityPrize.get.end_date),
-        quantity = request.quantity.getOrElse(entityPrize.get.quantity)
+      val gamePrizeUpdated = GamePrize(
+        id = gamePrize.get.id,
+        prize_id = request.prize_id.getOrElse(gamePrize.get.prize_id),
+        start_date = request.start_date.getOrElse(gamePrize.get.start_date),
+        end_date = request.end_date.getOrElse(gamePrize.get.end_date),
+        quantity = request.quantity.getOrElse(gamePrize.get.quantity)
       )
+      Await.result(repository.game.updatePrize(game.get.id, gamePrizeUpdated), Duration.Inf)
 
-      state = state.filterNot(_.id == id) :+ entity.get.copy(prizes = entity.get.prizes :+ gamePrize)
-
-      // Regenerate instantwins
-      getInstantwinActor(id) ! InstanwinUpdateCmd(gamePrize)
+      // to recreate instantwins
+      //Await.result(
+      getInstantwinActor(id) ! InstanwinUpdateCmd(gamePrizeUpdated)
+      //, Duration.Inf)
 
       // Return response
-      sender ! gamePrize
+      sender ! gamePrizeUpdated
 
     } catch {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
@@ -446,51 +425,58 @@ class GameActor extends Actor with ActorLogging {
     }
 
 
-    case GamePrizeDeleteCmd(uc, id, prizeId) => try {
+    case GameRemovePrizeCmd(uc, id, prize_id) => try {
+
+      // Get existing game
+      val game = Await.result(repository.game.getById(id), Duration.Inf)
+      val gamePrize: Option[GamePrize] = game.flatMap(_.prizes.find(_.id == prize_id))
 
       // check existing game
-      val entity = state.find(c => c.id == id && c.country_code == uc.country_code)
-      if (entity.isEmpty) {
-        throw EntityNotFoundException(id, Some(s"game not found : ${id.toString}"))
+      if (!game.exists(_.country_code == uc.country_code)) {
+        throw EntityNotFoundException(id = id)
       }
 
-
-      // check existing gamePrize
-      val entityPrize = entity.get.prizes.find(c => c.id == prizeId)
-      if (entityPrize.isEmpty) {
-        throw EntityNotFoundException(id, Some(s"prize not found : ${id.toString}"))
+      // Get existing game
+      if (gamePrize.isEmpty) {
+        throw EntityNotFoundException(id = id)
       }
 
       // check status
-      if (entity.get.status == GameStatusType.Archived) {
+      if (game.get.status == GameStatusType.Archived) {
         throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
       }
 
-      // Validate startDate
-      if (entity.get.status == GameStatusType.Activated && entityPrize.get.start_date.isBefore(Instant.now)) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_DATE"))
+      // Check date
+      if (gamePrize.get.start_date.isBefore(Instant.now())) {
+        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
       }
 
-      // Validation input
-      //val request_error = checkGameInputForCreation(request)
-      //if (request_error.nonEmpty) {
-      //  throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
-      //}
-
       // Persist
-      state = state.filterNot(_.id == id) :+ entity.get.copy(prizes = entity.get.prizes.filterNot(_.id == prizeId))
+      Await.result(repository.game.removePrize(game_id = game.get.id, prize_id = gamePrize.get.id), Duration.Inf)
 
-      // Delete instantwins
-      //forwardToInstantwinActor InstanwinDeleteCmd(Some(prizeId))
-      //getInstantwinActor(id) forward InstanwinDeleteCmd(Some(prizeId))
-      getInstantwinActor(id) ! InstanwinDeleteCmd(Some(prizeId))
-
-      // Return response
-      sender ! None
+      // Forward to delete instantwins
+      getInstantwinActor(id).forward(InstanwinDeleteCmd(Some(prize_id)))
 
     } catch {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+    }
+
+
+    case GameGetInstantwinQuery(uc, id) => try {
+
+      repository.game.getById(id).map { game =>
+        // check existing game
+        if (! game.exists(_.country_code == uc.country_code)) {
+          throw EntityNotFoundException(id = id)
+        }
+        repository.instantwin.fetchBy(game.get.id)
+      }.pipeTo(sender)
+
+    }
+    catch {
+      case e: EntityNotFoundException => sender() ! scala.util.Failure(e)
+      case e: Exception => sender() ! scala.util.Failure(e); throw e
     }
 
   }
@@ -523,12 +509,6 @@ class GameActor extends Actor with ActorLogging {
       if (request.end_date.isEmpty)
         ("end_date", s"MANDATORY_VALUE") else null
     ) ++ Option(
-      if (request.reference.exists(r => state.exists(_.reference == r)))
-        ("reference", s"ALREADY_EXISTS : already exists with same reference") else null
-    ) ++ Option(
-      if (request.parent_id.isDefined && state.exists(_.id == request.parent_id.get))
-        ("parent_id", s"ENTITY_NOT_FOUND : should already exists") else null
-    ) ++ Option(
       if (request.title.isDefined && request.title.get.length > 80)
         ("title", s"INVALID_VALUE : should have max 80 characters") else null
     ) ++ Option(
@@ -546,7 +526,7 @@ class GameActor extends Actor with ActorLogging {
     })
   }
 
-  private def checkGameInputForUpdate(id: UUID, request: GameUpdateRequest): Iterable[(String, String)] = {
+  private def checkGameInputForUpdate(request: GameUpdateRequest): Iterable[(String, String)] = {
     var index = 0
     //Validation input
     Option(
@@ -562,12 +542,6 @@ class GameActor extends Actor with ActorLogging {
       if (request.timezone.isDefined && !request.timezone.exists(isTimezone))
         ("timezone", s"INVALID_VALUE : timezone value is invalid") else null
     ) ++ Option(
-      if (request.reference.isDefined && state.exists(s => s.reference == request.reference.get && s.id != id))
-        ("reference", s"ALREADY_EXISTS : already exists with same reference") else null
-    ) ++ Option(
-      if (request.parent_id.isDefined && state.exists(_.id == request.parent_id.get))
-        ("parent_id", s"ENTITY_NOT_FOUND : should already exists") else null
-    ) ++ Option(
       if (request.title.isDefined && request.title.get.length > 80)
         ("title", s"INVALID_VALUE : should have max 80 characters") else null
     ) ++ Option(
@@ -580,6 +554,32 @@ class GameActor extends Actor with ActorLogging {
       index += 1
       checkGameLimitInput(index, f)
     })
+  }
+
+  private def checkGamePrizeInputForCreation(game: Game, request: GamePrizeCreateRequest): Iterable[(String, String)] = {
+    //Validation input
+    Option(
+      if (request.start_date.isEmpty)
+        ("start_date", s"INVALID_VALUE : should be in the future") else null
+    ) ++ Option(
+      if (request.start_date.isDefined && request.start_date.get.isBefore(Instant.now))
+        ("start_date", s"INVALID_VALUE : should be is the future") else null
+    ) ++ Option(
+      if (request.start_date.isDefined && request.start_date.get.isBefore(game.start_date))
+        ("start_date", s"INVALID_VALUE : should be after start_date of the game") else null
+    ) ++ Option(
+      if (request.start_date.isDefined && request.start_date.get.isAfter(game.end_date))
+        ("start_date", s"INVALID_VALUE : should be before end_date of the game") else null
+    ) ++ Option(
+      if (request.end_date.isDefined && request.start_date.isDefined && request.end_date.get.isBefore(request.start_date.get))
+        ("end_date", s"INVALID_VALUE : should be after start_date") else null
+    ) ++ Option(
+      if (request.end_date.isDefined && request.end_date.get.isBefore(game.start_date))
+        ("end_date", s"INVALID_VALUE : should be after start_date of the game") else null
+    ) ++ Option(
+      if (request.end_date.isDefined && request.end_date.get.isAfter(game.end_date))
+        ("end_date", s"INVALID_VALUE : should be before end_date of the game") else null
+    )
   }
 
   private def checkGameLimitInput(index: Int, requestLimit: GameLimitRequest): Iterable[(String, String)] = {
@@ -620,7 +620,7 @@ class GameActor extends Actor with ActorLogging {
 
   def forwardToInstantwinActor: Actor.Receive = {
     case cmd: GameGetInstantwinQuery =>
-      context.child(InstantwinActor.name(cmd.game_id)).fold(createAndForward(cmd, cmd.game_id))(forwardCommand(cmd))
+      context.child(InstantwinActor.name(cmd.id)).fold(createAndForward(cmd, cmd.id))(forwardCommand(cmd))
   }
 
   def forwardCommand(cmd: Any)(shopper: ActorRef): Unit = shopper forward cmd
@@ -628,4 +628,5 @@ class GameActor extends Actor with ActorLogging {
   def createAndForward(cmd: Any, game_id: UUID): Unit = createInstantwinActor(game_id) forward cmd
 
   def createInstantwinActor(game_id: UUID): ActorRef = context.actorOf(InstantwinActor.props(game_id), InstantwinActor.name(game_id))
+
 }

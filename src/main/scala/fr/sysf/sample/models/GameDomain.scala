@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import fr.sysf.sample.models.GameDto.{GameInputType, GameLimitType, GameLimitUnit, GameStatusType, GameType}
-import fr.sysf.sample.models.GameEntity.{GameLimit, GamePrize}
+import fr.sysf.sample.models.GameEntity.{Game, GameLimit, GamePrize}
 import fr.sysf.sample.routes.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
@@ -24,8 +24,8 @@ object GameEntity {
                    end_date: Instant,
                    input_type: GameInputType.Value,
                    input_point: Option[Int] = None,
-                   input_eans: Option[Seq[String]] = None,
-                   input_freecodes: Option[Seq[String]] = None,
+                   input_eans: Seq[String] = Seq.empty,
+                   input_freecodes: Seq[String] = Seq.empty,
                    limits: Seq[GameLimit] = Seq.empty,
                    prizes: Seq[GamePrize] = Seq.empty
                  )
@@ -42,17 +42,17 @@ object GameEntity {
                       )
 
   case class GamePrize(
-                       @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
-                       id: UUID,
-                       @ApiModelProperty(position = 2, value = "prize id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
-                       prize_id: UUID,
-                       @ApiModelProperty(position = 3, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
-                       start_date: Instant,
-                       @ApiModelProperty(position = 4, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
-                       end_date: Instant,
-                       @ApiModelProperty(position = 5, value = "quantity", example = "10")
-                       quantity: Int
-                     )
+                        @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
+                        id: UUID,
+                        @ApiModelProperty(position = 2, value = "prize id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
+                        prize_id: UUID,
+                        @ApiModelProperty(position = 3, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
+                        start_date: Instant,
+                        @ApiModelProperty(position = 4, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
+                        end_date: Instant,
+                        @ApiModelProperty(position = 5, value = "quantity", example = "10")
+                        quantity: Int
+                      )
 
 }
 
@@ -83,7 +83,7 @@ object GameDto {
                                 input_eans: Option[Seq[String]] = None,
                                 @ApiModelProperty(position = 15, value = "input freecodes")
                                 input_freecodes: Option[Seq[String]] = None
-  )
+                              )
 
   case class GameUpdateRequest(
                                 @ApiModelProperty(position = 1, value = "reference", required = true, example = "MY_CONTEST")
@@ -145,14 +145,16 @@ object GameDto {
                            @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
                            input_point: Option[Int] = None,
                            @ApiModelProperty(position = 13, value = "input eans", required = false)
-                           limits: Seq[GameLimit] = Seq.empty,
+                           limits: Option[Seq[GameLimit]] = None,
                            @ApiModelProperty(position = 14, value = "prizes")
-                           prizes: Seq[GamePrize] = Seq.empty,
+                           prizes: Option[Seq[GamePrize]] = None,
                            @ApiModelProperty(position = 15, value = "input eans")
                            input_eans: Option[Seq[String]] = None,
                            @ApiModelProperty(position = 16, value = "input freecodes")
                            input_freecodes: Option[Seq[String]] = None
-                         )
+                         ) {
+    def this(r: Game) = this(id = r.id, `type` = r.`type`, status = r.status, parent_id = r.parent_id, reference = r.reference, title = r.title, start_date = r.start_date, timezone = r.timezone, end_date = r.end_date, input_type = r.input_type, input_point = r.input_point, limits = Some(r.limits).filterNot(_.isEmpty), prizes = Some(r.prizes).filterNot(_.isEmpty), input_eans = Some(r.input_eans).filterNot(_.isEmpty), input_freecodes = Some(r.input_freecodes).filterNot(_.isEmpty))
+  }
 
   case class GameForListResponse(
                                   @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
@@ -177,7 +179,9 @@ object GameDto {
                                   input_type: GameInputType.Value,
                                   @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
                                   input_point: Option[Int] = None
-                                )
+                                ) {
+    def this(game: Game) = this(game.id, game.`type`, game.status, game.parent_id, game.reference, game.title, game.start_date, game.timezone, game.end_date, game.input_type, game.input_point)
+  }
 
 
   /**
@@ -186,15 +190,15 @@ object GameDto {
     * --------------------------------------------
     */
   case class GamePrizeCreateRequest(
-                                    @ApiModelProperty(position = 1, value = "prize id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
-                                    prize_id: Option[UUID],
-                                    @ApiModelProperty(position = 2, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
-                                    start_date: Option[Instant],
-                                    @ApiModelProperty(position = 3, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
-                                    end_date: Option[Instant],
-                                    @ApiModelProperty(position = 4, value = "quantity", example = "10")
-                                    quantity: Option[Int]
-                                  )
+                                     @ApiModelProperty(position = 1, value = "prize id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
+                                     prize_id: Option[UUID],
+                                     @ApiModelProperty(position = 2, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
+                                     start_date: Option[Instant],
+                                     @ApiModelProperty(position = 3, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
+                                     end_date: Option[Instant],
+                                     @ApiModelProperty(position = 4, value = "quantity", example = "10")
+                                     quantity: Option[Int]
+                                   )
 
 
   implicit object GameType extends Enumeration {

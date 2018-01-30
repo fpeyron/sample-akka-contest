@@ -4,6 +4,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDate}
 import java.util.UUID
 
+import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import spray.json._
 
@@ -68,11 +69,6 @@ trait DefaultJsonFormats extends DefaultJsonProtocol with SprayJsonSupport {
     }
   }
 
-  /**
-    *
-    * @tparam T
-    * @return
-    */
   implicit def enumFormat[T <: Enumeration](implicit enu: T): RootJsonFormat[T#Value] =
     new RootJsonFormat[T#Value] {
       def write(obj: T#Value): JsValue = JsString(obj.toString)
@@ -84,4 +80,6 @@ trait DefaultJsonFormats extends DefaultJsonProtocol with SprayJsonSupport {
         }
       }
     }
+
+  implicit val jsonStreamingSupport: JsonEntityStreamingSupport = EntityStreamingSupport.json().withParallelMarshalling(parallelism = 8, unordered = true)
 }

@@ -3,9 +3,11 @@ package fr.sysf.sample.routes
 import java.io.File
 import javax.ws.rs.Path
 
+import akka.NotUsed
 import akka.actor.ActorRef
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.{Directives, Route}
+import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
 import fr.sysf.sample.Config
@@ -36,6 +38,7 @@ trait GameRoute
   import akka.pattern.ask
 
   implicit val ec: ExecutionContext
+  implicit val materializer: ActorMaterializer
   private implicit val timeout: Timeout = Config.Api.timeout
   implicit val gameActor: ActorRef
 
@@ -70,7 +73,7 @@ trait GameRoute
     get {
       parameters('type.?, 'status.?, 'parent.?) { (typesOptional, statusOptional, parentOptional) =>
         complete {
-          (gameActor ? GameListQuery(uc = uc, types = typesOptional, status = statusOptional, parent = parentOptional)).mapTo[Seq[GameForListResponse]]
+          (gameActor ? GameListQuery(uc = uc, types = typesOptional, status = statusOptional, parent = parentOptional)).mapTo[Source[GameForListResponse, NotUsed]]
         }
       }
     }
@@ -242,7 +245,7 @@ trait GameRoute
   def game_getPrizes(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "prizes") { id =>
     get {
       complete {
-        (gameActor ? GamePrizeListQuery(uc, id)).mapTo[Seq[GamePrize]]
+        (gameActor ? GameListPrizesQuery(uc, id)).mapTo[Seq[GamePrize]]
       }
     }
   }
@@ -265,7 +268,7 @@ trait GameRoute
   def game_addPrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "prizes") { id =>
     post {
       entity(as[GamePrizeCreateRequest]) { request =>
-        onSuccess(gameActor ? GamePrizeCreateCmd(uc, id, request)) {
+        onSuccess(gameActor ? GameAddPrizeCmd(uc, id, request)) {
           case response: GamePrize => complete(StatusCodes.OK, response)
         }
       }
@@ -291,7 +294,7 @@ trait GameRoute
   def game_updatePrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "prizes" / JavaUUID) { (id, prizeId) =>
     put {
       entity(as[GamePrizeCreateRequest]) { request =>
-        onSuccess(gameActor ? GamePrizeUpdateCmd(uc, id, prizeId, request)) {
+        onSuccess(gameActor ? GameUpdatePrizeCmd(uc, id, prizeId, request)) {
           case response: GamePrize => complete(StatusCodes.OK, response)
         }
       }
@@ -316,7 +319,7 @@ trait GameRoute
   ))
   def game_deletePrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "prizes" / JavaUUID) { (id, prizeId) =>
     delete {
-      onSuccess(gameActor ? GamePrizeDeleteCmd(uc, id, prizeId)) {
+      onSuccess(gameActor ? GameRemovePrizeCmd(uc, id, prizeId)) {
         case None => complete(StatusCodes.OK, None)
       }
     }
@@ -346,14 +349,13 @@ trait GameRoute
   ))
   def game_downloadInstantwins(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "instantwins") { id =>
     get {
-      onSuccess((gameActor ? GameGetInstantwinQuery(uc, id)).mapTo[List[Instantwin]]) { response =>
-        val mapStream =
-          Source.single("activate_date\tattribution_date\tgamePrize_id\nprize_id\n")
-            .concat(Source(response).map((t: Instantwin) => s"${t.activate_date}\t${t.attribution_date}\t${t.gamePrize_id}\t${t.prize_id}\n"))
-            .map(ByteString.apply)
-        complete {
-          HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
-        }
+      onSuccess(gameActor ? GameGetInstantwinQuery(uc, id)) {
+        case source: Source[_, _] => complete {
+            val mapStream = Source.single("activate_date\tattribution_date\tgameprize_id\tprize_id\n")
+              .concat(source.map(_.asInstanceOf[Instantwin]).map(t => s"${t.activate_date}\t${t.gameprize_id}\t${t.gameprize_id}\t${t.prize_id}\n"))
+              .map(ByteString.apply)
+            HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
+          }
       }
     }
   }

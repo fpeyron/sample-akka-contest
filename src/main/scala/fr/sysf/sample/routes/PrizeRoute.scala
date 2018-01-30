@@ -3,13 +3,16 @@ package fr.sysf.sample.routes
 import javax.ws.rs.Path
 import javax.ws.rs.core.MediaType
 
+import akka.NotUsed
 import akka.actor.ActorRef
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
+import akka.stream.scaladsl.Source
 import akka.util.Timeout
 import fr.sysf.sample.Config
 import fr.sysf.sample.actors.PrizeActor._
-import fr.sysf.sample.models.PrizeDomain.{PrizeCreateRequest, PrizeJsonFormats, PrizeResponse}
+import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeJsonFormats, PrizeResponse}
+import fr.sysf.sample.models.PrizeDomain.Prize
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.ErrorResponse
 import io.swagger.annotations._
@@ -49,12 +52,15 @@ trait PrizeRoute
     new ApiResponse(code = 200, message = "Return list of prizes", responseContainer = "Seq", response = classOf[PrizeResponse]),
     new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
-  def prize_getAll: Route = path("prizes") {
-    get {
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "game_id", value = "id of game", required = false, dataType = "string", paramType = "query")
+  ))
+  def prize_getAll(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("prizes") {
+    get(parameters('game_id.?) { (gameIdOptional) =>
       complete {
-        (prizeActor ? PrizeListQuery).mapTo[Seq[PrizeResponse]]
+        (prizeActor ? PrizeListQuery(uc, gameIdOptional)).mapTo[Source[PrizeResponse, NotUsed]]
       }
-    }
+    })
   }
 
 
@@ -111,7 +117,7 @@ trait PrizeRoute
   @Path("/{id}")
   @ApiOperation(value = "update prize", notes = "", nickname = "prize.update", httpMethod = "PUT")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Return prize", response = classOf[PrizeResponse]),
+    new ApiResponse(code = 200, message = "Return prize", response = classOf[Prize]),
     new ApiResponse(code = 404, message = "Prize is not found", response = classOf[ErrorResponse]),
     new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
