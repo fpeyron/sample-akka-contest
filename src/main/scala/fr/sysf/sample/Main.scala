@@ -6,7 +6,10 @@ import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
-import fr.sysf.sample.actors.{ClusterListenerActor, ClusterSingletonActor, GameActor, PrizeActor}
+import fr.sysf.sample.actors.{ClusterListenerActor, ClusterSingletonActor}
+import fr.sysf.sample.CustomMySqlProfile.api.Database
+import fr.sysf.sample.actors.{GameActor, PrizeActor}
+import fr.sysf.sample.repositories.{GameRepository, InstantwinRepository, PrizeRepository}
 import fr.sysf.sample.routes._
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
@@ -42,6 +45,15 @@ object ApplicationMain extends App with RouteConcatenation with HttpSupport {
     name = s"${ClusterSingletonActor.name}Proxy"
   )
 
+  // Start repository
+  implicit val database: Database = Database.forConfig("slick.db")
+  implicit val repository: Repository = new Repository
+
+  // initialization schemas
+  repository.prize.schemaDropCreate()
+  repository.game.schemaDropCreate()
+  repository.instantwin.schemaDropCreate()
+
   // Start actors
   val gameActor: ActorRef = system.actorOf(GameActor.props, GameActor.Name)
   val prizeActor: ActorRef = system.actorOf(PrizeActor.props, PrizeActor.name)
@@ -59,8 +71,9 @@ object ApplicationMain extends App with RouteConcatenation with HttpSupport {
   logger.info(s"Swagger description http://${Config.Api.hostname}:${Config.Api.port}/api-docs/swagger.json")
 }
 
-class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef)(implicit val ec:ExecutionContext)
+class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef)(implicit val ec:ExecutionContext, implicit val materializer: ActorMaterializer)
   extends HttpSupport with GameRoute with SwaggerRoute with PrizeRoute {
 
   val routes: Route = gameRoute ~ prizeRoute ~ HttpSupport.healthCheckRoute ~ swaggerRoute
 }
+ class Repository(implicit val ec : ExecutionContext, implicit val database: Database, val materializer: ActorMaterializer) extends PrizeRepository with GameRepository with InstantwinRepository

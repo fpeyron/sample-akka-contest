@@ -32,6 +32,12 @@ libraryDependencies += "com.lightbend.akka"           %% "akka-management-cluste
 // --- akka cluster contructr for redis
 libraryDependencies += "de.heikoseeberger"            %% "constructr"                     % ConstructrAkka
 libraryDependencies += "com.github.everpeace"         %% "constructr-coordination-redis"  % "0.0.4"
+// --- Akka Persistent / Mysql
+libraryDependencies += "com.github.dnvriend"           %% "akka-persistence-jdbc"         % "3.1.0"
+//libraryDependencies += "com.h2database"                % "h2"                             % "1.4.193"
+libraryDependencies += "mysql"                         % "mysql-connector-java"           % "6.0.6"
+
+libraryDependencies += "ch.qos.logback"                % "logback-classic"                % "1.2.+"
 
 
 // Force dependencies to remove WARN in log during compilation
@@ -39,7 +45,8 @@ dependencyOverrides += "com.typesafe.akka"            %% "akka-stream"          
 dependencyOverrides += "com.typesafe.akka"            %% "akka-actor"                     % akkaVersion
 dependencyOverrides += "de.heikoseeberger"            %% "constructr-coordination"        % ConstructrAkka
 dependencyOverrides += "org.codehaus.plexus"          % "plexus-utils"                    % "3.0.17"
-dependencyOverrides += "com.google.guava"             % "guava"                           % "20.0"
+dependencyOverrides += "com.google.guava"             % "guava"                           % "22.0"
+
 
 // ----------------
 // Run
