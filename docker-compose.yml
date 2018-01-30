@@ -1,53 +1,76 @@
 version: '3.0'
 services:
-  sample-redis:
-    container_name: sample-redis
+  fusion-redis:
+    container_name: fusion-redis
     image: redis:latest
     #command: consul agent -server -client=0.0.0.0 -bootstrap-expect=1 -data-dir=/tmp/consul -ui
-    hostname: sample-redis
+    hostname: fusion-redis
     networks:
-      - sample
+      - fusion
     #ports:
       #- "16379:6379"
 
-  sample-akka1:
-    container_name: sample-akka1
-    image: fusion-provider-game:latest
-    hostname: sample-akka1
+  fusion-mysql:
+    container_name: fusion-mysql
+    image: mysql:latest
+    hostname: fusion-mysql
     networks:
-      - sample
+      - fusion
+    #ports:
+      #- "13306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=game
+
+  fusion-akka1:
+    container_name: fusion-akka1
+    image: fusion-provider-game:latest
+    hostname: fusion-akka1
+    networks:
+      - fusion
     depends_on:
-      - sample-redis
+      - fusion-redis
+      - fusion-mysql
     ports:
       - "5001:5000"
       - "5011:5010"
       - "2550"
     environment:
-      - REDIS_HOST=sample-redis
+      - REDIS_HOST=fusion-redis
       - REDIS_PORT=6379
-      - SERVICE_AKKA_HOST=sample-akka1
+      - SERVICE_AKKA_HOST=fusion-akka1
       - SERVICE_AKKA_PORT=2550
-
-  sample-akka2:
-    container_name: sample-akka2
+      - MYSQL_HOST=fusion-mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - MYSQL_DATABASE=game
+  fusion-akka2:
+    container_name: fusion-akka2
     image: fusion-provider-game:latest
-    hostname: sample-akka2
+    hostname: fusion-akka2
     networks:
-      - sample
+      - fusion
     depends_on:
-      - sample-redis
+      - fusion-redis
+      - fusion-mysql
     ports:
       - "5002:5000"
       - "5012:5010"
       - "2550"
     environment:
-      - REDIS_HOST=sample-redis
+      - REDIS_HOST=fusion-redis
       - REDIS_PORT=6379
-      - SERVICE_AKKA_HOST=sample-akka2
+      - SERVICE_AKKA_HOST=fusion-akka1
       - SERVICE_AKKA_PORT=2550
+      - MYSQL_HOST=fusion-mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - MYSQL_DATABASE=game
 
 
 networks:
-  sample:
+  fusion:
     external:
-      name: sample
+      name: fusion

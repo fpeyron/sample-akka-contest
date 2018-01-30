@@ -14,7 +14,7 @@ import fr.sysf.sample.routes._
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
-object ApplicationMain extends App with RouteConcatenation with HttpSupport {
+object Main extends App with RouteConcatenation with HttpSupport {
 
   // needed to run the route
   implicit val system: ActorSystem = ActorSystem("fusion-game")

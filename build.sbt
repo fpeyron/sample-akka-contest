@@ -69,5 +69,5 @@ dockerBaseImage            := "openjdk:8u151-jre-alpine"
 dockerCommands := Seq(dockerCommands.value.head, Cmd("RUN", "apk add --no-cache curl bash && rm -rf /var/cache/apk/*")) ++ dockerCommands.value.tail
 dockerExposedPorts         := Seq(8080,2550,5000)
 dockerUpdateLatest        := true
-dockerEntrypoint          := Seq("sh","-c","HOST_IP=$(/usr/bin/curl -s --connect-timeout 1 169.254.169.254/latest/meta-data/local-ipv4) && SERVICE_AKKA_HOST=$HOST_IP ; echo SERVICE_AKKA_HOST:$SERVICE_AKKA_HOST ; " + s"bin/${name.value.toLowerCase} -Dconfig.resource=application.conf" + " -Dakka.remote.netty.tcp.hostname=$SERVICE_AKKA_HOST")
+dockerEntrypoint          := Seq("sh","-c","HOST_IP=$(/usr/bin/curl -s --connect-timeout 1 169.254.169.254/latest/meta-data/local-ipv4) && SERVICE_AKKA_HOST=$HOST_IP ; echo SERVICE_AKKA_HOST:$SERVICE_AKKA_HOST ; " + s"bin/main -Dconfig.resource=application.conf" + " -Dakka.remote.netty.tcp.hostname=$SERVICE_AKKA_HOST")
 
