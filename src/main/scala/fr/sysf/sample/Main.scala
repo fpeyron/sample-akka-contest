@@ -25,8 +25,17 @@ object Main extends App with RouteConcatenation with HttpSupport {
   // needed for shutdown properly
   sys.addShutdownHook(system.terminate())
 
+  // Start repository
+  implicit val database: Database = Database.forConfig("slick.db")
+  implicit val repository: Repository = new Repository
+
+  // initialization schemas
+  repository.prize.schemaCreate()
+  repository.game.schemaCreate()
+  repository.instantwin.schemaCreate()
+
   // Start Actor Singleton
-  val clusterSingleton = system.actorOf(
+  val clusterSingleton: ActorRef = system.actorOf(
     ClusterSingletonManager.props(
       singletonProps = ClusterSingletonActor.props,
       terminationMessage = PoisonPill,
@@ -36,22 +45,13 @@ object Main extends App with RouteConcatenation with HttpSupport {
   )
 
   // Start Actor Singleton Proxy
-  val clusterSingletonProxy = system.actorOf(
+  implicit val clusterSingletonProxy: ActorRef = system.actorOf(
     props = ClusterSingletonProxy.props(
       singletonManagerPath = clusterSingleton.path.toStringWithoutAddress,
       settings = ClusterSingletonProxySettings(system).withRole(None)
     ),
     name = s"${ClusterSingletonActor.name}Proxy"
   )
-
-  // Start repository
-  implicit val database: Database = Database.forConfig("slick.db")
-  implicit val repository: Repository = new Repository
-
-  // initialization schemas
-  repository.prize.schemaCreate()
-  repository.game.schemaCreate()
-  repository.instantwin.schemaCreate()
 
   // Start actors
   val gameActor: ActorRef = system.actorOf(BoGameActor.props, BoGameActor.Name)
@@ -71,8 +71,8 @@ object Main extends App with RouteConcatenation with HttpSupport {
 }
 
 class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef, val clusterSingletonProxy: ActorRef)(implicit val ec:ExecutionContext, implicit val materializer: ActorMaterializer)
-  extends HttpSupport with BoGameRoute with SwaggerRoute with BoPrizeRoute {
+  extends HttpSupport with BoGameRoute with SwaggerRoute with BoPrizeRoute  with PartnerRoute {
 
-  val routes: Route = corsHandler(gameRoute ~ prizeRoute ~ HttpSupport.healthCheckRoute ~ swaggerRoute)
+  val routes: Route = corsHandler(gameRoute ~ prizeRoute ~ HttpSupport.healthCheckRoute ~ swaggerRoute ~ partnerRoute)
 }
  class Repository(implicit val ec : ExecutionContext, implicit val database: Database, val materializer: ActorMaterializer) extends PrizeRepository with GameRepository with InstantwinRepository

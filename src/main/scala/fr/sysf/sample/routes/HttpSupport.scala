@@ -17,20 +17,20 @@ object HttpSupport {
   case class ErrorResponse(code: Int, `type`: String, message: Option[String] = None, detail: Option[Map[String, String]] = None)
 
   // Exception
-  class FunctionalException(val statusCode: StatusCode, val `type`: Option[String]= None, val message: String) extends RuntimeException
+  class FunctionalException(val statusCode: StatusCode, val `type`: Option[String] = None, val message: String) extends RuntimeException
 
   case class InvalidInputException(message: Option[String] = None, detail: Map[String, String]) extends RuntimeException
 
 
   case class GameIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("GameNotFoundException"), message = s"game not found with id : $id")
 
-  case class GamePrizeIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("GamePrizeNotFoundException"), message = s"prizes not found for this game with id : $id")
+  case class GamePrizeIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("GamePrizeNotFoundException"), message = s"gamePrize not found for this game with id : $id")
 
   case class GameRefNotFoundException(country_code: String, code: String) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("GameNotFoundException"), message = s"game not found with code : $code")
 
   case class PrizeIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("PrizeNotFoundException"), message = s"prizes not found with id : $id")
 
-  case class NotAuthorizedException(id: UUID, override val message: String)  extends FunctionalException(statusCode = StatusCodes.Forbidden, message = message)
+  case class NotAuthorizedException(id: UUID, override val message: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, message = message)
 
   case class ParticipationNotOpenedException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationNotOpenedException"), message = s"game with code : $code is not open")
 

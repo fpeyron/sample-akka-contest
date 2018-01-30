@@ -10,7 +10,7 @@ import akka.stream.{ActorMaterializer, OverflowStrategy, ThrottleMode}
 import akka.{Done, NotUsed}
 import fr.sysf.sample.CustomMySqlProfile.api._
 import fr.sysf.sample.Main.system
-import fr.sysf.sample.models.InstantwinDomain.Instantwin
+import fr.sysf.sample.models.InstantwinDomain.{Instantwin, InstantwinExtended}
 import slick.ast.BaseTypedType
 import slick.jdbc.JdbcType
 
@@ -18,7 +18,7 @@ import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-trait InstantwinRepository extends InstantwinTable {
+trait InstantwinRepository extends InstantwinTable with PrizeTable {
 
   private[repositories] implicit val database: Database
   implicit val ec: ExecutionContext
@@ -46,9 +46,9 @@ trait InstantwinRepository extends InstantwinTable {
       .throttle(500, 200.millisecond, 1, ThrottleMode.shaping)
       .runWith(Sink.foreach[Seq[Instantwin]] { i: Seq[Instantwin] =>
         database.run((instantwinTableQuery ++= i).asTry.map {
-              case Success(_) =>
-              case Failure(e) => logger.error(s"SQL Error, ${e.getMessage}"); throw e
-          })
+          case Success(_) =>
+          case Failure(e) => logger.error(s"SQL Error, ${e.getMessage}"); throw e
+        })
       })
 
     def fetchBy(game_id: UUID, gameprize_id: Option[UUID] = None): Source[Instantwin, NotUsed] = Source.fromPublisher(
@@ -60,6 +60,17 @@ trait InstantwinRepository extends InstantwinTable {
           .to[List].result
       })
 
+    def fetchWithPrizeBy(game_id: UUID, gameprize_id: Option[UUID] = None): Source[InstantwinExtended, NotUsed] = Source.fromPublisher(
+      database.stream {
+        instantwinTableQuery.
+          join(prizeTableQuery).on(_.prize_id === _.id)
+          .filter(row => row._1.game_id === game_id)
+          .filter(row => if (gameprize_id.isDefined) row._1.gameprize_id === gameprize_id.get else true: Rep[Boolean])
+          .sortBy(row => row._1.activate_date.asc)
+          .to[List]
+          .result
+      })
+      .map(r => new InstantwinExtended(r._1, r._2))
 
     /**
       * Schema

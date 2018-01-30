@@ -21,7 +21,7 @@ import scala.concurrent.duration.Duration
 
 object BoGameActor {
 
-  def props(implicit repository: Repository, materializer: ActorMaterializer) = Props(new BoGameActor)
+  def props(implicit repository: Repository, materializer: ActorMaterializer, clusterSingletonProxy: ActorRef) = Props(new BoGameActor)
 
   val Name = "games-singleton"
 
@@ -58,7 +58,7 @@ object BoGameActor {
 }
 
 
-class BoGameActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer) extends Actor with ActorLogging {
+class BoGameActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer, implicit val clusterSingletonProxy: ActorRef) extends Actor with ActorLogging {
 
   import akka.pattern.pipe
   import context.dispatcher
@@ -156,6 +156,9 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       // Return response
       sender ! new GameResponse(game)
 
+      // Push event
+      clusterSingletonProxy ! ClusterSingletonActor.GameCreateEvent(game = game)
+
     } catch {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
@@ -226,6 +229,9 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       // Return response
       sender ! new GameResponse(gameToUpdate)
 
+      // Push event
+      clusterSingletonProxy ! ClusterSingletonActor.GameUpdateEvent(game = gameToUpdate)
+
     } catch {
       case e: GameIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
@@ -256,6 +262,9 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       // Return response
       sender ! None
 
+      // Push event
+      clusterSingletonProxy ! ClusterSingletonActor.GameDeleteEvent(id = id)
+
     }
     catch {
       case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
@@ -281,6 +290,9 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       // Return response
       sender ! None
 
+      // Push event
+      clusterSingletonProxy ! ClusterSingletonActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Activated))
+
     }
     catch {
       case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
@@ -305,6 +317,9 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
 
       // Return response
       sender ! None
+
+      // Push event
+      clusterSingletonProxy ! ClusterSingletonActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Archived))
 
     }
     catch {
