@@ -3,13 +3,12 @@ package fr.sysf.sample.actors
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, Props}
-import fr.sysf.sample.actors.PrizeActor._
-import fr.sysf.sample.routes.AuthentifierSupport.UserContext
-import fr.sysf.sample.{ActorUtil, Repository}
-import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd}
+import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd, _}
 import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeResponse}
 import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
+import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
+import fr.sysf.sample.{ActorUtil, Repository}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -34,8 +33,8 @@ object PrizeActor {
 
 class PrizeActor(implicit val repository: Repository) extends Actor with ActorLogging {
 
-  import context.dispatcher
   import akka.pattern.pipe
+  import context.dispatcher
 
 
   def receive: Receive = {

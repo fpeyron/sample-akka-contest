@@ -6,9 +6,8 @@ import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
-import fr.sysf.sample.actors.{ClusterListenerActor, ClusterSingletonActor}
 import fr.sysf.sample.CustomMySqlProfile.api.Database
-import fr.sysf.sample.actors.{GameActor, PrizeActor}
+import fr.sysf.sample.actors.{ClusterListenerActor, ClusterSingletonActor, GameActor, PrizeActor}
 import fr.sysf.sample.repositories.{GameRepository, InstantwinRepository, PrizeRepository}
 import fr.sysf.sample.routes._
 

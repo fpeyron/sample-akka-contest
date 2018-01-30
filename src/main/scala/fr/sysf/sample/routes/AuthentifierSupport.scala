@@ -1,8 +1,8 @@
 package fr.sysf.sample.routes
 
 import akka.http.scaladsl.server
-import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.Credentials
 
 import scala.concurrent.{ExecutionContext, Future}

@@ -8,16 +8,15 @@ import akka.event.{Logging, LoggingAdapter}
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy, ThrottleMode}
 import akka.{Done, NotUsed}
-import fr.sysf.sample.Main.system
 import fr.sysf.sample.CustomMySqlProfile.api._
+import fr.sysf.sample.Main.system
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
 import slick.ast.BaseTypedType
 import slick.jdbc.JdbcType
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import scala.concurrent.duration._
 
 trait InstantwinRepository extends InstantwinTable {
 
