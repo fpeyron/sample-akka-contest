@@ -42,7 +42,7 @@ services:
       - SERVICE_AKKA_PORT=2550
       - MYSQL_HOST=fusion-mysql
       - MYSQL_PORT=3306
-      - MYSQL_USER=root
+      - MYSQL_USERNAME=root
       - MYSQL_PASSWORD=root
       - MYSQL_DATABASE=game
   fusion-akka2:
@@ -65,7 +65,7 @@ services:
       - SERVICE_AKKA_PORT=2550
       - MYSQL_HOST=fusion-mysql
       - MYSQL_PORT=3306
-      - MYSQL_USER=root
+      - MYSQL_USERNAME=root
       - MYSQL_PASSWORD=root
       - MYSQL_DATABASE=game
 

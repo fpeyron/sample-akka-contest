@@ -62,11 +62,21 @@ enablePlugins(DockerPlugin, JavaAppPackaging)
 
 packageName               in Docker := name.value
 version                   in Docker := version.value
-maintainer                in Docker   := "technical support <florent.peyron@gmail.com>"
-//dockerBaseImage           := "openjdk:8u151-jre-slim"
-//dockerCommands := Seq(dockerCommands.value.head, Cmd("RUN", "apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*")) ++ dockerCommands.value.tail
+maintainer                in Docker   := "technical support <florent.peyron@ext.betc.com>"
 dockerBaseImage            := "openjdk:8u151-jre-alpine"
-dockerCommands := Seq(dockerCommands.value.head, Cmd("RUN", "apk add --no-cache curl bash && rm -rf /var/cache/apk/*")) ++ dockerCommands.value.tail
+dockerCommands := Seq(
+  dockerCommands.value.head,
+  Cmd("RUN", "apk add --no-cache curl bash && rm -rf /var/cache/apk/*"),
+  Cmd("ENV", "SERVICE_AKKA_PORT 2550"),
+  Cmd("ENV", "JAVA_OPTS '-Xmx256m -Xms256m'"),
+  Cmd("ENV", "REDIS_HOST 'redis'"),
+  Cmd("ENV", "REDIS_PORT 6379"),
+  Cmd("ENV", "MYSQL_HOST 'mysql'"),
+  Cmd("ENV", "MYSQL_PORT 3306"),
+  Cmd("ENV", "MYSQL_DATABASE 'mysql'"),
+  Cmd("ENV", "MYSQL_USERNAME 'root'"),
+  Cmd("ENV", "MYSQL_PASSWORD 'root'")
+) ++ dockerCommands.value.tail
 dockerExposedPorts         := Seq(8080,2550,5000)
 dockerUpdateLatest        := true
 dockerEntrypoint          := Seq("sh","-c","HOST_IP=$(/usr/bin/curl -s --connect-timeout 1 169.254.169.254/latest/meta-data/local-ipv4) && SERVICE_AKKA_HOST=$HOST_IP ; echo SERVICE_AKKA_HOST:$SERVICE_AKKA_HOST ; " + s"bin/main -Dconfig.resource=application.conf" + " -Dakka.remote.netty.tcp.hostname=$SERVICE_AKKA_HOST")
