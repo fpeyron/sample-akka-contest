@@ -38,8 +38,10 @@ trait PrizeRoute
   private implicit val timeout: Timeout = Config.Api.timeout
   implicit val prizeActor: ActorRef
 
-  def prizeRoute: Route = AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
-    prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
+  def prizeRoute: Route = pathPrefix("prizes") {
+    AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
+      prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
+    }
   }
 
 
@@ -55,12 +57,14 @@ trait PrizeRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "game_id", value = "id of game", required = false, dataType = "string", paramType = "query")
   ))
-  def prize_getAll(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("prizes") {
-    get(parameters('game_id.?) { (gameIdOptional) =>
-      complete {
-        (prizeActor ? PrizeListQuery(uc, gameIdOptional)).mapTo[Source[PrizeResponse, NotUsed]]
+  def prize_getAll(implicit @ApiParam(hidden = true) uc: UserContext): Route = pathEndOrSingleSlash {
+    get {
+      parameters('game_id.?) { (gameIdOptional) =>
+        complete {
+          (prizeActor ? PrizeListQuery(uc, gameIdOptional)).mapTo[Source[PrizeResponse, NotUsed]]
+        }
       }
-    })
+    }
   }
 
 
@@ -78,7 +82,7 @@ trait PrizeRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of prize", required = true, dataType = "string", paramType = "path")
   ))
-  def prize_get(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("prizes" / JavaUUID) { id =>
+  def prize_get(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID) { id =>
     get {
       onSuccess(prizeActor ? PrizeGetQuery(uc, id)) {
         case response: PrizeResponse => complete(StatusCodes.OK, response)
@@ -99,7 +103,7 @@ trait PrizeRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "body", value = "prize to create", required = true, dataTypeClass = classOf[PrizeCreateRequest], paramType = "body")
   ))
-  def prize_create(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("prizes") {
+  def prize_create(implicit @ApiParam(hidden = true) uc: UserContext): Route = pathEndOrSingleSlash {
     post {
       entity(as[PrizeCreateRequest]) { request =>
         onSuccess(prizeActor ? PrizeCreateCmd(uc, request)) {
@@ -125,7 +129,7 @@ trait PrizeRoute
     new ApiImplicitParam(name = "id", value = "id of prize", required = true, dataType = "string", paramType = "path"),
     new ApiImplicitParam(name = "body", value = "prize to update", required = true, dataTypeClass = classOf[PrizeCreateRequest], paramType = "body")
   ))
-  def prize_update(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("prizes" / JavaUUID) { id =>
+  def prize_update(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID) { id =>
     put {
       entity(as[PrizeCreateRequest]) { request =>
         onSuccess(prizeActor ? PrizeUpdateCmd(uc, id, request)) {
@@ -150,7 +154,7 @@ trait PrizeRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of prize to delete", required = true, dataType = "string", paramType = "path")
   ))
-  def prize_delete(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("prizes" / JavaUUID) { id =>
+  def prize_delete(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID) { id =>
     delete {
       onSuccess(prizeActor ? PrizeDeleteCmd(uc, id)) {
         case None => complete(StatusCodes.OK, None)

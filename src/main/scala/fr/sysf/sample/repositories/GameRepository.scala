@@ -189,11 +189,11 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
 
     def schemaCreateFuture: Future[Unit] = database.run {
       DBIO.seq(
-        gameTableQuery.schema.create,
-        gameLimitTableQuery.schema.create,
-        gamePrizeTableQuery.schema.create,
-        gameEanTableQuery.schema.create,
-        gameFreecodeTableQuery.schema.create
+        gameTableQuery.schema.create.asTry,
+        gameLimitTableQuery.schema.create.asTry,
+        gamePrizeTableQuery.schema.create.asTry,
+        gameEanTableQuery.schema.create.asTry,
+        gameFreecodeTableQuery.schema.create.asTry
       )
     }
 

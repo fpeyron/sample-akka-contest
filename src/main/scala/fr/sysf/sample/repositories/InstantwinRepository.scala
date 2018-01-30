@@ -74,7 +74,7 @@ trait InstantwinRepository extends InstantwinTable {
     def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
 
     def schemaCreateFuture: Future[Unit] = database.run {
-      instantwinTableQuery.schema.create
+      DBIO.seq(instantwinTableQuery.schema.create.asTry)
     }
 
     def schemaCreate(): Unit = Await.result(schemaCreateFuture, Duration.Inf)

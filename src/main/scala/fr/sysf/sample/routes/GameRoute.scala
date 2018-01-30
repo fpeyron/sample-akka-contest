@@ -42,10 +42,12 @@ trait GameRoute
   private implicit val timeout: Timeout = Config.Api.timeout
   implicit val gameActor: ActorRef
 
-  def gameRoute: Route = AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
-    game_getAll ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
-      game_getPrizes ~ game_addPrize ~ game_deletePrize ~ game_updatePrize ~
-      game_downloadInstantwins
+  def gameRoute: Route = pathPrefix("games") {
+    AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
+      game_findBy ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
+        game_getPrizes ~ game_addPrize ~ game_deletePrize ~ game_updatePrize ~
+        game_downloadInstantwins
+    }
   }
 
   /**
@@ -59,9 +61,9 @@ trait GameRoute
     *
     * @return Seq[GameResponse]
     */
-  @ApiOperation(value = "list games by criteria", notes = "", nickname = "game.getAll", httpMethod = "GET")
+  @ApiOperation(value = "list games by criteria", notes = "", nickname = "game.findBy", httpMethod = "GET")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Return list of games", responseContainer = "list", response = classOf[GameForListResponse]),
+    new ApiResponse(code = 200, message = "Return list of games", responseContainer = "list", response = classOf[GameForListDto]),
     new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
   ))
   @ApiImplicitParams(Array(
@@ -69,11 +71,11 @@ trait GameRoute
     new ApiImplicitParam(name = "status", value = "status of game", required = false, dataType = "string", paramType = "query"),
     new ApiImplicitParam(name = "parent", value = "game parent", required = false, dataType = "string", paramType = "query")
   ))
-  def game_getAll(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games") {
+  def game_findBy(implicit @ApiParam(hidden = true) uc: UserContext): Route = pathEndOrSingleSlash {
     get {
       parameters('type.?, 'status.?, 'parent.?) { (typesOptional, statusOptional, parentOptional) =>
         complete {
-          (gameActor ? GameListQuery(uc = uc, types = typesOptional, status = statusOptional, parent = parentOptional)).mapTo[Source[GameForListResponse, NotUsed]]
+          (gameActor ? GameListQuery(uc = uc, types = typesOptional, status = statusOptional, parent = parentOptional)).mapTo[Source[GameForListDto, NotUsed]]
         }
       }
     }
@@ -94,7 +96,7 @@ trait GameRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
   ))
-  def game_get(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID) { id =>
+  def game_get(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID) { id =>
     get {
       onSuccess(gameActor ? GameGetQuery(uc, id)) {
         case response: GameResponse => complete(StatusCodes.OK, response)
@@ -115,7 +117,7 @@ trait GameRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "body", value = "game to create", required = true, dataTypeClass = classOf[GameCreateRequest], paramType = "body")
   ))
-  def game_create(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games") {
+  def game_create(implicit @ApiParam(hidden = true) uc: UserContext): Route = pathEndOrSingleSlash {
     post {
       entity(as[GameCreateRequest]) { request =>
         onSuccess(gameActor ? GameCreateCmd(uc, request)) {
@@ -141,7 +143,7 @@ trait GameRoute
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path"),
     new ApiImplicitParam(name = "body", value = "game to update", required = true, dataTypeClass = classOf[GameUpdateRequest], paramType = "body")
   ))
-  def game_update(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID) { id =>
+  def game_update(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID) { id =>
     put {
       entity(as[GameUpdateRequest]) { request =>
         onSuccess(gameActor ? GameUpdateCmd(uc, id, request)) {
@@ -166,7 +168,7 @@ trait GameRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game to create", required = true, dataType = "string", paramType = "path")
   ))
-  def game_delete(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID) { id =>
+  def game_delete(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID) { id =>
     delete {
       onSuccess(gameActor ? GameDeleteCmd(uc, id)) {
         case None => complete(StatusCodes.OK, None)
@@ -189,7 +191,7 @@ trait GameRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game to activate", required = true, dataType = "string", paramType = "path")
   ))
-  def game_activate(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "action-activate") { id =>
+  def game_activate(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "action-activate") { id =>
     put {
       onSuccess(gameActor ? GameActivateCmd(uc, id)) {
         case None => complete(StatusCodes.OK, None)
@@ -212,7 +214,7 @@ trait GameRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game to archive", required = true, dataType = "string", paramType = "path")
   ))
-  def game_archive(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "action-archive") { id =>
+  def game_archive(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "action-archive") { id =>
     put {
       onSuccess(gameActor ? GameArchiveCmd(uc, id)) {
         case None => complete(StatusCodes.OK, None)
@@ -242,7 +244,7 @@ trait GameRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
   ))
-  def game_getPrizes(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "prizes") { id =>
+  def game_getPrizes(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "prizes") { id =>
     get {
       complete {
         (gameActor ? GameListPrizesQuery(uc, id)).mapTo[Seq[GamePrize]]
@@ -265,7 +267,7 @@ trait GameRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
   ))
-  def game_addPrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "prizes") { id =>
+  def game_addPrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "prizes") { id =>
     post {
       entity(as[GamePrizeCreateRequest]) { request =>
         onSuccess(gameActor ? GameAddPrizeCmd(uc, id, request)) {
@@ -291,7 +293,7 @@ trait GameRoute
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path"),
     new ApiImplicitParam(name = "prizeId", value = "id of game prize", required = true, dataType = "string", paramType = "path")
   ))
-  def game_updatePrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "prizes" / JavaUUID) { (id, prizeId) =>
+  def game_updatePrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "prizes" / JavaUUID) { (id, prizeId) =>
     put {
       entity(as[GamePrizeCreateRequest]) { request =>
         onSuccess(gameActor ? GameUpdatePrizeCmd(uc, id, prizeId, request)) {
@@ -317,7 +319,7 @@ trait GameRoute
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path"),
     new ApiImplicitParam(name = "prizeId", value = "id of game prize", required = true, dataType = "string", paramType = "path")
   ))
-  def game_deletePrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "prizes" / JavaUUID) { (id, prizeId) =>
+  def game_deletePrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "prizes" / JavaUUID) { (id, prizeId) =>
     delete {
       onSuccess(gameActor ? GameRemovePrizeCmd(uc, id, prizeId)) {
         case None => complete(StatusCodes.OK, None)
@@ -347,7 +349,7 @@ trait GameRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path")
   ))
-  def game_downloadInstantwins(implicit @ApiParam(hidden = true) uc: UserContext): Route = path("games" / JavaUUID / "instantwins") { id =>
+  def game_downloadInstantwins(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "instantwins") { id =>
     get {
       onSuccess(gameActor ? GameGetInstantwinQuery(uc, id)) {
         case source: Source[_, _] => complete {

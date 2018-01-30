@@ -70,13 +70,13 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
       val restrictedStatus = status.map(_.split(",").flatMap(GameStatusType.withNameOptional).toSeq)
       val restrictedParent = parent.flatMap(ActorUtil.string2UUID)
 
-      val sourceList: Source[GameForListResponse, NotUsed] = repository.game.fetchBy(
+      val sourceList: Source[GameForListDto, NotUsed] = repository.game.fetchBy(
         country_code = Some(uc.country_code),
         types = restrictedTypes.getOrElse(Seq.empty[GameType.Value]),
         status = restrictedStatus.getOrElse(Seq.empty[GameStatusType.Value]),
         parent = restrictedParent
       )
-        .map(new GameForListResponse(_))
+        .map(new GameForListDto(_))
 
       sender ! sourceList
     } catch {

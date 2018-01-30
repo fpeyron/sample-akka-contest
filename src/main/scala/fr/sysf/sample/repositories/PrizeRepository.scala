@@ -65,7 +65,7 @@ trait PrizeRepository extends PrizeTable with GamePrizeTable {
     def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
 
     def schemaCreateFuture: Future[Unit] = database.run {
-      prizeTableQuery.schema.create
+      DBIO.seq(prizeTableQuery.schema.create.asTry)
     }
 
     def schemaCreate(): Unit = Await.result(schemaCreateFuture, Duration.Inf)

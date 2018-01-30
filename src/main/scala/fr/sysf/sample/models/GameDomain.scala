@@ -65,23 +65,23 @@ object GameDto {
                                 reference: Option[String],
                                 @ApiModelProperty(position = 3, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
                                 parent_id: Option[UUID],
-                                @ApiModelProperty(position = 6, value = "title", example = "My new game")
+                                @ApiModelProperty(position = 4, value = "title", example = "My new game")
                                 title: Option[String],
-                                @ApiModelProperty(position = 7, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
+                                @ApiModelProperty(position = 5, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
                                 start_date: Option[Instant],
-                                @ApiModelProperty(position = 8, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
+                                @ApiModelProperty(position = 6, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
                                 end_date: Option[Instant],
-                                @ApiModelProperty(position = 9, value = "time zone", example = "+02:00")
+                                @ApiModelProperty(position = 7, value = "time zone", example = "+02:00")
                                 timezone: Option[String],
-                                @ApiModelProperty(position = 10, value = "input type", required = false, example = "OTHER", allowableValues = "OTHER,POINT,SKU")
+                                @ApiModelProperty(position = 8, value = "input type", required = false, example = "OTHER", allowableValues = "OTHER,POINT,SKU")
                                 input_type: Option[String],
-                                @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
+                                @ApiModelProperty(position = 9, value = "input point", required = false, example = "10")
                                 input_point: Option[Int],
-                                @ApiModelProperty(position = 13, value = "participation limit")
+                                @ApiModelProperty(position = 10, value = "participation limit")
                                 limits: Option[Seq[GameLimitRequest]],
-                                @ApiModelProperty(position = 14, value = "input eans")
+                                @ApiModelProperty(position = 11, value = "input eans")
                                 input_eans: Option[Seq[String]] = None,
-                                @ApiModelProperty(position = 15, value = "input freecodes")
+                                @ApiModelProperty(position = 12, value = "input freecodes")
                                 input_freecodes: Option[Seq[String]] = None
                               )
 
@@ -132,55 +132,55 @@ object GameDto {
                            parent_id: Option[UUID] = None,
                            @ApiModelProperty(position = 5, value = "reference", required = true, example = "MY_CONTEST")
                            reference: String,
-                           @ApiModelProperty(position = 7, value = "title", example = "My new game")
+                           @ApiModelProperty(position = 6, value = "title", example = "My new game")
                            title: Option[String] = None,
-                           @ApiModelProperty(position = 8, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
+                           @ApiModelProperty(position = 7, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
                            start_date: Instant,
+                           @ApiModelProperty(position = 8, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
+                           end_date: Instant,
                            @ApiModelProperty(position = 9, value = "time zone", example = "+02:00")
                            timezone: String,
-                           @ApiModelProperty(position = 10, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
-                           end_date: Instant,
-                           @ApiModelProperty(position = 11, value = "input type", dataType = "string", required = true, example = "OTHER", allowableValues = "OTHER,POINT,SKU")
+                           @ApiModelProperty(position = 10, value = "input type", dataType = "string", required = true, example = "OTHER", allowableValues = "OTHER,POINT,SKU")
                            input_type: GameInputType.Value,
-                           @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
+                           @ApiModelProperty(position = 11, value = "input point", required = false, example = "10")
                            input_point: Option[Int] = None,
-                           @ApiModelProperty(position = 13, value = "input eans", required = false)
+                           @ApiModelProperty(position = 12, value = "input eans", required = false)
                            limits: Option[Seq[GameLimit]] = None,
-                           @ApiModelProperty(position = 14, value = "prizes")
+                           @ApiModelProperty(position = 13, value = "prizes")
                            prizes: Option[Seq[GamePrize]] = None,
-                           @ApiModelProperty(position = 15, value = "input eans")
+                           @ApiModelProperty(position = 14, value = "input eans")
                            input_eans: Option[Seq[String]] = None,
-                           @ApiModelProperty(position = 16, value = "input freecodes")
+                           @ApiModelProperty(position = 15, value = "input freecodes")
                            input_freecodes: Option[Seq[String]] = None
                          ) {
     def this(r: Game) = this(id = r.id, `type` = r.`type`, status = r.status, parent_id = r.parent_id, reference = r.reference, title = r.title, start_date = r.start_date, timezone = r.timezone, end_date = r.end_date, input_type = r.input_type, input_point = r.input_point, limits = Some(r.limits).filterNot(_.isEmpty), prizes = Some(r.prizes).filterNot(_.isEmpty), input_eans = Some(r.input_eans).filterNot(_.isEmpty), input_freecodes = Some(r.input_freecodes).filterNot(_.isEmpty))
   }
 
-  case class GameForListResponse(
-                                  @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
-                                  id: UUID,
-                                  @ApiModelProperty(position = 2, value = "type", dataType = "string", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
-                                  `type`: GameType.Value,
-                                  @ApiModelProperty(position = 3, value = "status", dataType = "string", required = true, example = "DRAFT", allowableValues = "DRAFT,ACTIVATE,ARCHIVED")
-                                  status: GameStatusType.Value,
-                                  @ApiModelProperty(position = 4, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
-                                  parent_id: Option[UUID] = None,
-                                  @ApiModelProperty(position = 5, value = "reference", required = true, example = "MY_CONTEST")
-                                  reference: String,
-                                  @ApiModelProperty(position = 7, value = "title", example = "My new game")
-                                  title: Option[String] = None,
-                                  @ApiModelProperty(position = 8, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
-                                  start_date: Instant,
-                                  @ApiModelProperty(position = 9, value = "time zone", example = "+02:00")
-                                  timezone: String,
-                                  @ApiModelProperty(position = 10, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
-                                  end_date: Instant,
-                                  @ApiModelProperty(position = 11, value = "input type", dataType = "string", required = true, example = "POINT", allowableValues = "OTHER,POINT,SKU")
-                                  input_type: GameInputType.Value,
-                                  @ApiModelProperty(position = 12, value = "input point", required = false, example = "10")
-                                  input_point: Option[Int] = None
-                                ) {
-    def this(game: Game) = this(game.id, game.`type`, game.status, game.parent_id, game.reference, game.title, game.start_date, game.timezone, game.end_date, game.input_type, game.input_point)
+  case class GameForListDto(
+                             @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
+                             id: UUID,
+                             @ApiModelProperty(position = 2, value = "type", dataType = "string", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
+                             `type`: GameType.Value,
+                             @ApiModelProperty(position = 3, value = "status", dataType = "string", required = true, example = "DRAFT", allowableValues = "DRAFT,ACTIVATE,ARCHIVED")
+                             status: GameStatusType.Value,
+                             @ApiModelProperty(position = 4, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
+                             parent_id: Option[UUID] = None,
+                             @ApiModelProperty(position = 5, value = "reference", required = true, example = "MY_CONTEST")
+                             reference: String,
+                             @ApiModelProperty(position = 6, value = "title", example = "My new game")
+                             title: Option[String] = None,
+                             @ApiModelProperty(position = 7, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
+                             start_date: Instant,
+                             @ApiModelProperty(position = 8, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
+                             end_date: Instant,
+                             @ApiModelProperty(position = 9, value = "time zone", example = "+02:00")
+                             timezone: String,
+                             @ApiModelProperty(position = 10, value = "input type", dataType = "string", required = true, example = "POINT", allowableValues = "OTHER,POINT,SKU")
+                             input_type: GameInputType.Value,
+                             @ApiModelProperty(position = 11, value = "input point", required = false, example = "10")
+                             input_point: Option[Int] = None
+                           ) {
+    def this(game: Game) = this(id = game.id, game.`type`, status = game.status, parent_id = game.parent_id, reference = game.reference, title = game.title, start_date = game.start_date, timezone = game.timezone, end_date = game.end_date, input_type = game.input_type, input_point = game.input_point)
   }
 
 
@@ -269,7 +269,7 @@ object GameDto {
     implicit val gamePrizeResponse: RootJsonFormat[GamePrize] = jsonFormat5(GamePrize)
 
     implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat15(GameResponse)
-    implicit val gameForListResponse: RootJsonFormat[GameForListResponse] = jsonFormat11(GameForListResponse)
+    implicit val gameForListResponse: RootJsonFormat[GameForListDto] = jsonFormat11(GameForListDto)
   }
 
 }

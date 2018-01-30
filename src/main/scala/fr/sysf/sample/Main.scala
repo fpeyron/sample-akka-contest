@@ -49,9 +49,9 @@ object Main extends App with RouteConcatenation with HttpSupport {
   implicit val repository: Repository = new Repository
 
   // initialization schemas
-  repository.prize.schemaDropCreate()
-  repository.game.schemaDropCreate()
-  repository.instantwin.schemaDropCreate()
+  repository.prize.schemaCreate()
+  repository.game.schemaCreate()
+  repository.instantwin.schemaCreate()
 
   // Start actors
   val gameActor: ActorRef = system.actorOf(GameActor.props, GameActor.Name)
