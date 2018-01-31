@@ -91,7 +91,7 @@ trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {
 trait CorsSupport {
 
   private val corsResponseHeaders = List(
-    `Access-Control-Allow-Origin`.*,
+    `Access-Control-Allow-Origin`("localhost:4200"),
     `Access-Control-Allow-Credentials`(true),
     `Access-Control-Allow-Headers`("Authorization", "Content-Type", "X-Requested-With")
   )
