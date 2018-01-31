@@ -36,6 +36,8 @@ libraryDependencies += "com.github.everpeace"         %% "constructr-coordinatio
 libraryDependencies += "com.github.dnvriend"           %% "akka-persistence-jdbc"         % "3.1.0"
 //libraryDependencies += "com.h2database"                % "h2"                             % "1.4.193"
 libraryDependencies += "mysql"                         % "mysql-connector-java"           % "6.0.6"
+// ---Serializer for akka
+libraryDependencies += "com.github.romix.akka"         %% "akka-kryo-serialization"       % "0.5.2"
 
 libraryDependencies += "ch.qos.logback"                % "logback-classic"                % "1.2.+"
 
@@ -43,6 +45,7 @@ libraryDependencies += "ch.qos.logback"                % "logback-classic"      
 // Force dependencies to remove WARN in log during compilation
 dependencyOverrides += "com.typesafe.akka"            %% "akka-stream"                    % akkaVersion
 dependencyOverrides += "com.typesafe.akka"            %% "akka-actor"                     % akkaVersion
+dependencyOverrides += "com.typesafe.akka"            %% "akka-remote"                    % akkaVersion
 dependencyOverrides += "de.heikoseeberger"            %% "constructr-coordination"        % ConstructrAkka
 dependencyOverrides += "org.codehaus.plexus"          % "plexus-utils"                    % "3.0.17"
 dependencyOverrides += "com.google.guava"             % "guava"                           % "22.0"
