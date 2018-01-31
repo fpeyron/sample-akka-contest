@@ -11,7 +11,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
 import fr.sysf.sample.Config
-import fr.sysf.sample.actors.GameActor._
+import fr.sysf.sample.actors.BoGameActor._
 import fr.sysf.sample.models.GameDto._
 import fr.sysf.sample.models.GameEntity.GamePrize
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
@@ -32,7 +32,7 @@ import scala.concurrent.ExecutionContext
   ))
 ))
 @Path("/games")
-trait GameRoute
+trait BoGameRoute
   extends Directives with DefaultJsonFormats with GameJsonFormats {
 
   import akka.pattern.ask

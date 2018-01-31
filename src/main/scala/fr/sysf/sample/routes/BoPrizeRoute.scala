@@ -10,7 +10,7 @@ import akka.http.scaladsl.server._
 import akka.stream.scaladsl.Source
 import akka.util.Timeout
 import fr.sysf.sample.Config
-import fr.sysf.sample.actors.PrizeActor._
+import fr.sysf.sample.actors.BoPrizeActor._
 import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeJsonFormats, PrizeResponse}
 import fr.sysf.sample.models.PrizeDomain.Prize
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
@@ -29,7 +29,7 @@ import scala.concurrent.ExecutionContext
   ))
 ))
 @Path("/prizes")
-trait PrizeRoute
+trait BoPrizeRoute
   extends Directives with DefaultJsonFormats with PrizeJsonFormats {
 
   import akka.pattern.ask

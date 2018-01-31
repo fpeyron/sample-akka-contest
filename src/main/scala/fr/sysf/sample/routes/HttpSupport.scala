@@ -4,10 +4,10 @@ import java.util.UUID
 
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.headers._
-import akka.http.scaladsl.model.{HttpHeader, HttpResponse, StatusCodes}
+import akka.http.scaladsl.model.{HttpHeader, HttpResponse, StatusCodes, StatusCode}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
-import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, ErrorResponse, InvalidInputException, NotAuthorizedException}
+import fr.sysf.sample.routes.HttpSupport._
 import spray.json._
 
 
@@ -17,11 +17,24 @@ object HttpSupport {
   case class ErrorResponse(code: Int, `type`: String, message: Option[String] = None, detail: Option[Map[String, String]] = None)
 
   // Exception
-  case class EntityNotFoundException(id: UUID, message: Option[String] = None) extends RuntimeException
-
-  case class NotAuthorizedException(id: UUID, message: Option[String] = None) extends RuntimeException
+  class FunctionalException(val code: StatusCode, val `type`: Option[String]= None, val message: String) extends RuntimeException
 
   case class InvalidInputException(message: Option[String] = None, detail: Map[String, String]) extends RuntimeException
+
+
+  case class GameIdNotFoundException(id: UUID) extends FunctionalException(code = StatusCodes.NotFound, `type` = Some("GameNotFoundException"), message = s"game not found with id : $id")
+
+  case class GamePrizeIdNotFoundException(id: UUID) extends FunctionalException(code = StatusCodes.NotFound, `type` = Some("GamePrizeNotFoundException"), message = s"prizes not found for this game with id : $id")
+
+  case class GameRefNotFoundException(country_code: String, reference: String) extends FunctionalException(code = StatusCodes.NotFound, `type` = Some("GameNotFoundException"), message = s"game not found with reference : $reference")
+
+  case class PrizeIdNotFoundException(id: UUID) extends FunctionalException(code = StatusCodes.NotFound, `type` = Some("PrizeNotFoundException"), message = s"prizes not found with id : $id")
+
+  case class NotAuthorizedException(id: UUID, override val message: String)  extends FunctionalException(code = StatusCodes.Forbidden, message = message)
+
+  case class ParticipationNotOpenedException(reference: String) extends FunctionalException(code = StatusCodes.Forbidden, `type` = Some("ParticipationNotOpenedException"), message = s"game with reference : $reference is not open")
+
+  case class ParticipationCloseException(reference: String) extends FunctionalException(code = StatusCodes.Forbidden, `type` = Some("ParticipationClosedException"), message = s"game with reference : $reference is finished")
 
   val healthCheckRoute: Route =
     path("health") {
@@ -37,17 +50,15 @@ trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {
 
 
   implicit def exceptionHandler: ExceptionHandler = ExceptionHandler {
+
+    case e: FunctionalException =>
+      complete(e.code, ErrorResponse(code = e.code.intValue(), `type` = e.getClass.getSimpleName, message = Some(e.message)))
+
     case _: ArithmeticException =>
       extractUri { uri =>
         println(s"Request to $uri could not be handled normally")
         complete(HttpResponse(StatusCodes.InternalServerError, entity = "1Bad numbers, bad result!!!"))
       }
-
-    case e: EntityNotFoundException =>
-      complete(StatusCodes.NotFound, ErrorResponse(code = StatusCodes.NotFound.intValue, `type` = e.getClass.getSimpleName, message = Some(s"entity not found with id : ${e.id}")))
-
-    case e: NotAuthorizedException =>
-      complete(StatusCodes.Forbidden, ErrorResponse(code = StatusCodes.Forbidden.intValue, `type` = e.getClass.getSimpleName, message = e.message))
 
     case e: InvalidInputException =>
       complete(StatusCodes.BadRequest, ErrorResponse(code = StatusCodes.BadRequest.intValue, `type` = e.getClass.getSimpleName, message = e.message, detail = Some(e.detail)))

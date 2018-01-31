@@ -105,13 +105,20 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     }
 
 
-    def fetchBy(country_code: Option[String] = None, status: Iterable[GameStatusType.Value] = Iterable.empty, types: Iterable[GameType.Value] = Iterable.empty, parent: Option[UUID] = None): Source[Game, NotUsed] = Source.fromPublisher {
+    def fetchBy(
+                 country_code: Option[String] = None,
+                 status: Iterable[GameStatusType.Value] = Iterable.empty,
+                 types: Iterable[GameType.Value] = Iterable.empty,
+                 parent: Option[UUID] = None,
+                 reference: Option[String] = None,
+               ): Source[Game, NotUsed] = Source.fromPublisher {
       database.stream {
         val query = gameTableQuery
           .filter(row => (if (types.isEmpty) None else Some(types)).map(s => row.`type` inSet s.map(_.toString)).getOrElse(true: Rep[Boolean]))
           .filter(row => (if (status.isEmpty) None else Some(status)).map(s => row.status inSet s.map(_.toString)).getOrElse(true: Rep[Boolean]))
           .filter(row => if (country_code.isDefined) row.country_code === country_code.get else true: Rep[Boolean])
           .filter(row => if (parent.isDefined) row.parent_id.get === parent.get else true: Rep[Boolean])
+          .filter(row => if (reference.isDefined) row.reference === reference.get else true: Rep[Boolean])
           .to[List]
         //println(query.result.statements.headOption)
         query.result
@@ -249,11 +256,11 @@ private[repositories] trait GameTable {
 
     def title = column[Option[String]]("title", O.Length(255, varying = true))
 
-    def start_date = column[Instant]("start_date", SqlType("timestamp not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP"))
+    def start_date = column[Instant]("start_date", SqlType("timestamp not null default CURRENT_TIMESTAMP"))
 
     def timezone = column[String]("timezone", O.Length(10, varying = true))
 
-    def end_date = column[Instant]("end_date", SqlType("timestamp not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP"))
+    def end_date = column[Instant]("end_date", SqlType("timestamp not null default CURRENT_TIMESTAMP"))
 
     def input_type = column[GameInputType.Value]("input_type", O.Length(20, varying = true))
 
@@ -368,9 +375,9 @@ private[repositories] trait GamePrizeTable {
 
     def prize_id = column[UUID]("prize_id")
 
-    def start_date = column[Instant]("start_date", SqlType("timestamp not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP"))
+    def start_date = column[Instant]("start_date", SqlType("timestamp not null default CURRENT_TIMESTAMP"))
 
-    def end_date = column[Instant]("end_date", SqlType("timestamp not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP"))
+    def end_date = column[Instant]("end_date", SqlType("timestamp not null default CURRENT_TIMESTAMP"))
 
     def quantity = column[Int]("quantity")
 

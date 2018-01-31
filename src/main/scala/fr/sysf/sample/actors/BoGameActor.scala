@@ -7,21 +7,21 @@ import akka.NotUsed
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
-import fr.sysf.sample.actors.GameActor._
-import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
+import fr.sysf.sample.actors.BoGameActor._
+import fr.sysf.sample.actors.BoInstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
 import fr.sysf.sample.models.GameDto._
 import fr.sysf.sample.models.GameEntity._
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
-import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
+import fr.sysf.sample.routes.HttpSupport.{GameIdNotFoundException, GamePrizeIdNotFoundException, InvalidInputException, NotAuthorizedException}
 import fr.sysf.sample.{ActorUtil, Repository}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 
-object GameActor {
+object BoGameActor {
 
-  def props(implicit repository: Repository, materializer: ActorMaterializer) = Props(new GameActor)
+  def props(implicit repository: Repository, materializer: ActorMaterializer) = Props(new BoGameActor)
 
   val Name = "games-singleton"
 
@@ -58,7 +58,7 @@ object GameActor {
 }
 
 
-class GameActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer) extends Actor with ActorLogging {
+class BoGameActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer) extends Actor with ActorLogging {
 
   import akka.pattern.pipe
   import context.dispatcher
@@ -90,14 +90,14 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
       repository.game.getExtendedById(id).map { game =>
         // check existing game
         if (!game.exists(_.country_code == uc.country_code)) {
-          throw EntityNotFoundException(id = id)
+          throw GameIdNotFoundException(id = id)
         } else {
           game.map(new GameResponse(_)).get
         }
       }.pipeTo(sender)
 
     } catch {
-      case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
+      case e: GameIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
@@ -169,12 +169,12 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
 
       // check existing game
       if (!game.exists(_.country_code == uc.country_code)) {
-        throw EntityNotFoundException(id = id)
+        throw GameIdNotFoundException(id = id)
       }
 
       // check status
       if (game.get.status != GameStatusType.Draft) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
+        throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
       }
 
       // Check input payload
@@ -227,7 +227,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
       sender ! new GameResponse(gameToUpdate)
 
     } catch {
-      case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
+      case e: GameIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
@@ -239,13 +239,13 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
       val game = Await.result(repository.game.getById(id), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.country_code == uc.country_code)) throw EntityNotFoundException(id = id)
+      if (!game.exists(_.country_code == uc.country_code)) throw GameIdNotFoundException(id = id)
 
       // check status
-      if (game.get.status != GameStatusType.Draft) throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
+      if (game.get.status != GameStatusType.Draft) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
 
       // Check dependency
-      if (game.get.parent_id.isDefined) throw NotAuthorizedException(id = id, message = Some("HAS_DEPENDENCIES"))
+      if (game.get.parent_id.isDefined) throw NotAuthorizedException(id = id, message = "HAS_DEPENDENCIES")
 
       // Delete instantwins
       getInstantwinActor(game.get.id) ! InstanwinDeleteCmd
@@ -258,7 +258,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
 
     }
     catch {
-      case e: EntityNotFoundException => sender() ! scala.util.Failure(e)
+      case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
       case e: NotAuthorizedException => sender() ! scala.util.Failure(e)
       case e: Exception => sender() ! scala.util.Failure(e); throw e
     }
@@ -270,10 +270,10 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
       val game = Await.result(repository.game.getById(id), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.country_code == uc.country_code)) throw EntityNotFoundException(id = id)
+      if (!game.exists(_.country_code == uc.country_code)) throw GameIdNotFoundException(id = id)
 
       // check status
-      if (game.get.status != GameStatusType.Draft) throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
+      if (game.get.status != GameStatusType.Draft) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
 
       // Persist
       Await.result(repository.game.updateStatus(id, GameStatusType.Activated), Duration.Inf)
@@ -283,7 +283,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
 
     }
     catch {
-      case e: EntityNotFoundException => sender() ! scala.util.Failure(e)
+      case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
       case e: NotAuthorizedException => sender() ! scala.util.Failure(e)
       case e: Exception => sender() ! scala.util.Failure(e); throw e
     }
@@ -295,10 +295,10 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
       val game = Await.result(repository.game.getById(id), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.country_code == uc.country_code)) throw EntityNotFoundException(id = id)
+      if (!game.exists(_.country_code == uc.country_code)) throw GameIdNotFoundException(id = id)
 
       // check status
-      if (game.get.status == GameStatusType.Archived) throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
+      if (game.get.status == GameStatusType.Archived) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
 
       // Change status
       Await.result(repository.game.updateStatus(id, GameStatusType.Archived), Duration.Inf)
@@ -308,7 +308,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
 
     }
     catch {
-      case e: EntityNotFoundException => sender() ! scala.util.Failure(e)
+      case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
       case e: NotAuthorizedException => sender() ! scala.util.Failure(e)
       case e: Exception => sender() ! scala.util.Failure(e); throw e
     }
@@ -319,14 +319,14 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
       repository.game.getExtendedById(id).map { game =>
         // check existing game
         if (!game.exists(_.country_code == uc.country_code)) {
-          throw EntityNotFoundException(id = id)
+          throw GameIdNotFoundException(id = id)
         } else {
           game.get.prizes
         }
       }.pipeTo(sender)
 
     } catch {
-      case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
+      case e: GameIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
@@ -338,12 +338,12 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
 
       // check existing game
       if (!game.exists(_.country_code == uc.country_code)) {
-        throw EntityNotFoundException(id = id)
+        throw GameIdNotFoundException(id = id)
       }
 
       // check status
       if (game.get.status == GameStatusType.Archived) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
+        throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
       }
 
       // Check input payload
@@ -383,17 +383,17 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
 
       // check existing game
       if (!game.exists(_.country_code == uc.country_code)) {
-        throw EntityNotFoundException(id = id)
+        throw GameIdNotFoundException(id = id)
       }
 
       // Get existing game
       if (gamePrize.isEmpty) {
-        throw EntityNotFoundException(id = prizeId)
+        throw GamePrizeIdNotFoundException(id = prizeId)
       }
 
       // check status
       if (game.get.status == GameStatusType.Archived) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
+        throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
       }
 
       // Check input payload
@@ -434,22 +434,22 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
 
       // check existing game
       if (!game.exists(_.country_code == uc.country_code)) {
-        throw EntityNotFoundException(id = id)
+        throw GameIdNotFoundException(id = id)
       }
 
       // Get existing game
       if (gamePrize.isEmpty) {
-        throw EntityNotFoundException(id = id)
+        throw GameIdNotFoundException(id = id)
       }
 
       // check status
       if (game.get.status == GameStatusType.Archived) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
+        throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
       }
 
       // Check date
       if (gamePrize.get.start_date.isBefore(Instant.now())) {
-        throw NotAuthorizedException(id = id, message = Some("NOT_AUTHORIZED_STATUS"))
+        throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
       }
 
       // Persist
@@ -469,14 +469,14 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
       repository.game.getById(id).map { game =>
         // check existing game
         if (!game.exists(_.country_code == uc.country_code)) {
-          throw EntityNotFoundException(id = id)
+          throw GameIdNotFoundException(id = id)
         }
         repository.instantwin.fetchBy(game.get.id)
       }.pipeTo(sender)
 
     }
     catch {
-      case e: EntityNotFoundException => sender() ! scala.util.Failure(e)
+      case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
       case e: Exception => sender() ! scala.util.Failure(e); throw e
     }
 
@@ -617,7 +617,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
     case _: java.time.zone.ZoneRulesException => false
   }
 
-  private def getInstantwinActor(game_id: UUID): ActorRef = context.child(InstantwinActor.name(game_id))
-    .getOrElse(context.actorOf(InstantwinActor.props(game_id), InstantwinActor.name(game_id)))
+  private def getInstantwinActor(game_id: UUID): ActorRef = context.child(BoInstantwinActor.name(game_id))
+    .getOrElse(context.actorOf(BoInstantwinActor.props(game_id), BoInstantwinActor.name(game_id)))
 
 }

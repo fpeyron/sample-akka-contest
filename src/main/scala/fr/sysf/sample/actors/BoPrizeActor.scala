@@ -3,20 +3,20 @@ package fr.sysf.sample.actors
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, Props}
-import fr.sysf.sample.actors.PrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd, _}
+import fr.sysf.sample.actors.BoPrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd, _}
 import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeResponse}
 import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
-import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
+import fr.sysf.sample.routes.HttpSupport.{PrizeIdNotFoundException, InvalidInputException, NotAuthorizedException}
 import fr.sysf.sample.{ActorUtil, Repository}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 
-object PrizeActor {
+object BoPrizeActor {
 
-  def props(implicit repository: Repository) = Props(new PrizeActor)
+  def props(implicit repository: Repository) = Props(new BoPrizeActor)
   val name = "prize-singleton"
 
   // Query
@@ -31,7 +31,7 @@ object PrizeActor {
   case class PrizeDeleteCmd(uc: UserContext, id: UUID) extends Cmd
 }
 
-class PrizeActor(implicit val repository: Repository) extends Actor with ActorLogging {
+class BoPrizeActor(implicit val repository: Repository) extends Actor with ActorLogging {
 
   import akka.pattern.pipe
   import context.dispatcher
@@ -55,14 +55,14 @@ class PrizeActor(implicit val repository: Repository) extends Actor with ActorLo
 
         // check existing prize
         if (! prize.exists(_.country_code == uc.country_code)) {
-          throw EntityNotFoundException(id = id)
+          throw PrizeIdNotFoundException(id = id)
         } else {
           prize.map(new PrizeResponse(_)).get
         }
       }. pipeTo(sender)
 
     } catch {
-      case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
+      case e: PrizeIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
@@ -107,7 +107,7 @@ class PrizeActor(implicit val repository: Repository) extends Actor with ActorLo
       // check existing contest
       val entity: Prize = Await.result(repository.prize.getById(id).map {
         case Some(u) if u.country_code == uc.country_code => u
-        case None => throw EntityNotFoundException(id = id)
+        case None => throw PrizeIdNotFoundException(id = id)
       }, Duration.Inf)
 
       /*
@@ -136,7 +136,7 @@ class PrizeActor(implicit val repository: Repository) extends Actor with ActorLo
       sender() ! new PrizeResponse(entityUpdated)
 
     } catch {
-      case e: EntityNotFoundException => sender() ! akka.actor.Status.Failure(e)
+      case e: PrizeIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
@@ -147,7 +147,7 @@ class PrizeActor(implicit val repository: Repository) extends Actor with ActorLo
       // check existing contest
       Await.result(repository.prize.getById(id).map {
         case Some(u) if u.country_code == uc.country_code => u
-        case None => throw EntityNotFoundException(id = id)
+        case None => throw PrizeIdNotFoundException(id = id)
       }, Duration.Inf)
 
       Await.result(repository.prize.delete(id), Duration.Inf)
@@ -155,7 +155,7 @@ class PrizeActor(implicit val repository: Repository) extends Actor with ActorLo
       sender ! None
     }
     catch {
-      case e: EntityNotFoundException => sender() ! scala.util.Failure(e)
+      case e: PrizeIdNotFoundException => sender() ! scala.util.Failure(e)
       case e: NotAuthorizedException => sender() ! scala.util.Failure(e)
       case e: Exception => sender() ! scala.util.Failure(e); throw e
     }

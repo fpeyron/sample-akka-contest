@@ -9,7 +9,7 @@ import akka.remote.ContainerFormats.ActorRef
 import akka.stream.scaladsl.Source
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import fr.sysf.sample.Repository
-import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinGetQuery, InstanwinUpdateCmd}
+import fr.sysf.sample.actors.BoInstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinGetQuery, InstanwinUpdateCmd}
 import fr.sysf.sample.models.GameEntity.GamePrize
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
 import fr.sysf.sample.routes.HttpSupport.InvalidInputException
@@ -18,9 +18,9 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 
-object InstantwinActor {
+object BoInstantwinActor {
 
-  def props(gameId: UUID)(implicit repository: Repository, materializer: ActorMaterializer) = Props(new InstantwinActor(gameId))
+  def props(gameId: UUID)(implicit repository: Repository, materializer: ActorMaterializer) = Props(new BoInstantwinActor(gameId))
 
   def name(gameId: UUID) = s"instantwin-$gameId"
 
@@ -40,7 +40,7 @@ object InstantwinActor {
 
 }
 
-class InstantwinActor(game_id: UUID)(implicit val repository: Repository, val materializer: ActorMaterializer) extends Actor with ActorLogging {
+class BoInstantwinActor(game_id: UUID)(implicit val repository: Repository, val materializer: ActorMaterializer) extends Actor with ActorLogging {
 
   override def receive: Receive = {
 

@@ -7,7 +7,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
 import fr.sysf.sample.CustomMySqlProfile.api.Database
-import fr.sysf.sample.actors.{ClusterListenerActor, ClusterSingletonActor, GameActor, PrizeActor}
+import fr.sysf.sample.actors.{ClusterListenerActor, ClusterSingletonActor, BoGameActor, BoPrizeActor}
 import fr.sysf.sample.repositories.{GameRepository, InstantwinRepository, PrizeRepository}
 import fr.sysf.sample.routes._
 
@@ -54,14 +54,14 @@ object Main extends App with RouteConcatenation with HttpSupport {
   repository.instantwin.schemaCreate()
 
   // Start actors
-  val gameActor: ActorRef = system.actorOf(GameActor.props, GameActor.Name)
-  val prizeActor: ActorRef = system.actorOf(PrizeActor.props, PrizeActor.name)
+  val gameActor: ActorRef = system.actorOf(BoGameActor.props, BoGameActor.Name)
+  val prizeActor: ActorRef = system.actorOf(BoPrizeActor.props, BoPrizeActor.name)
 
   // Start Actor clusterListener
   val clusterListenerActor = system.actorOf(ClusterListenerActor.props, ClusterListenerActor.name)
 
   // start http services
-  val mainRoute = new MainRoute(gameActor, prizeActor)
+  val mainRoute = new MainRouteBo(gameActor, prizeActor, clusterSingletonProxy)
   val bindingFuture = Http().bindAndHandle(mainRoute.routes, Config.Api.hostname, Config.Api.port)
 
   // logger
@@ -70,8 +70,8 @@ object Main extends App with RouteConcatenation with HttpSupport {
   logger.info(s"Swagger description http://${Config.Api.hostname}:${Config.Api.port}/api-docs/swagger.json")
 }
 
-class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef)(implicit val ec:ExecutionContext, implicit val materializer: ActorMaterializer)
-  extends HttpSupport with GameRoute with SwaggerRoute with PrizeRoute {
+class MainRouteBo(val gameActor: ActorRef, val prizeActor: ActorRef, val clusterSingletonProxy: ActorRef)(implicit val ec:ExecutionContext, implicit val materializer: ActorMaterializer)
+  extends HttpSupport with BoGameRoute with SwaggerRoute with BoPrizeRoute {
 
   val routes: Route = corsHandler(gameRoute ~ prizeRoute ~ HttpSupport.healthCheckRoute ~ swaggerRoute)
 }
