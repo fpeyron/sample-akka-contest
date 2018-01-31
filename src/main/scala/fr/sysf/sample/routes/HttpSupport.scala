@@ -4,7 +4,7 @@ import java.util.UUID
 
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.headers._
-import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
+import akka.http.scaladsl.model.{HttpHeader, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, ErrorResponse, InvalidInputException, NotAuthorizedException}
@@ -67,10 +67,10 @@ trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {
       case ValidationRejection(msg, _) =>
         complete(StatusCodes.BadRequest, ErrorResponse(code = StatusCodes.BadRequest.intValue, `type` = "ValidationRejection", message = Some(s"That wasn't valid! $msg")))
     }
-    .handleAll[AuthenticationFailedRejection] {_ =>
-      complete(StatusCodes.Forbidden, ErrorResponse(code = StatusCodes.Forbidden.intValue, `type` = "AuthorizationFailedRejection", message = Some("The resource requires authentication, which was not supplied with the request")))
+    .handleAll[AuthenticationFailedRejection] { _ =>
+    complete(StatusCodes.Forbidden, ErrorResponse(code = StatusCodes.Forbidden.intValue, `type` = "AuthorizationFailedRejection", message = Some("The resource requires authentication, which was not supplied with the request")))
     //  case CredentialsRejected => complete(StatusCodes.Forbidden, ErrorResponse(code = StatusCodes.Forbidden.intValue, `type` = "AuthorizationFailedRejection", message = Some("The supplied authentication is invalid")))
-    }
+  }
     .handleAll[MethodRejection] { methodRejection =>
     complete(StatusCodes.MethodNotAllowed, ErrorResponse(code = StatusCodes.MethodNotAllowed.intValue, `type` = "MethodRejection", message = Some(s"Can't do that! Supported: ${methodRejection.map(_.supported.name).mkString(" or ")}!")))
   }
@@ -90,30 +90,28 @@ trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {
 
 trait CorsSupport {
 
-  private val corsResponseHeaders = List(
-    `Access-Control-Allow-Origin`("localhost:4200"),
-    `Access-Control-Allow-Credentials`(true),
-    `Access-Control-Allow-Headers`("Authorization", "Content-Type", "X-Requested-With")
-  )
 
   //this directive adds access control headers to normal responses
-  private val addAccessControlHeaders: Directive0 = {
-    respondWithHeaders(corsResponseHeaders)
+  private def addAccessControlHeaders(origin: String): Directive0 = {
+    respondWithHeaders(List(
+      Some(origin).filterNot(_ == "*").map(`Access-Control-Allow-Origin`(_)).getOrElse(`Access-Control-Allow-Origin`.*),
+      `Access-Control-Allow-Credentials`(true),
+      `Access-Control-Allow-Headers`("Authorization", "Content-Type", "X-Requested-With")
+    ))
   }
 
   //this handles preflight OPTIONS requests.
-  private def preflightRequestHandler: Route = options {
-    complete(HttpResponse(StatusCodes.OK).
-      withHeaders(`Access-Control-Allow-Methods`(OPTIONS, POST, PUT, GET, DELETE)))
+  private val preflightRequestHandler: Route = options {
+    complete(HttpResponse(StatusCodes.OK).withHeaders(`Access-Control-Allow-Methods`(OPTIONS, POST, PUT, GET, DELETE)))
+  }
+
+  def extractOriginHeader: HttpHeader => Option[String] = {
+    case HttpHeader("origin", value) => Some(value)
+    case _ => None
   }
 
   // Wrap the Route with this method to enable adding of CORS headers
-  def corsHandler(r: Route): Route = addAccessControlHeaders {
-    preflightRequestHandler ~ r
+  def corsHandler(r: Route): Route = (headerValueByName("origin") | provide("*")) { origin =>
+    addAccessControlHeaders(origin)(preflightRequestHandler ~ r)
   }
-
-  // Helper method to add CORS headers to HttpResponse
-  // preventing duplication of CORS headers across code
-  def addCORSHeaders(response: HttpResponse):HttpResponse =
-    response.withHeaders(corsResponseHeaders)
 }
