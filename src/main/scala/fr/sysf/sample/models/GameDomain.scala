@@ -3,8 +3,7 @@ package fr.sysf.sample.models
 import java.time.Instant
 import java.util.UUID
 
-import fr.sysf.sample.models.GameDto.{GameInputType, GameLimitType, GameLimitUnit, GameStatusType, GameType}
-import fr.sysf.sample.models.GameEntity.{Game, GameLimit, GamePrize}
+import fr.sysf.sample.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
 import fr.sysf.sample.routes.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
@@ -53,6 +52,58 @@ object GameEntity {
                         @ApiModelProperty(position = 5, value = "quantity", example = "10")
                         quantity: Int
                       )
+
+
+  implicit object GameType extends Enumeration {
+    val Instant: GameType.Value = Value("INSTANT")
+    val Draw: GameType.Value = Value("DRAW")
+
+    val all = Seq(Instant, Draw)
+
+    def withNameOptional(name: String): Option[GameType.Value] = try {
+      Some(this.withName(name))
+    } catch {
+      case _: Throwable => None
+    }
+
+  }
+
+  implicit object GameStatusType extends Enumeration {
+    val Draft: GameStatusType.Value = Value("DRAFT")
+    val Activated: GameStatusType.Value = Value("ACTIVATED")
+    val Archived: GameStatusType.Value = Value("ARCHIVED")
+
+    val all = Seq(Draft, Activated, Archived)
+
+    def withNameOptional(name: String): Option[GameStatusType.Value] = try {
+      Some(this.withName(name))
+    } catch {
+      case _: Throwable => None
+    }
+  }
+
+  implicit object GameLimitType extends Enumeration {
+    val Participation: GameLimitType.Value = Value("PARTICIPATION")
+    val Win: GameLimitType.Value = Value("WIN")
+
+    val all = Seq(Participation, Win)
+  }
+
+  implicit object GameLimitUnit extends Enumeration {
+    val Second: GameLimitUnit.Value = Value("SECOND")
+    val Day: GameLimitUnit.Value = Value("DAY")
+    val Game: GameLimitUnit.Value = Value("GAME")
+
+    val all = Seq(Second, Day, Game)
+  }
+
+  implicit object GameInputType extends Enumeration {
+    val Other: GameInputType.Value = Value("OTHER")
+    val Point: GameInputType.Value = Value("POINT")
+    val Pincode: GameInputType.Value = Value("PINCODE")
+
+    val all = Seq(Other, Point, Pincode)
+  }
 
 }
 
@@ -199,58 +250,6 @@ object GameDto {
                                      @ApiModelProperty(position = 4, value = "quantity", example = "10")
                                      quantity: Option[Int]
                                    )
-
-
-  implicit object GameType extends Enumeration {
-    val Instant: GameType.Value = Value("INSTANT")
-    val Draw: GameType.Value = Value("DRAW")
-
-    val all = Seq(Instant, Draw)
-
-    def withNameOptional(name: String): Option[GameType.Value] = try {
-      Some(this.withName(name))
-    } catch {
-      case _: Throwable => None
-    }
-
-  }
-
-  implicit object GameStatusType extends Enumeration {
-    val Draft: GameStatusType.Value = Value("DRAFT")
-    val Activated: GameStatusType.Value = Value("ACTIVATED")
-    val Archived: GameStatusType.Value = Value("ARCHIVED")
-
-    val all = Seq(Draft, Activated, Archived)
-
-    def withNameOptional(name: String): Option[GameStatusType.Value] = try {
-      Some(this.withName(name))
-    } catch {
-      case _: Throwable => None
-    }
-  }
-
-  implicit object GameLimitType extends Enumeration {
-    val Participation: GameLimitType.Value = Value("PARTICIPATION")
-    val Win: GameLimitType.Value = Value("WIN")
-
-    val all = Seq(Participation, Win)
-  }
-
-  implicit object GameLimitUnit extends Enumeration {
-    val Second: GameLimitUnit.Value = Value("SECOND")
-    val Day: GameLimitUnit.Value = Value("DAY")
-    val Game: GameLimitUnit.Value = Value("GAME")
-
-    val all = Seq(Second, Day, Game)
-  }
-
-  implicit object GameInputType extends Enumeration {
-    val Other: GameInputType.Value = Value("OTHER")
-    val Point: GameInputType.Value = Value("POINT")
-    val Pincode: GameInputType.Value = Value("PINCODE")
-
-    val all = Seq(Other, Point, Pincode)
-  }
 
 
   trait GameJsonFormats extends DefaultJsonFormats {

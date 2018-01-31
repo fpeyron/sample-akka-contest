@@ -7,8 +7,7 @@ import java.util.UUID
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import fr.sysf.sample.CustomMySqlProfile.api._
-import fr.sysf.sample.models.GameDto.{GameInputType, GameLimitType, GameLimitUnit, GameStatusType, GameType}
-import fr.sysf.sample.models.GameEntity.{Game, GameLimit, GamePrize}
+import fr.sysf.sample.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
 import slick.ast.BaseTypedType
 import slick.jdbc.JdbcType
 import slick.sql.SqlProfile.ColumnOption.SqlType
@@ -36,6 +35,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       ).transactionally.asTry
     }
 
+
     def update(game: Game): Future[Try[Unit]] = database.run {
       DBIO.seq(
         gameTableQuery.filter(_.id === game.id).update(game),
@@ -48,6 +48,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       ).transactionally.asTry
     }
 
+
     def delete(game_id: UUID): Future[Try[Unit]] = database.run {
       DBIO.seq(
         gamePrizeTableQuery.filter(_.game_id === game_id).delete,
@@ -56,11 +57,19 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       ).asTry
     }
 
+
     def updateStatus(game_id: UUID, status: GameStatusType.Value): Future[Try[Int]] = database.run {
-      (for { c <- gameTableQuery if c.id === game_id } yield c.status ).update(status.toString).asTry
+      (for {c <- gameTableQuery if c.id === game_id} yield c.status).update(status.toString).asTry
     }
 
+
     def getById(game_id: UUID): Future[Option[Game]] = {
+
+      database.run(gameTableQuery.filter(_.id === game_id).result.headOption)
+    }
+
+
+    def getExtendedById(game_id: UUID): Future[Option[Game]] = {
       /*
             val query = gameTableQuery.filter(_.id === game_id)
               .joinLeft(gameLimitTableQuery).on(_.id === _.game_id)
@@ -80,21 +89,23 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
               */
 
       val query: DBIO[(Option[Game], Seq[GameLimit], Seq[String], Seq[String], Seq[GamePrize])] = for {
-        game          <- gameTableQuery.filter(_.id === game_id).result.headOption
-        gameLimit     <- if (game.isDefined) gameLimitTableQuery    .filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
-        gameEans      <- if (game.isDefined) gameEanTableQuery      .filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
-        gameFreeCodes <- if (game.isDefined) gameFreecodeTableQuery .filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
-        gamePrizes    <- if (game.isDefined) gamePrizeTableQuery    .filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
+        game <- gameTableQuery.filter(_.id === game_id).result.headOption
+        gameLimit <- if (game.isDefined) gameLimitTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
+        gameEans <- if (game.isDefined) gameEanTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
+        gameFreeCodes <- if (game.isDefined) gameFreecodeTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
+        gamePrizes <- if (game.isDefined) gamePrizeTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
       } yield (game, gameLimit, gameEans, gameFreeCodes, gamePrizes)
 
       database.run(query).map(r => r._1.map(_.copy(limits = r._2, input_eans = r._3, input_freecodes = r._4, prizes = r._5)))
     }
 
-    def findEntityByReference(reference: String): Future[Seq[Game]] = database.run {
+
+    def findByReference(reference: String): Future[Seq[Game]] = database.run {
       gameTableQuery.filter(_.reference === reference).to[List].result
     }
 
-    def fetchBy(country_code: Option[String] = None, status: Iterable[GameStatusType.Value] = Iterable.empty, types: Iterable[GameType.Value] = Iterable.empty, parent: Option[UUID] = None): Source[Game, NotUsed] = Source.fromPublisher{
+
+    def fetchBy(country_code: Option[String] = None, status: Iterable[GameStatusType.Value] = Iterable.empty, types: Iterable[GameType.Value] = Iterable.empty, parent: Option[UUID] = None): Source[Game, NotUsed] = Source.fromPublisher {
       database.stream {
         val query = gameTableQuery
           .filter(row => (if (types.isEmpty) None else Some(types)).map(s => row.`type` inSet s.map(_.toString)).getOrElse(true: Rep[Boolean]))
@@ -166,9 +177,6 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     def removeFreecode(game_id: UUID, freecode: String): Future[Int] = database.run {
       gameFreecodeTableQuery.filter(e => e.game_id === game_id && e.freecode === freecode).delete
     }
-
-
-
 
 
     /**
@@ -370,7 +378,7 @@ private[repositories] trait GamePrizeTable {
 
     override def * = (game_id, id, prize_id, start_date, end_date, quantity) <> (create, extract)
 
-    def create(t: (UUID, UUID, UUID, Instant, Instant, Int)): (UUID, GamePrize) = (t._1, GamePrize( id = t._2, prize_id = t._3, start_date = t._4, end_date = t._5, quantity = t._6))
+    def create(t: (UUID, UUID, UUID, Instant, Instant, Int)): (UUID, GamePrize) = (t._1, GamePrize(id = t._2, prize_id = t._3, start_date = t._4, end_date = t._5, quantity = t._6))
 
     def extract(t: (UUID, GamePrize)) = Some((t._1, t._2.id, t._2.prize_id, t._2.start_date, t._2.end_date, t._2.quantity))
   }

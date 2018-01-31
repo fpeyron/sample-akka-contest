@@ -7,8 +7,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import fr.sysf.sample.CustomMySqlProfile.api.Database
-import fr.sysf.sample.models.GameDto.{GameInputType, GameLimitType, GameLimitUnit, GameStatusType, GameType}
-import fr.sysf.sample.models.GameEntity.{Game, GameLimit, GamePrize}
+import fr.sysf.sample.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
 import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
 
 import scala.concurrent.ExecutionContextExecutor
@@ -26,7 +25,7 @@ object TestSlick extends App {
        |}
        """.stripMargin).withFallback(ConfigFactory.load())
 
-  // needed to run the route
+  // needed to run the routeO
   implicit val system: ActorSystem = ActorSystem("TestSlick", config)
   implicit val materializer: ActorMaterializer = ActorMaterializer()
 
@@ -76,6 +75,6 @@ object TestSlick extends App {
   repository.game.fetchBy(country_code = Some("CA")).runForeach { r => println(r) }
 
   println("repository.game.getById: ")
-  repository.game.getById(ids.head._2).foreach(r => println(r))
+  repository.game.getExtendedById(ids.head._2).foreach(r => println(r))
 
 }

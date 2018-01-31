@@ -10,7 +10,7 @@ import akka.stream.scaladsl.Source
 import fr.sysf.sample.actors.GameActor._
 import fr.sysf.sample.actors.InstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
 import fr.sysf.sample.models.GameDto._
-import fr.sysf.sample.models.GameEntity.{Game, GameLimit, GamePrize}
+import fr.sysf.sample.models.GameEntity._
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.{EntityNotFoundException, InvalidInputException, NotAuthorizedException}
 import fr.sysf.sample.{ActorUtil, Repository}
@@ -66,6 +66,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
   override def receive: Receive = {
 
     case GameListQuery(uc, types, status, parent) => try {
+
       val restrictedTypes = types.map(_.split(",").flatMap(GameType.withNameOptional).toSeq)
       val restrictedStatus = status.map(_.split(",").flatMap(GameStatusType.withNameOptional).toSeq)
       val restrictedParent = parent.flatMap(ActorUtil.string2UUID)
@@ -86,7 +87,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
 
     case GameGetQuery(uc, id) => try {
 
-      repository.game.getById(id).map { game =>
+      repository.game.getExtendedById(id).map { game =>
         // check existing game
         if (!game.exists(_.country_code == uc.country_code)) {
           throw EntityNotFoundException(id = id)
@@ -136,14 +137,14 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
       )
 
       // Check existing reference
-      if (Await.result(repository.game.findEntityByReference(game.reference), Duration.Inf)
+      if (Await.result(repository.game.findByReference(game.reference), Duration.Inf)
         .exists(r => r.country_code == game.country_code && r.status != GameStatusType.Archived)) {
         throw InvalidInputException(detail = Map("reference" -> "ALREADY_EXISTS : already exists with same reference and status ACTIVE"))
       }
 
       // Check existing parent
       if (game.parent_id.isDefined) {
-        val parent = Await.result(repository.game.getById(game.parent_id.get), Duration.Inf)
+        val parent = Await.result(repository.game.getExtendedById(game.parent_id.get), Duration.Inf)
         if (!parent.exists(r => r.country_code == game.country_code)) {
           throw InvalidInputException(detail = Map("parent_id" -> "ENTITY_NOT_FOUND : should already exists"))
         }
@@ -164,7 +165,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
     case GameUpdateCmd(uc, id, request) => try {
 
       // Get existing game
-      val game = Await.result(repository.game.getById(id), Duration.Inf)
+      val game = Await.result(repository.game.getExtendedById(id), Duration.Inf)
 
       // check existing game
       if (!game.exists(_.country_code == uc.country_code)) {
@@ -184,14 +185,14 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
 
       // Check existing reference
       if (request.reference.exists(_ != game.get.reference) &&
-        Await.result(repository.game.findEntityByReference(request.reference.get), Duration.Inf)
+        Await.result(repository.game.findByReference(request.reference.get), Duration.Inf)
           .exists(r => r.country_code == game.get.country_code && r.status != GameStatusType.Archived)) {
         throw InvalidInputException(detail = Map("reference" -> "ALREADY_EXISTS : already exists with same reference and status ACTIVE"))
       }
 
       // Check existing parent
       if (game.get.parent_id.isDefined) {
-        val parent = Await.result(repository.game.getById(game.get.parent_id.get), Duration.Inf)
+        val parent = Await.result(repository.game.getExtendedById(game.get.parent_id.get), Duration.Inf)
         if (!parent.exists(r => r.country_code == game.get.country_code)) {
           throw InvalidInputException(detail = Map("parent_id" -> "ENTITY_NOT_FOUND : should already exists"))
         }
@@ -247,7 +248,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
       if (game.get.parent_id.isDefined) throw NotAuthorizedException(id = id, message = Some("HAS_DEPENDENCIES"))
 
       // Delete instantwins
-      //forwardToInstantwinActor(InstanwinDeleteCmd())
+      getInstantwinActor(game.get.id) ! InstanwinDeleteCmd
 
       // Persist
       Await.result(repository.game.delete(id), Duration.Inf)
@@ -315,7 +316,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
 
     case GameListPrizesQuery(uc, id) => try {
 
-      repository.game.getById(id).map { game =>
+      repository.game.getExtendedById(id).map { game =>
         // check existing game
         if (!game.exists(_.country_code == uc.country_code)) {
           throw EntityNotFoundException(id = id)
@@ -333,7 +334,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
     case GameAddPrizeCmd(uc, id, request) => try {
 
       // Get existing game
-      val game = Await.result(repository.game.getById(id), Duration.Inf)
+      val game = Await.result(repository.game.getExtendedById(id), Duration.Inf)
 
       // check existing game
       if (!game.exists(_.country_code == uc.country_code)) {
@@ -377,7 +378,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
     case GameUpdatePrizeCmd(uc, id, prizeId, request) => try {
 
       // Get existing game
-      val game = Await.result(repository.game.getById(id), Duration.Inf)
+      val game = Await.result(repository.game.getExtendedById(id), Duration.Inf)
       val gamePrize: Option[GamePrize] = game.flatMap(_.prizes.find(_.id == prizeId))
 
       // check existing game
@@ -428,7 +429,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
     case GameRemovePrizeCmd(uc, id, prize_id) => try {
 
       // Get existing game
-      val game = Await.result(repository.game.getById(id), Duration.Inf)
+      val game = Await.result(repository.game.getExtendedById(id), Duration.Inf)
       val gamePrize: Option[GamePrize] = game.flatMap(_.prizes.find(_.id == prize_id))
 
       // check existing game
@@ -467,7 +468,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
 
       repository.game.getById(id).map { game =>
         // check existing game
-        if (! game.exists(_.country_code == uc.country_code)) {
+        if (!game.exists(_.country_code == uc.country_code)) {
           throw EntityNotFoundException(id = id)
         }
         repository.instantwin.fetchBy(game.get.id)
@@ -616,17 +617,7 @@ class GameActor(implicit val repository: Repository, implicit val materializer: 
     case _: java.time.zone.ZoneRulesException => false
   }
 
-  def getInstantwinActor(game_id: UUID): ActorRef = context.child(InstantwinActor.name(game_id)).getOrElse(createInstantwinActor(game_id))
-
-  def forwardToInstantwinActor: Actor.Receive = {
-    case cmd: GameGetInstantwinQuery =>
-      context.child(InstantwinActor.name(cmd.id)).fold(createAndForward(cmd, cmd.id))(forwardCommand(cmd))
-  }
-
-  def forwardCommand(cmd: Any)(shopper: ActorRef): Unit = shopper forward cmd
-
-  def createAndForward(cmd: Any, game_id: UUID): Unit = createInstantwinActor(game_id) forward cmd
-
-  def createInstantwinActor(game_id: UUID): ActorRef = context.actorOf(InstantwinActor.props(game_id), InstantwinActor.name(game_id))
+  private def getInstantwinActor(game_id: UUID): ActorRef = context.child(InstantwinActor.name(game_id))
+    .getOrElse(context.actorOf(InstantwinActor.props(game_id), InstantwinActor.name(game_id)))
 
 }
