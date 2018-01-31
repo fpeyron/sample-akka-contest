@@ -73,6 +73,6 @@ object Main extends App with RouteConcatenation with HttpSupport {
 class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef)(implicit val ec:ExecutionContext, implicit val materializer: ActorMaterializer)
   extends HttpSupport with GameRoute with SwaggerRoute with PrizeRoute {
 
-  val routes: Route = gameRoute ~ prizeRoute ~ HttpSupport.healthCheckRoute ~ swaggerRoute
+  val routes: Route = corsHandler(gameRoute ~ prizeRoute ~ HttpSupport.healthCheckRoute ~ swaggerRoute)
 }
  class Repository(implicit val ec : ExecutionContext, implicit val database: Database, val materializer: ActorMaterializer) extends PrizeRepository with GameRepository with InstantwinRepository
