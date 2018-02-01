@@ -1,8 +1,8 @@
 import com.typesafe.sbt.packager.docker.Cmd
 import sbt.enablePlugins
 
-organization := "com.betc.sample"
-name := "fusion-provider-game"
+organization := "com.betc.danon.fusion"
+name := "fusion-game"
 
 lazy val akkaVersion = "2.5.8"
 lazy val akkaHttpVersion = "10.0.11"
@@ -63,13 +63,15 @@ fork in run := true
 // ----------------
 enablePlugins(DockerPlugin, JavaAppPackaging)
 
-packageName               in Docker := name.value
+packageName               in Docker := s"danon-${name.value}"
 version                   in Docker := version.value
 maintainer                in Docker   := "technical support <florent.peyron@ext.betc.com>"
 dockerBaseImage            := "openjdk:8u151-jre-alpine"
 dockerCommands := Seq(
   dockerCommands.value.head,
   Cmd("RUN", "apk add --no-cache curl bash && rm -rf /var/cache/apk/*"),
+  Cmd("ADD", "opt /opt"),
+  Cmd("RUN", "chown -R daemon:daemon /opt"),
   Cmd("ENV", "SERVICE_AKKA_PORT 2550"),
   Cmd("ENV", "JAVA_OPTS '-Xmx256m -Xms256m'"),
   Cmd("ENV", "REDIS_HOST 'redis'"),
@@ -79,8 +81,8 @@ dockerCommands := Seq(
   Cmd("ENV", "MYSQL_DATABASE 'mysql'"),
   Cmd("ENV", "MYSQL_USER 'root'"),
   Cmd("ENV", "MYSQL_PASSWORD 'root'")
-) ++ dockerCommands.value.tail
+) ++ dockerCommands.value.tail.filter{case Cmd("ADD", _ ) => false  case _ => true }
 dockerExposedPorts         := Seq(8080,2550,5000)
 dockerUpdateLatest        := true
-dockerEntrypoint          := Seq("sh","-c","HOST_IP=$(/usr/bin/curl -s --connect-timeout 1 169.254.169.254/latest/meta-data/local-ipv4) && SERVICE_AKKA_HOST=$HOST_IP ; echo SERVICE_AKKA_HOST:$SERVICE_AKKA_HOST ; " + s"bin/main -Dconfig.resource=application.conf" + " -Dakka.remote.netty.tcp.hostname=$SERVICE_AKKA_HOST")
+dockerEntrypoint          := Seq("sh","-c","HOST_IP=$(/usr/bin/curl -s --connect-timeout 1 169.254.169.254/latest/meta-data/local-ipv4) && SERVICE_AKKA_HOST=$HOST_IP ; echo SERVICE_AKKA_HOST:$SERVICE_AKKA_HOST ; " + s"bin/fusion-game -Dconfig.resource=application.conf" + " -Dakka.remote.netty.tcp.hostname=$SERVICE_AKKA_HOST")
 

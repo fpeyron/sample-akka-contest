@@ -3,7 +3,6 @@ services:
   fusion-redis:
     container_name: fusion-redis
     image: redis:latest
-    #command: consul agent -server -client=0.0.0.0 -bootstrap-expect=1 -data-dir=/tmp/consul -ui
     hostname: fusion-redis
     networks:
       - fusion
@@ -26,7 +25,7 @@ services:
 
   fusion-akka1:
     container_name: fusion-akka1
-    image: fusion-provider-game:latest
+    image: danon-fusion-game:latest
     hostname: fusion-akka1
     networks:
       - fusion
@@ -49,7 +48,7 @@ services:
       - MYSQL_PASSWORD=fusion-password
   fusion-akka2:
     container_name: fusion-akka2
-    image: fusion-provider-game:latest
+    image: danon-fusion-game:latest
     hostname: fusion-akka2
     networks:
       - fusion
