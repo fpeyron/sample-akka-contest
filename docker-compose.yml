@@ -12,15 +12,17 @@ services:
 
   fusion-mysql:
     container_name: fusion-mysql
-    image: mysql:latest
+    image: mysql:5.7.21
     hostname: fusion-mysql
     networks:
       - fusion
     #ports:
       #- "13306:3306"
     environment:
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_DATABASE=game
+      - MYSQL_ROOT_PASSWORD=admin
+      - MYSQL_DATABASE=fusion-database
+      - MYSQL_USER=fusion-user
+      - MYSQL_PASSWORD=fusion-password
 
   fusion-akka1:
     container_name: fusion-akka1
@@ -36,15 +38,15 @@ services:
       - "5011:5010"
       - "2550"
     environment:
-      - REDIS_HOST=fusion-redis
-      - REDIS_PORT=6379
       - SERVICE_AKKA_HOST=fusion-akka1
       - SERVICE_AKKA_PORT=2550
+      - REDIS_HOST=fusion-redis
+      - REDIS_PORT=6379
       - MYSQL_HOST=fusion-mysql
       - MYSQL_PORT=3306
-      - MYSQL_USERNAME=root
-      - MYSQL_PASSWORD=root
-      - MYSQL_DATABASE=game
+      - MYSQL_DATABASE=fusion-database
+      - MYSQL_USER=fusion-user
+      - MYSQL_PASSWORD=fusion-password
   fusion-akka2:
     container_name: fusion-akka2
     image: fusion-provider-game:latest
@@ -59,16 +61,15 @@ services:
       - "5012:5010"
       - "2550"
     environment:
-      - REDIS_HOST=fusion-redis
-      - REDIS_PORT=6379
       - SERVICE_AKKA_HOST=fusion-akka1
       - SERVICE_AKKA_PORT=2550
+      - REDIS_HOST=fusion-redis
+      - REDIS_PORT=6379
       - MYSQL_HOST=fusion-mysql
       - MYSQL_PORT=3306
-      - MYSQL_USERNAME=root
-      - MYSQL_PASSWORD=root
-      - MYSQL_DATABASE=game
-
+      - MYSQL_DATABASE=fusion-database
+      - MYSQL_USER=fusion-user
+      - MYSQL_PASSWORD=fusion-password
 
 networks:
   fusion:

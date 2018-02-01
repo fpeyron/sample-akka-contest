@@ -77,7 +77,7 @@ dockerCommands := Seq(
   Cmd("ENV", "MYSQL_HOST 'mysql'"),
   Cmd("ENV", "MYSQL_PORT 3306"),
   Cmd("ENV", "MYSQL_DATABASE 'mysql'"),
-  Cmd("ENV", "MYSQL_USERNAME 'root'"),
+  Cmd("ENV", "MYSQL_USER 'root'"),
   Cmd("ENV", "MYSQL_PASSWORD 'root'")
 ) ++ dockerCommands.value.tail
 dockerExposedPorts         := Seq(8080,2550,5000)
