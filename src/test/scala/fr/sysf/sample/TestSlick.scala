@@ -7,7 +7,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import fr.sysf.sample.CustomMySqlProfile.api.Database
-import fr.sysf.sample.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
+import fr.sysf.sample.models.GameEntity.{GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
 import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
 
 import scala.concurrent.ExecutionContextExecutor

@@ -61,7 +61,7 @@ object Main extends App with RouteConcatenation with HttpSupport {
   val clusterListenerActor = system.actorOf(ClusterListenerActor.props, ClusterListenerActor.name)
 
   // start http services
-  val mainRoute = new MainRouteBo(gameActor, prizeActor, clusterSingletonProxy)
+  val mainRoute = new MainRoute(gameActor, prizeActor, clusterSingletonProxy)
   val bindingFuture = Http().bindAndHandle(mainRoute.routes, Config.Api.hostname, Config.Api.port)
 
   // logger
@@ -70,7 +70,7 @@ object Main extends App with RouteConcatenation with HttpSupport {
   logger.info(s"Swagger description http://${Config.Api.hostname}:${Config.Api.port}/api-docs/swagger.json")
 }
 
-class MainRouteBo(val gameActor: ActorRef, val prizeActor: ActorRef, val clusterSingletonProxy: ActorRef)(implicit val ec:ExecutionContext, implicit val materializer: ActorMaterializer)
+class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef, val clusterSingletonProxy: ActorRef)(implicit val ec:ExecutionContext, implicit val materializer: ActorMaterializer)
   extends HttpSupport with BoGameRoute with SwaggerRoute with BoPrizeRoute {
 
   val routes: Route = corsHandler(gameRoute ~ prizeRoute ~ HttpSupport.healthCheckRoute ~ swaggerRoute)
