@@ -116,7 +116,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
         id = newId,
         `type` = request.`type`.map(GameType.withName) getOrElse GameType.Instant,
         status = GameStatusType.Draft,
-        reference = request.reference.getOrElse(newId.toString),
+        code = request.code.getOrElse(newId.toString),
         country_code = uc.country_code,
         title = request.title,
         start_date = request.start_date.getOrElse(Instant.now),
@@ -136,10 +136,10 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
         input_freecodes = request.input_freecodes.getOrElse(Seq.empty)
       )
 
-      // Check existing reference
-      if (Await.result(repository.game.findByReference(game.reference), Duration.Inf)
+      // Check existing code
+      if (Await.result(repository.game.findByCode(game.code), Duration.Inf)
         .exists(r => r.country_code == game.country_code && r.status != GameStatusType.Archived)) {
-        throw InvalidInputException(detail = Map("reference" -> "ALREADY_EXISTS : already exists with same reference and status ACTIVE"))
+        throw InvalidInputException(detail = Map("code" -> "ALREADY_EXISTS : already exists with same code and status ACTIVE"))
       }
 
       // Check existing parent
@@ -183,11 +183,11 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
         throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
       }
 
-      // Check existing reference
-      if (request.reference.exists(_ != game.get.reference) &&
-        Await.result(repository.game.findByReference(request.reference.get), Duration.Inf)
+      // Check existing code
+      if (request.code.exists(_ != game.get.code) &&
+        Await.result(repository.game.findByCode(request.code.get), Duration.Inf)
           .exists(r => r.country_code == game.get.country_code && r.status != GameStatusType.Archived)) {
-        throw InvalidInputException(detail = Map("reference" -> "ALREADY_EXISTS : already exists with same reference and status ACTIVE"))
+        throw InvalidInputException(detail = Map("code" -> "ALREADY_EXISTS : already exists with same code and status ACTIVE"))
       }
 
       // Check existing parent
@@ -202,7 +202,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
         id = game.get.id,
         `type` = game.get.`type`,
         status = game.get.status,
-        reference = request.reference.getOrElse(game.get.reference),
+        code = request.code.getOrElse(game.get.code),
         country_code = game.get.country_code,
         title = request.title.map(Some(_)).getOrElse(game.get.title),
         start_date = request.start_date.getOrElse(game.get.start_date),
@@ -492,8 +492,8 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       if (request.`type`.isDefined && !GameType.values.map(_.toString).contains(request.`type`.get))
         ("type", s"UNKNOWN_VALUE : list of values : ${GameType.all.mkString(",")}") else null
     ) ++ Option(
-      if (request.reference.exists(_.length < 2))
-        ("reference", s"INVALID_VALUE : should have more 2 chars") else null
+      if (request.code.exists(_.length < 2))
+        ("code", s"INVALID_VALUE : should have more 2 chars") else null
     ) ++ Option(
       if (request.start_date.isEmpty)
         ("start_date", s"INVALID_VALUE : should be in the future") else null
@@ -531,8 +531,8 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
     var index = 0
     //Validation input
     Option(
-      if (request.reference.exists(_.length < 2))
-        ("reference", s"INVALID_VALUE : should have more 2 chars") else null
+      if (request.code.exists(_.length < 2))
+        ("code", s"INVALID_VALUE : should have more 2 chars") else null
     ) ++ Option(
       if (request.start_date.isDefined && request.start_date.get.isBefore(Instant.now))
         ("start_date", s"INVALID_VALUE : should be in the future") else null

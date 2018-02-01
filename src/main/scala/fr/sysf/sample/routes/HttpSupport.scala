@@ -17,24 +17,24 @@ object HttpSupport {
   case class ErrorResponse(code: Int, `type`: String, message: Option[String] = None, detail: Option[Map[String, String]] = None)
 
   // Exception
-  class FunctionalException(val code: StatusCode, val `type`: Option[String]= None, val message: String) extends RuntimeException
+  class FunctionalException(val statusCode: StatusCode, val `type`: Option[String]= None, val message: String) extends RuntimeException
 
   case class InvalidInputException(message: Option[String] = None, detail: Map[String, String]) extends RuntimeException
 
 
-  case class GameIdNotFoundException(id: UUID) extends FunctionalException(code = StatusCodes.NotFound, `type` = Some("GameNotFoundException"), message = s"game not found with id : $id")
+  case class GameIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("GameNotFoundException"), message = s"game not found with id : $id")
 
-  case class GamePrizeIdNotFoundException(id: UUID) extends FunctionalException(code = StatusCodes.NotFound, `type` = Some("GamePrizeNotFoundException"), message = s"prizes not found for this game with id : $id")
+  case class GamePrizeIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("GamePrizeNotFoundException"), message = s"prizes not found for this game with id : $id")
 
-  case class GameRefNotFoundException(country_code: String, reference: String) extends FunctionalException(code = StatusCodes.NotFound, `type` = Some("GameNotFoundException"), message = s"game not found with reference : $reference")
+  case class GameRefNotFoundException(country_code: String, code: String) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("GameNotFoundException"), message = s"game not found with code : $code")
 
-  case class PrizeIdNotFoundException(id: UUID) extends FunctionalException(code = StatusCodes.NotFound, `type` = Some("PrizeNotFoundException"), message = s"prizes not found with id : $id")
+  case class PrizeIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("PrizeNotFoundException"), message = s"prizes not found with id : $id")
 
-  case class NotAuthorizedException(id: UUID, override val message: String)  extends FunctionalException(code = StatusCodes.Forbidden, message = message)
+  case class NotAuthorizedException(id: UUID, override val message: String)  extends FunctionalException(statusCode = StatusCodes.Forbidden, message = message)
 
-  case class ParticipationNotOpenedException(reference: String) extends FunctionalException(code = StatusCodes.Forbidden, `type` = Some("ParticipationNotOpenedException"), message = s"game with reference : $reference is not open")
+  case class ParticipationNotOpenedException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationNotOpenedException"), message = s"game with code : $code is not open")
 
-  case class ParticipationCloseException(reference: String) extends FunctionalException(code = StatusCodes.Forbidden, `type` = Some("ParticipationClosedException"), message = s"game with reference : $reference is finished")
+  case class ParticipationCloseException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationClosedException"), message = s"game with code : $code is finished")
 
   val healthCheckRoute: Route =
     path("health") {
@@ -52,7 +52,7 @@ trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {
   implicit def exceptionHandler: ExceptionHandler = ExceptionHandler {
 
     case e: FunctionalException =>
-      complete(e.code, ErrorResponse(code = e.code.intValue(), `type` = e.getClass.getSimpleName, message = Some(e.message)))
+      complete(e.statusCode, ErrorResponse(code = e.statusCode.intValue(), `type` = e.getClass.getSimpleName, message = Some(e.message)))
 
     case _: ArithmeticException =>
       extractUri { uri =>

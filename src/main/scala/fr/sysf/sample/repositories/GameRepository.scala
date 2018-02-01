@@ -100,8 +100,8 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     }
 
 
-    def findByReference(reference: String): Future[Seq[Game]] = database.run {
-      gameTableQuery.filter(_.reference === reference).to[List].result
+    def findByCode(code: String): Future[Seq[Game]] = database.run {
+      gameTableQuery.filter(_.code === code).to[List].result
     }
 
 
@@ -110,7 +110,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
                  status: Iterable[GameStatusType.Value] = Iterable.empty,
                  types: Iterable[GameType.Value] = Iterable.empty,
                  parent: Option[UUID] = None,
-                 reference: Option[String] = None,
+                 code: Option[String] = None,
                ): Source[Game, NotUsed] = Source.fromPublisher {
       database.stream {
         val query = gameTableQuery
@@ -118,7 +118,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
           .filter(row => (if (status.isEmpty) None else Some(status)).map(s => row.status inSet s.map(_.toString)).getOrElse(true: Rep[Boolean]))
           .filter(row => if (country_code.isDefined) row.country_code === country_code.get else true: Rep[Boolean])
           .filter(row => if (parent.isDefined) row.parent_id.get === parent.get else true: Rep[Boolean])
-          .filter(row => if (reference.isDefined) row.reference === reference.get else true: Rep[Boolean])
+          .filter(row => if (code.isDefined) row.code === code.get else true: Rep[Boolean])
           .to[List]
         //println(query.result.statements.headOption)
         query.result
@@ -248,7 +248,7 @@ private[repositories] trait GameTable {
 
     def status = column[String]("status", O.Length(10, varying = true))
 
-    def reference = column[String]("reference", O.Length(36, varying = true))
+    def code = column[String]("code", O.Length(36, varying = true))
 
     def parent_id = column[Option[UUID]]("parent_id")
 
@@ -270,14 +270,14 @@ private[repositories] trait GameTable {
 
     def input_freecodes = column[Option[String]]("input_freecodes", O.Length(255, varying = true))
 
-    override def * = (id, `type`, status, reference, parent_id, country_code, title, start_date, timezone, end_date, input_type, input_point) <> (create, extract)
+    override def * = (id, `type`, status, code, parent_id, country_code, title, start_date, timezone, end_date, input_type, input_point) <> (create, extract)
 
     def create(t: (UUID, String, String, String, Option[UUID], String, Option[String], Instant, String, Instant, GameInputType.Value, Option[Int])) =
       Game(
         id = t._1,
         `type` = GameType.withName(t._2),
         status = GameStatusType.withName(t._3),
-        reference = t._4,
+        code = t._4,
         parent_id = t._5,
         country_code = t._6,
         title = t._7,
@@ -292,7 +292,7 @@ private[repositories] trait GameTable {
       g.id,
       g.`type`.toString,
       g.status.toString,
-      g.reference,
+      g.code,
       g.parent_id,
       g.country_code,
       g.title,
