@@ -7,7 +7,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import fr.sysf.sample.CustomMySqlProfile.api.Database
-import fr.sysf.sample.models.GameEntity.{GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
+import fr.sysf.sample.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
 import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
 
 import scala.concurrent.ExecutionContextExecutor
@@ -57,7 +57,7 @@ object TestSlick extends App {
       id = uuid,
       `type` = GameType.Instant,
       status = GameStatusType.Activated,
-      reference = s"instant-$i",
+      code = s"instant-$i",
       country_code = "CA",
       start_date = Instant.now, timezone = "+02:00", end_date = Instant.now.plusSeconds(1000000l), input_type = GameInputType.Other,
       limits = Seq(GameLimit(`type` = GameLimitType.Participation, unit = GameLimitUnit.Day, unit_value = Some(1), value = 10),
