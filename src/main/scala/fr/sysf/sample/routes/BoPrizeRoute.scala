@@ -22,7 +22,7 @@ import scala.concurrent.ExecutionContext
 /**
   *
   */
-@Api(value = "/bo/prizes", produces = MediaType.APPLICATION_JSON, authorizations = Array(
+@Api(value = "Prize", produces = MediaType.APPLICATION_JSON, authorizations = Array(
   new Authorization(value = "basicAuth", scopes = Array(
     new AuthorizationScope(scope = "read:prizes", description = "read your prizes for your country"),
     new AuthorizationScope(scope = "write:prizes", description = "modify prizes for your country")

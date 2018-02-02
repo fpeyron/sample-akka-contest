@@ -14,7 +14,7 @@ import fr.sysf.sample.Config
 import fr.sysf.sample.actors.BoGameActor._
 import fr.sysf.sample.models.GameDto._
 import fr.sysf.sample.models.GameEntity.GamePrize
-import fr.sysf.sample.models.InstantwinDomain.{Instantwin, InstantwinExtended}
+import fr.sysf.sample.models.InstantwinDomain.InstantwinExtended
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
 import fr.sysf.sample.routes.HttpSupport.ErrorResponse
 import io.swagger.annotations._
@@ -25,7 +25,7 @@ import scala.concurrent.ExecutionContext
 /**
   *
   */
-@Api(value = "/bo/games", produces = javax.ws.rs.core.MediaType.APPLICATION_JSON, authorizations = Array(
+@Api(value = "Game", produces = javax.ws.rs.core.MediaType.APPLICATION_JSON, authorizations = Array(
   new Authorization(value = "basicAuth", scopes = Array(
     new AuthorizationScope(scope = "read:games", description = "read your games for your country"),
     new AuthorizationScope(scope = "write:games", description = "modify games for your country")
