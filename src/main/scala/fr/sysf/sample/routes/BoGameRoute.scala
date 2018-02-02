@@ -42,7 +42,7 @@ trait BoGameRoute
   private implicit val timeout: Timeout = Config.Api.timeout
   implicit val gameActor: ActorRef
 
-  def gameRoute: Route = pathPrefix("/bo/games") {
+  def gameRoute: Route = pathPrefix("bo" / "games") {
     AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
       game_findBy ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
         game_getPrizes ~ game_addPrize ~ game_deletePrize ~ game_updatePrize ~

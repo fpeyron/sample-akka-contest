@@ -38,7 +38,7 @@ trait BoPrizeRoute
   private implicit val timeout: Timeout = Config.Api.timeout
   implicit val prizeActor: ActorRef
 
-  def prizeRoute: Route = pathPrefix("/bo/prizes") {
+  def prizeRoute: Route = pathPrefix("bo" / "prizes") {
     AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
       prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
     }

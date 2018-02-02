@@ -7,7 +7,6 @@ import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.{HttpHeader, HttpResponse, StatusCode, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
-import buildinfo.BuildInfo
 import fr.sysf.sample.routes.HttpSupport._
 import spray.json._
 
