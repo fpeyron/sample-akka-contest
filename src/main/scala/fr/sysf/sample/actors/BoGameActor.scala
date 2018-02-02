@@ -575,9 +575,6 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
   private def checkGamePrizeInputForCreation(game: Game, request: GamePrizeCreateRequest): Iterable[(String, String)] = {
     //Validation input
     Option(
-      if (request.start_date.isEmpty)
-        ("start_date", s"INVALID_VALUE : should be in the future") else null
-    ) ++ Option(
       if (request.start_date.isDefined && request.start_date.get.isBefore(Instant.now))
         ("start_date", s"INVALID_VALUE : should be is the future") else null
     ) ++ Option(
