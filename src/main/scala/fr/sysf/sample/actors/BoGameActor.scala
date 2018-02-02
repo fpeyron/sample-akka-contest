@@ -486,7 +486,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
         if (!game.exists(_.country_code == uc.country_code)) {
           throw GameIdNotFoundException(id = id)
         }
-        repository.instantwin.fetchBy(game.get.id)
+        repository.instantwin.fetchWithPrizeBy(game.get.id)
       }.pipeTo(sender)
 
     }
