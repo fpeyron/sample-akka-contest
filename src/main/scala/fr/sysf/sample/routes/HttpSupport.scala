@@ -37,29 +37,6 @@ object HttpSupport {
 
   case class ParticipationCloseException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationClosedException"), message = s"game with code : $code is finished")
 
-  val healthCheckRoute: Route =
-    path("health") {
-      get {
-        complete(HttpResponse(StatusCodes.OK, entity =
-          """{
-              "status": "UP"
-              }""".stripMargin))
-      }
-    } ~
-      path("info") {
-        get {
-          complete(HttpResponse(StatusCodes.OK, entity =
-            s"""{
-              "group": "${BuildInfo.organization}",
-              "name": "${BuildInfo.name}",
-              "version": "${BuildInfo.version}",
-              "buildTime": "${BuildInfo.buildTime}",
-              "buildScalaVersion": "${BuildInfo.scalaVersion}",
-              "buildSbtVersion": "${BuildInfo.sbtVersion}",
-              "description": "${BuildInfo.description}"
-              }""".stripMargin))
-        }
-      }
 }
 
 trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {

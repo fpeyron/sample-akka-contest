@@ -25,13 +25,13 @@ import scala.concurrent.ExecutionContext
 /**
   *
   */
-@Api(value = "/games", produces = javax.ws.rs.core.MediaType.APPLICATION_JSON, authorizations = Array(
+@Api(value = "/bo/games", produces = javax.ws.rs.core.MediaType.APPLICATION_JSON, authorizations = Array(
   new Authorization(value = "basicAuth", scopes = Array(
     new AuthorizationScope(scope = "read:games", description = "read your games for your country"),
     new AuthorizationScope(scope = "write:games", description = "modify games for your country")
   ))
 ))
-@Path("/games")
+@Path("/bo/games")
 trait BoGameRoute
   extends Directives with DefaultJsonFormats with GameJsonFormats {
 
@@ -42,7 +42,7 @@ trait BoGameRoute
   private implicit val timeout: Timeout = Config.Api.timeout
   implicit val gameActor: ActorRef
 
-  def gameRoute: Route = pathPrefix("games") {
+  def gameRoute: Route = pathPrefix("/bo/games") {
     AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
       game_findBy ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
         game_getPrizes ~ game_addPrize ~ game_deletePrize ~ game_updatePrize ~

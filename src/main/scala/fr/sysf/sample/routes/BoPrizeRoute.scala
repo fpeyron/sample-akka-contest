@@ -22,13 +22,13 @@ import scala.concurrent.ExecutionContext
 /**
   *
   */
-@Api(value = "/prizes", produces = MediaType.APPLICATION_JSON, authorizations = Array(
+@Api(value = "/bo/prizes", produces = MediaType.APPLICATION_JSON, authorizations = Array(
   new Authorization(value = "basicAuth", scopes = Array(
     new AuthorizationScope(scope = "read:prizes", description = "read your prizes for your country"),
     new AuthorizationScope(scope = "write:prizes", description = "modify prizes for your country")
   ))
 ))
-@Path("/prizes")
+@Path("/bo/prizes")
 trait BoPrizeRoute
   extends Directives with DefaultJsonFormats with PrizeJsonFormats {
 
@@ -38,7 +38,7 @@ trait BoPrizeRoute
   private implicit val timeout: Timeout = Config.Api.timeout
   implicit val prizeActor: ActorRef
 
-  def prizeRoute: Route = pathPrefix("prizes") {
+  def prizeRoute: Route = pathPrefix("/bo/prizes") {
     AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
       prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
     }

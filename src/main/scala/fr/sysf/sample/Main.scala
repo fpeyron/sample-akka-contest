@@ -7,7 +7,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
 import fr.sysf.sample.CustomMySqlProfile.api.Database
-import fr.sysf.sample.actors.{ClusterListenerActor, ClusterSingletonActor, BoGameActor, BoPrizeActor}
+import fr.sysf.sample.actors.{BoGameActor, BoPrizeActor, ClusterListenerActor, ClusterSingletonActor}
 import fr.sysf.sample.repositories.{GameRepository, InstantwinRepository, PrizeRepository}
 import fr.sysf.sample.routes._
 
@@ -70,9 +70,10 @@ object Main extends App with RouteConcatenation with HttpSupport {
   logger.info(s"Swagger description http://${Config.Api.hostname}:${Config.Api.port}/api-docs/swagger.json")
 }
 
-class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef, val clusterSingletonProxy: ActorRef)(implicit val ec:ExecutionContext, implicit val materializer: ActorMaterializer)
-  extends HttpSupport with BoGameRoute with SwaggerRoute with BoPrizeRoute  with PartnerRoute {
+class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef, val clusterSingletonProxy: ActorRef)(implicit val ec: ExecutionContext, implicit val materializer: ActorMaterializer)
+  extends HttpSupport with BoGameRoute with SwaggerRoute with BoPrizeRoute with PartnerRoute with SwaggerUiRoute with HealthRoute {
 
-  val routes: Route = corsHandler(gameRoute ~ prizeRoute ~ HttpSupport.healthCheckRoute ~ swaggerRoute ~ partnerRoute)
+  val routes: Route = corsHandler(gameRoute ~ prizeRoute ~ healthCheckRoute ~ partnerRoute ~ swaggerRoute ~ swaggerUiRoute)
 }
- class Repository(implicit val ec : ExecutionContext, implicit val database: Database, val materializer: ActorMaterializer) extends PrizeRepository with GameRepository with InstantwinRepository
+
+class Repository(implicit val ec: ExecutionContext, implicit val database: Database, val materializer: ActorMaterializer) extends PrizeRepository with GameRepository with InstantwinRepository

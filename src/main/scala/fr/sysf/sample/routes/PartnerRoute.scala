@@ -51,9 +51,7 @@ trait PartnerRoute
   ))
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "country_code", value = "country code", required = true, dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "customer_id", value = "customer ID", required = true, dataType = "string", paramType = "path")
-  ))
-  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "customer_id", value = "customer ID", required = true, dataType = "string", paramType = "path"),
     new ApiImplicitParam(name = "body", value = "Participate to game", required = true, dataTypeClass = classOf[ParticipateRequest], paramType = "body")
   ))
   def partner_customer_participate: Route = path(Segment / "customers" / Segment / "participations") { (country_code, customer_id) =>
