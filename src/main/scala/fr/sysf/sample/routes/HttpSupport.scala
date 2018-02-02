@@ -4,9 +4,10 @@ import java.util.UUID
 
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.headers._
-import akka.http.scaladsl.model.{HttpHeader, HttpResponse, StatusCodes, StatusCode}
+import akka.http.scaladsl.model.{HttpHeader, HttpResponse, StatusCode, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
+import buildinfo.BuildInfo
 import fr.sysf.sample.routes.HttpSupport._
 import spray.json._
 
@@ -39,9 +40,26 @@ object HttpSupport {
   val healthCheckRoute: Route =
     path("health") {
       get {
-        complete(HttpResponse(StatusCodes.OK, entity = """{"code": 200}"""))
+        complete(HttpResponse(StatusCodes.OK, entity =
+          """{
+              "status": "UP"
+              }""".stripMargin))
       }
-    }
+    } ~
+      path("info") {
+        get {
+          complete(HttpResponse(StatusCodes.OK, entity =
+            s"""{
+              "group": "${BuildInfo.organization}",
+              "name": "${BuildInfo.name}",
+              "version": "${BuildInfo.version}",
+              "buildTime": "${BuildInfo.buildTime}",
+              "buildScalaVersion": "${BuildInfo.scalaVersion}",
+              "buildSbtVersion": "${BuildInfo.sbtVersion}",
+              "description": "${BuildInfo.description}"
+              }""".stripMargin))
+        }
+      }
 }
 
 trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {

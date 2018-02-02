@@ -1,8 +1,11 @@
+import java.time.Instant
+
 import com.typesafe.sbt.packager.docker.Cmd
 import sbt.enablePlugins
 
 organization := "com.betc.danon.fusion"
 name := "fusion-game"
+description := "Fusion provider Game"
 
 lazy val akkaVersion = "2.5.8"
 lazy val akkaHttpVersion = "10.0.11"
@@ -56,6 +59,13 @@ dependencyOverrides += "com.google.guava"             % "guava"                 
 // ----------------
 mainClass in (Compile, run) := Some("fr.sysf.sample.Main")
 fork in run := true
+
+
+// ----------------
+// Generate BuildInd
+// ----------------
+enablePlugins(BuildInfoPlugin)
+buildInfoKeys := Seq[BuildInfoKey](organization, name, version, scalaVersion, sbtVersion, description, "buildTime" -> Instant.now)
 
 
 // ----------------
