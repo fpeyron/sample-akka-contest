@@ -1,6 +1,6 @@
 package fr.sysf.sample.routes
 
-import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.{Directives, Route}
 import buildinfo.BuildInfo
 
@@ -10,15 +10,18 @@ trait HealthRoute extends Directives {
     path("health") {
       get {
         complete(HttpResponse(StatusCodes.OK, entity =
-          """{
+          HttpEntity(MediaTypes.`application/json`,
+            """{
               "status": "UP"
               }""".stripMargin))
+        )
       }
     } ~
       path("info") {
         get {
           complete(HttpResponse(StatusCodes.OK, entity =
-            s"""{
+            HttpEntity(MediaTypes.`application/json`,
+              s"""{
               "group": "${BuildInfo.organization}",
               "name": "${BuildInfo.name}",
               "version": "${BuildInfo.version}",
@@ -27,6 +30,7 @@ trait HealthRoute extends Directives {
               "buildSbtVersion": "${BuildInfo.sbtVersion}",
               "description": "${BuildInfo.description}"
               }""".stripMargin))
+          )
         }
       }
 }
