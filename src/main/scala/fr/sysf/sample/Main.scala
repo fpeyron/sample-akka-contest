@@ -67,8 +67,11 @@ object Main extends App with RouteConcatenation with HttpSupport {
 
   // logger
   val logger = Logging(system, getClass)
-  logger.info(s"Server online at http://${Config.Api.hostname}:${Config.Api.port}/")
-  logger.info(s"Swagger description http://${Config.Api.hostname}:${Config.Api.port}/api-docs/swagger.json")
+  logger.info(s"Server online at      http://${Config.Api.hostname}:${Config.Api.port}")
+  logger.info(s"Server online info    http://${Config.Api.hostname}:${Config.Api.port}/info")
+  logger.info(s"Server online health  http://${Config.Api.hostname}:${Config.Api.port}/health")
+  logger.info(s"Swagger description   http://${Config.Api.hostname}:${Config.Api.port}/api-docs/swagger.json")
+  logger.info(s"Swagger ui            http://${Config.Api.hostname}:${Config.Api.port}/swagger/index.html")
 }
 
 class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef, val clusterSingletonProxy: ActorRef)(implicit val ec: ExecutionContext, implicit val materializer: ActorMaterializer)
