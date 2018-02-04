@@ -20,7 +20,7 @@ trait SwaggerRoute extends Directives with SwaggerGenerator with CorsSupport {
 
   def swaggerRoute: Route = {
     val base = apiDocsBase(apiDocsPath)
-    path(base / "swagger.json") {
+    corsHandler(path(base / "swagger.json") {
       get {
         complete(HttpEntity(MediaTypes.`application/json`, generateSwaggerJson))
       }
@@ -29,7 +29,7 @@ trait SwaggerRoute extends Directives with SwaggerGenerator with CorsSupport {
         get {
           complete(HttpEntity(CustomMediaTypes.`text/vnd.yaml`, generateSwaggerYaml))
         }
-      }
+      })
   }
 
   def apiDocsBase(path: String): PathMatcher0 = PathMatchers.separateOnSlashes(removeInitialSlashIfNecessary(path))

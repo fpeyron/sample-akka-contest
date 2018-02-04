@@ -4,7 +4,7 @@ import java.util.UUID
 
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.headers._
-import akka.http.scaladsl.model.{HttpHeader, HttpResponse, StatusCode, StatusCodes}
+import akka.http.scaladsl.model.{HttpResponse, StatusCode, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import fr.sysf.sample.utils.HttpSupport._
@@ -38,7 +38,7 @@ object HttpSupport {
 
 }
 
-trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {
+trait HttpSupport extends Directives with DefaultJsonFormats {
 
   implicit val errorResponse: RootJsonFormat[ErrorResponse] = jsonFormat4(ErrorResponse)
 
@@ -95,20 +95,14 @@ trait HttpSupport extends DefaultJsonFormats with Directives with CorsSupport {
 
 trait CorsSupport {
 
+  // Wrap the Route with this method to enable adding of CORS headers
+  def corsHandler(r: Route): Route = (headerValueByName("origin") | provide("*")) { origin =>
+    addAccessControlHeaders(origin)(preflightRequestHandler ~ r)
+  }
 
   //this handles preflight OPTIONS requests.
   private val preflightRequestHandler: Route = options {
     complete(HttpResponse(StatusCodes.OK).withHeaders(`Access-Control-Allow-Methods`(OPTIONS, POST, PUT, GET, DELETE)))
-  }
-
-  def extractOriginHeader: HttpHeader => Option[String] = {
-    case HttpHeader("origin", value) => Some(value)
-    case _ => None
-  }
-
-  // Wrap the Route with this method to enable adding of CORS headers
-  def corsHandler(r: Route): Route = (headerValueByName("origin") | provide("*")) { origin =>
-    addAccessControlHeaders(origin)(preflightRequestHandler ~ r)
   }
 
   //this directive adds access control headers to normal responses

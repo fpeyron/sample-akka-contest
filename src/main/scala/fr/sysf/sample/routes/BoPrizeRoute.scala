@@ -15,7 +15,7 @@ import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeJsonFormats, Pri
 import fr.sysf.sample.models.PrizeDomain.Prize
 import fr.sysf.sample.utils.AuthenticateSupport.UserContext
 import fr.sysf.sample.utils.HttpSupport.ErrorResponse
-import fr.sysf.sample.utils.{AuthenticateSupport, DefaultJsonFormats}
+import fr.sysf.sample.utils.{AuthenticateSupport, CorsSupport, DefaultJsonFormats}
 import io.swagger.annotations._
 
 import scala.concurrent.ExecutionContext
@@ -31,7 +31,7 @@ import scala.concurrent.ExecutionContext
 ))
 @Path("/bo/prizes")
 trait BoPrizeRoute
-  extends Directives with DefaultJsonFormats with PrizeJsonFormats {
+  extends Directives with DefaultJsonFormats with PrizeJsonFormats with CorsSupport {
 
   import akka.pattern.ask
 
@@ -40,9 +40,9 @@ trait BoPrizeRoute
   implicit val prizeActor: ActorRef
 
   def prizeRoute: Route = pathPrefix("bo" / "prizes") {
-    AuthenticateSupport.asAuthenticated { implicit uc: UserContext =>
+    corsHandler(AuthenticateSupport.asAuthenticated { implicit uc: UserContext =>
       prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
-    }
+    })
   }
 
 

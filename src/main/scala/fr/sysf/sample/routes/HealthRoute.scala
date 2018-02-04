@@ -3,10 +3,11 @@ package fr.sysf.sample.routes
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.{Directives, Route}
 import buildinfo.BuildInfo
+import fr.sysf.sample.utils.CorsSupport
 
-trait HealthRoute extends Directives {
+trait HealthRoute extends Directives with CorsSupport {
 
-  val healthCheckRoute: Route =
+  val healthCheckRoute: Route = corsHandler(
     path("health") {
       get {
         complete(HttpResponse(StatusCodes.OK, entity =
@@ -33,4 +34,5 @@ trait HealthRoute extends Directives {
           )
         }
       }
+  )
 }
