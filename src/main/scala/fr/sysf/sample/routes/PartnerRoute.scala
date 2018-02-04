@@ -10,8 +10,8 @@ import akka.util.Timeout
 import fr.sysf.sample.Config
 import fr.sysf.sample.actors.ParticipationActor.ParticipateCmd
 import fr.sysf.sample.models.ParticipationDto.{ParticipateRequest, ParticipateResponse, PartnerJsonFormats}
-import fr.sysf.sample.utils.HttpSupport.ErrorResponse
 import fr.sysf.sample.utils.DefaultJsonFormats
+import fr.sysf.sample.utils.HttpSupport.ErrorResponse
 import io.swagger.annotations._
 
 import scala.concurrent.ExecutionContext
@@ -65,6 +65,26 @@ trait PartnerRoute
     }
   }
 
+  /**
+    *
+    * @return customer.getGame
+    */
+  @Path("{country_code}/customers/{customer_id}/games/{game_code}")
+  @ApiOperation(value = "find games with customer context", notes = "", nickname = "partner.participate", httpMethod = "GET")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return result of participation", response = classOf[ParticipateResponse]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "country_code", value = "country code", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "customer_id", value = "customer ID", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "tags", value = "tags", required = false, dataType = "string", paramType = "query")
+  ))
+  def partner_game_find: Route = path(Segment / "customers" / Segment / "games") { (country_code, customer_id) =>
+    get {
+      complete(StatusCodes.OK)
+    }
+  }
 
   /**
     *
@@ -82,28 +102,6 @@ trait PartnerRoute
     new ApiImplicitParam(name = "tags", value = "tags", required = false, dataType = "string", paramType = "query")
   ))
   def partner_customer_findGames: Route = path(Segment / "customers" / Segment / "games") { (country_code, customer_id) =>
-    get {
-      complete(StatusCodes.OK)
-    }
-  }
-
-
-  /**
-    *
-    * @return customer.getGame
-    */
-  @Path("{country_code}/customers/{customer_id}/games/{game_code}")
-  @ApiOperation(value = "find games with customer context", notes = "", nickname = "partner.participate", httpMethod = "GET")
-  @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Return result of participation", response = classOf[ParticipateResponse]),
-    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
-  ))
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "country_code", value = "country code", required = true, dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "customer_id", value = "customer ID", required = true, dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "tags", value = "tags", required = false, dataType = "string", paramType = "query")
-  ))
-  def partner_game_find: Route = path(Segment / "customers" / Segment / "games") { (country_code, customer_id) =>
     get {
       complete(StatusCodes.OK)
     }

@@ -12,6 +12,12 @@ object ParticipationEntity
 
 object ParticipationDto {
 
+  trait PartnerJsonFormats extends DefaultJsonFormats with PrizeJsonFormats {
+    implicit val participationStatusType: RootJsonFormat[ParticipationStatusType.Value] = enumFormat(ParticipationStatusType)
+    implicit val participateRequest: RootJsonFormat[ParticipateRequest] = jsonFormat3(ParticipateRequest)
+    implicit val participateResponse: RootJsonFormat[ParticipateResponse] = jsonFormat4(ParticipateResponse)
+  }
+
   case class ParticipateRequest(
                                  @ApiModelProperty(position = 1, value = "game code", required = true, example = "MY_CONTEST")
                                  game_code: Option[String],
@@ -20,17 +26,6 @@ object ParticipationDto {
                                  @ApiModelProperty(position = 3, value = "ean", required = false, example = "10")
                                  ean: Option[String]
                                )
-
-  case class ParticipateResponse(
-                                  @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
-                                  id: UUID,
-                                  @ApiModelProperty(position = 2, value = "date", required = true, example = "2018-01-01T00:00:00.000+02:00")
-                                  date: Instant,
-                                  @ApiModelProperty(position = 3, value = "status", required = true, example = "OTHER", allowableValues = "REJECTED,LOST,WIN")
-                                  status: ParticipationStatusType.Value,
-                                  @ApiModelProperty(position = 4, value = "prize", required = false)
-                                  prize: Option[PrizeResponse] = None
-                                )
 
   implicit object ParticipationStatusType extends Enumeration {
     val Lost: ParticipationStatusType.Value = Value("LOST")
@@ -46,11 +41,15 @@ object ParticipationDto {
 
   }
 
-
-  trait PartnerJsonFormats extends DefaultJsonFormats with PrizeJsonFormats {
-    implicit val participationStatusType: RootJsonFormat[ParticipationStatusType.Value] = enumFormat(ParticipationStatusType)
-    implicit val participateRequest: RootJsonFormat[ParticipateRequest] = jsonFormat3(ParticipateRequest)
-    implicit val participateResponse: RootJsonFormat[ParticipateResponse] = jsonFormat4(ParticipateResponse)
-  }
+  case class ParticipateResponse(
+                                  @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
+                                  id: UUID,
+                                  @ApiModelProperty(position = 2, value = "date", required = true, example = "2018-01-01T00:00:00.000+02:00")
+                                  date: Instant,
+                                  @ApiModelProperty(position = 3, value = "status", required = true, example = "OTHER", allowableValues = "REJECTED,LOST,WIN")
+                                  status: ParticipationStatusType.Value,
+                                  @ApiModelProperty(position = 4, value = "prize", required = false)
+                                  prize: Option[PrizeResponse] = None
+                                )
 
 }

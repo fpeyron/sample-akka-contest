@@ -185,6 +185,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       gameFreecodeTableQuery.filter(e => e.game_id === game_id && e.freecode === freecode).delete
     }
 
+    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
 
     /**
       * Schema
@@ -200,7 +201,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       )
     }
 
-    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
+    def schemaCreate(): Unit = Await.result(schemaCreateFuture, Duration.Inf)
 
     def schemaCreateFuture: Future[Unit] = database.run {
       DBIO.seq(
@@ -212,13 +213,13 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       )
     }
 
-    def schemaCreate(): Unit = Await.result(schemaCreateFuture, Duration.Inf)
-
   }
 
 }
 
 private[repositories] trait GameTable {
+
+  protected val gameTableQuery = TableQuery[GameTable]
 
   class GameTable(tag: Tag) extends Table[Game](tag, "REF_GAME") {
 
@@ -241,6 +242,12 @@ private[repositories] trait GameTable {
       e => e.toString,
       s => GameInputType.withName(s)
     )
+
+    def input_eans = column[Option[String]]("input_eans", O.Length(255, varying = true))
+
+    def input_freecodes = column[Option[String]]("input_freecodes", O.Length(255, varying = true))
+
+    override def * = (id, `type`, status, code, parent_id, country_code, title, start_date, timezone, end_date, input_type, input_point) <> (create, extract)
 
     def id = column[UUID]("id", O.PrimaryKey)
 
@@ -265,12 +272,6 @@ private[repositories] trait GameTable {
     def input_type = column[GameInputType.Value]("input_type", O.Length(20, varying = true))
 
     def input_point = column[Option[Int]]("input_point")
-
-    def input_eans = column[Option[String]]("input_eans", O.Length(255, varying = true))
-
-    def input_freecodes = column[Option[String]]("input_freecodes", O.Length(255, varying = true))
-
-    override def * = (id, `type`, status, code, parent_id, country_code, title, start_date, timezone, end_date, input_type, input_point) <> (create, extract)
 
     def create(t: (UUID, String, String, String, Option[UUID], String, Option[String], Instant, String, Instant, GameInputType.Value, Option[Int])) =
       Game(
@@ -304,11 +305,12 @@ private[repositories] trait GameTable {
     )
   }
 
-  protected val gameTableQuery = TableQuery[GameTable]
 }
 
 
 private[repositories] trait GameLimitTable {
+
+  protected val gameLimitTableQuery = TableQuery[GameLimitTable]
 
   class GameLimitTable(tag: Tag) extends Table[(UUID, GameLimit)](tag, "REF_GAME_LIMIT") {
 
@@ -327,6 +329,8 @@ private[repositories] trait GameLimitTable {
       s => GameLimitUnit.withName(s)
     )
 
+    override def * = (game_id, `type`, unit, unit_value, value) <> (create, extract)
+
     def game_id = column[UUID]("game_id")
 
     def `type` = column[GameLimitType.Value]("type", O.Length(20, varying = true))
@@ -335,22 +339,21 @@ private[repositories] trait GameLimitTable {
 
     def unit_value = column[Option[Int]]("unit_value")
 
-    def value = column[Int]("value")
-
     //def game = foreignKey("GAME_FK", game_id, TableQuery[GameTable])(_.id)
 
-    override def * = (game_id, `type`, unit, unit_value, value) <> (create, extract)
+    def value = column[Int]("value")
 
     def create(t: (UUID, GameLimitType.Value, GameLimitUnit.Value, Option[Int], Int)): (UUID, GameLimit) = (t._1, GameLimit(`type` = t._2, unit = t._3, unit_value = t._4, value = t._5))
 
     def extract(t: (UUID, GameLimit)) = Some((t._1, t._2.`type`, t._2.unit, t._2.unit_value, t._2.value))
   }
 
-  protected val gameLimitTableQuery = TableQuery[GameLimitTable]
 }
 
 
 private[repositories] trait GamePrizeTable {
+
+  protected val gamePrizeTableQuery = TableQuery[GamePrizeTable]
 
   class GamePrizeTable(tag: Tag) extends Table[(UUID, GamePrize)](tag, "REF_GAME_PRIZE") {
 
@@ -369,6 +372,8 @@ private[repositories] trait GamePrizeTable {
       s => GameLimitUnit.withName(s)
     )
 
+    override def * = (game_id, id, prize_id, start_date, end_date, quantity) <> (create, extract)
+
     def id = column[UUID]("id", O.PrimaryKey)
 
     def game_id = column[UUID]("game_id")
@@ -379,50 +384,49 @@ private[repositories] trait GamePrizeTable {
 
     def end_date = column[Instant]("end_date", SqlType("timestamp not null default CURRENT_TIMESTAMP"))
 
-    def quantity = column[Int]("quantity")
-
     //def game = foreignKey("GAME_FK", game_id, TableQuery[GameTable])(_.id)
 
-    override def * = (game_id, id, prize_id, start_date, end_date, quantity) <> (create, extract)
+    def quantity = column[Int]("quantity")
 
     def create(t: (UUID, UUID, UUID, Instant, Instant, Int)): (UUID, GamePrize) = (t._1, GamePrize(id = t._2, prize_id = t._3, start_date = t._4, end_date = t._5, quantity = t._6))
 
     def extract(t: (UUID, GamePrize)) = Some((t._1, t._2.id, t._2.prize_id, t._2.start_date, t._2.end_date, t._2.quantity))
   }
 
-  protected val gamePrizeTableQuery = TableQuery[GamePrizeTable]
 }
 
 
 private[repositories] trait GameEanTable {
 
+  protected val gameEanTableQuery = TableQuery[GameEanTable]
+
   class GameEanTable(tag: Tag) extends Table[(UUID, String)](tag, "REF_GAME_EAN") {
+
+    def pk = primaryKey("pk_a", (game_id, ean))
 
     def game_id = column[UUID]("game_id")
 
     def ean = column[String]("ean", O.Length(30, varying = true))
 
-    def pk = primaryKey("pk_a", (game_id, ean))
-
     override def * = (game_id, ean)
   }
 
-  protected val gameEanTableQuery = TableQuery[GameEanTable]
 }
 
 
 private[repositories] trait GameFreeCodeTable {
 
+  protected val gameFreecodeTableQuery = TableQuery[GameFreeCodeTable]
+
   class GameFreeCodeTable(tag: Tag) extends Table[(UUID, String)](tag, "REF_GAME_FREECODE") {
+
+    def pk = primaryKey("pk_a", (game_id, freecode))
 
     def game_id = column[UUID]("game_id")
 
     def freecode = column[String]("freecode", O.Length(30, varying = true))
 
-    def pk = primaryKey("pk_a", (game_id, freecode))
-
     override def * = (game_id, freecode)
   }
 
-  protected val gameFreecodeTableQuery = TableQuery[GameFreeCodeTable]
 }

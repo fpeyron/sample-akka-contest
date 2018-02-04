@@ -26,16 +26,20 @@ object ParticipationActor {
   // Command
   sealed trait Cmd
 
-  case class ParticipateCmd(country_code: String, game_code: String, customerId: String) extends Cmd
-
   // Event
   sealed trait Event
+
+  case class ParticipateCmd(country_code: String, game_code: String, customerId: String) extends Cmd
 
   case class ParticipationEvent(participationId: UUID, participationDate: Instant, gameId: UUID, customerId: String, instantwin: Option[InstantwinExtended] = None) extends Event
 
 }
 
 class ParticipationActor(gameId: UUID)(implicit val repository: Repository, val materializer: ActorMaterializer) extends PersistentActor with ActorLogging {
+
+  var lastInstantWin: Option[InstantwinExtended] = None
+  var nextInstantWins: List[InstantwinExtended] = List.empty[InstantwinExtended]
+  var gameIsFinished: Boolean = false
 
   override def receiveCommand: Receive = {
 
@@ -77,15 +81,6 @@ class ParticipationActor(gameId: UUID)(implicit val repository: Repository, val 
 
   }
 
-  override def receiveRecover: Receive = {
-    case event: ParticipationEvent if event.instantwin.isDefined =>
-      lastInstantWin = event.instantwin
-
-    case RecoveryCompleted =>
-      refreshInstantWins()
-  }
-
-
   private def getInstantWin(instant: Instant): Option[InstantwinExtended] = {
     val instantWin = nextInstantWins.find(_.activate_date.isBefore(instant))
 
@@ -106,6 +101,14 @@ class ParticipationActor(gameId: UUID)(implicit val repository: Repository, val 
     }
   }
 
+  override def receiveRecover: Receive = {
+    case event: ParticipationEvent if event.instantwin.isDefined =>
+      lastInstantWin = event.instantwin
+
+    case RecoveryCompleted =>
+      refreshInstantWins()
+  }
+
   private def refreshInstantWins(): Unit = {
     nextInstantWins = Await.result(
       repository.instantwin.fetchWithPrizeBy(gameId)
@@ -115,10 +118,6 @@ class ParticipationActor(gameId: UUID)(implicit val repository: Repository, val 
     if (nextInstantWins.isEmpty)
       gameIsFinished = true
   }
-
-  var lastInstantWin: Option[InstantwinExtended] = None
-  var nextInstantWins: List[InstantwinExtended] = List.empty[InstantwinExtended]
-  var gameIsFinished: Boolean = false
 
   override def persistenceId: String = s"GAME-$gameId"
 }

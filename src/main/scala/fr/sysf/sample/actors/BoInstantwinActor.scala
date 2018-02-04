@@ -27,10 +27,10 @@ object BoInstantwinActor {
   // Query
   sealed trait Query
 
-  case class InstanwinGetQuery(mySender: ActorRef) extends Query
-
   // Command
   sealed trait Cmd
+
+  case class InstanwinGetQuery(mySender: ActorRef) extends Query
 
   case class InstanwinCreateCmd(request: GamePrize) extends Cmd
 
@@ -83,14 +83,14 @@ class BoInstantwinActor(game_id: UUID)(implicit val repository: Repository, val 
         generateInstantWinDates(request.quantity, request.start_date, request.end_date)
           //.buffer(1000, OverflowStrategy.backpressure)
           .map { date =>
-            Instantwin(
-              id = UUID.randomUUID(),
-              game_id = game_id,
-              gameprize_id = request.id,
-              prize_id = request.prize_id,
-              activate_date = date
-            )
-          }), Duration.Inf)
+          Instantwin(
+            id = UUID.randomUUID(),
+            game_id = game_id,
+            gameprize_id = request.id,
+            prize_id = request.prize_id,
+            activate_date = date
+          )
+        }), Duration.Inf)
 
       sender ! None
     } catch {

@@ -33,6 +33,13 @@ object PrizeDomain {
 
 object PrizeDao {
 
+  trait PrizeJsonFormats extends DefaultJsonFormats {
+    implicit val prizeCreateRequest: RootJsonFormat[PrizeCreateRequest] = jsonFormat7(PrizeCreateRequest)
+
+    implicit val prizeType: RootJsonFormat[PrizeType.Value] = enumFormat(PrizeType)
+    implicit val prizeResponse: RootJsonFormat[PrizeResponse] = jsonFormat8(PrizeResponse)
+  }
+
   // Service
   case class PrizeCreateRequest(
                                  @ApiModelProperty(position = 1, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
@@ -50,7 +57,6 @@ object PrizeDao {
                                  @ApiModelProperty(position = 7, value = "giftshop face value", example = "200")
                                  face_value: Option[Int]
                                )
-
 
   case class PrizeResponse(
                             @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
@@ -71,14 +77,6 @@ object PrizeDao {
                             face_value: Option[Int] = None
                           ) {
     def this(prize: Prize) = this(prize.id, prize.`type`, prize.title, prize.label, prize.description, prize.picture, prize.vendor_code, prize.face_value)
-  }
-
-
-  trait PrizeJsonFormats extends DefaultJsonFormats {
-    implicit val prizeCreateRequest: RootJsonFormat[PrizeCreateRequest] = jsonFormat7(PrizeCreateRequest)
-
-    implicit val prizeType: RootJsonFormat[PrizeType.Value] = enumFormat(PrizeType)
-    implicit val prizeResponse: RootJsonFormat[PrizeResponse] = jsonFormat8(PrizeResponse)
   }
 
 }

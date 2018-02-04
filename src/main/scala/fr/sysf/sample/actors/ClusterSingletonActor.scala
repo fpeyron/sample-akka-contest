@@ -16,9 +16,9 @@ import scala.concurrent.duration.Duration
 
 object ClusterSingletonActor {
 
-  def props(implicit repository: Repository, materializer: ActorMaterializer) = Props(new ClusterSingletonActor)
-
   final val name = "clusterSingleton"
+
+  def props(implicit repository: Repository, materializer: ActorMaterializer) = Props(new ClusterSingletonActor)
 
   // Command
   sealed trait Cmd

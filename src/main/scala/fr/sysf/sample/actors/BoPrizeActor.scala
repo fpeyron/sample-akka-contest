@@ -3,13 +3,13 @@ package fr.sysf.sample.actors
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, Props}
+import fr.sysf.sample.Repository
 import fr.sysf.sample.actors.BoPrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd, _}
 import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeResponse}
 import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
+import fr.sysf.sample.utils.ActorUtil
 import fr.sysf.sample.utils.AuthenticateSupport.UserContext
 import fr.sysf.sample.utils.HttpSupport.{InvalidInputException, NotAuthorizedException, PrizeIdNotFoundException}
-import fr.sysf.sample.Repository
-import fr.sysf.sample.utils.ActorUtil
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -17,19 +17,26 @@ import scala.concurrent.duration.Duration
 
 object BoPrizeActor {
 
-  def props(implicit repository: Repository) = Props(new BoPrizeActor)
   val name = "prize-singleton"
+
+  def props(implicit repository: Repository) = Props(new BoPrizeActor)
 
   // Query
   sealed trait Query
-  case class PrizeListQuery(uc: UserContext, game_id: Option[String]) extends Query
-  case class PrizeGetQuery(uc: UserContext, id: UUID) extends Query
 
   // Command
   sealed trait Cmd
+
+  case class PrizeListQuery(uc: UserContext, game_id: Option[String]) extends Query
+
+  case class PrizeGetQuery(uc: UserContext, id: UUID) extends Query
+
   case class PrizeCreateCmd(uc: UserContext, contestCreateRequest: PrizeCreateRequest) extends Cmd
+
   case class PrizeUpdateCmd(uc: UserContext, id: UUID, contestUpdateRequest: PrizeCreateRequest) extends Cmd
+
   case class PrizeDeleteCmd(uc: UserContext, id: UUID) extends Cmd
+
 }
 
 class BoPrizeActor(implicit val repository: Repository) extends Actor with ActorLogging {
@@ -52,15 +59,15 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
 
     case PrizeGetQuery(uc, id) => try {
 
-      repository.prize.getById(id).map{ prize =>
+      repository.prize.getById(id).map { prize =>
 
         // check existing prize
-        if (! prize.exists(_.country_code == uc.country_code)) {
+        if (!prize.exists(_.country_code == uc.country_code)) {
           throw PrizeIdNotFoundException(id = id)
         } else {
           prize.map(new PrizeResponse(_)).get
         }
-      }. pipeTo(sender)
+      }.pipeTo(sender)
 
     } catch {
       case e: PrizeIdNotFoundException => sender() ! akka.actor.Status.Failure(e)

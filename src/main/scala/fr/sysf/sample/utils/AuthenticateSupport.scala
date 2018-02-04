@@ -10,6 +10,12 @@ import scala.language.implicitConversions
 
 object AuthenticateSupport {
 
+  private val users = List(
+    UserEntry("admin_fr", "p4ssw0rd", "FR"),
+    UserEntry("admin_jp", "p4ssw0rd", "JP"),
+    UserEntry("admin_ca", "p4ssw0rd", "CA")
+  )
+
   def asAuthenticated(route: UserContext => Route)(implicit ec: ExecutionContext): Route =
     authenticateBasicAsync(realm = "secure site", userPassAuthenticator)(route)
 
@@ -23,7 +29,6 @@ object AuthenticateSupport {
       case _ => Future.successful(None)
     }
 
-
   /**
     * Case class containing basic information about user
     *
@@ -32,15 +37,9 @@ object AuthenticateSupport {
     */
   sealed case class UserEntry(username: String, password: String, country_code: String)
 
-  sealed case class UserContext(username: String, country_code: String)
-
   implicit def userEntryToUserContext(u: UserEntry): UserContext = UserContext(username = u.username, country_code = u.country_code)
 
-  private val users = List(
-    UserEntry("admin_fr", "p4ssw0rd", "FR"),
-    UserEntry("admin_jp", "p4ssw0rd", "JP"),
-    UserEntry("admin_ca", "p4ssw0rd", "CA")
-  )
+  sealed case class UserContext(username: String, country_code: String)
 
 }
 

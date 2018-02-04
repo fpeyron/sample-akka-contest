@@ -51,6 +51,7 @@ trait PrizeRepository extends PrizeTable with GamePrizeTable {
           .to[List].result
       })
 
+    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
 
     /**
       * Schema
@@ -62,19 +63,19 @@ trait PrizeRepository extends PrizeTable with GamePrizeTable {
       )
     }
 
-    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
+    def schemaCreate(): Unit = Await.result(schemaCreateFuture, Duration.Inf)
 
     def schemaCreateFuture: Future[Unit] = database.run {
       DBIO.seq(prizeTableQuery.schema.create.asTry)
     }
-
-    def schemaCreate(): Unit = Await.result(schemaCreateFuture, Duration.Inf)
 
   }
 
 }
 
 private[repositories] trait PrizeTable {
+
+  protected val prizeTableQuery = TableQuery[PrizeTable]
 
   class PrizeTable(tag: Tag) extends Table[Prize](tag, "REF_PRIZE") {
 
@@ -88,6 +89,7 @@ private[repositories] trait PrizeTable {
       s => PrizeType.withName(s)
     )
 
+    override def * = (id, country_code, `type`, label, title, description, picture, vendor_code, face_value) <> (create, extract)
 
     def id = column[UUID]("id", O.PrimaryKey)
 
@@ -107,8 +109,6 @@ private[repositories] trait PrizeTable {
 
     def face_value = column[Option[Int]]("face_value")
 
-    override def * = (id, country_code, `type`, label, title, description, picture, vendor_code, face_value) <> (create, extract)
-
     def create(d: (UUID, String, PrizeType.Value, String, Option[String], Option[String], Option[String], Option[String], Option[Int])) =
       Prize(id = d._1, country_code = d._2, `type` = d._3, label = d._4, title = d._5, description = d._6, picture = d._7, vendor_code = d._8, face_value = d._9)
 
@@ -116,6 +116,5 @@ private[repositories] trait PrizeTable {
       Option(p.id, p.country_code, p.`type`, p.label, p.title, p.description, p.picture, p.vendor_code, p.face_value)
   }
 
-  protected val prizeTableQuery = TableQuery[PrizeTable]
 }
 

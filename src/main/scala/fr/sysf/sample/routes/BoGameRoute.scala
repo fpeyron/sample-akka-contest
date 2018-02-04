@@ -354,14 +354,13 @@ trait BoGameRoute
     get {
       onSuccess(gameActor ? GameGetInstantwinQuery(uc, id)) {
         case source: Source[_, _] => complete {
-            val mapStream = Source.single("activate_date\tattribution_date\tgameprize_id\tprize_id\tprize_type\tprize_label\tprize_vendor_code\tprize_face_value\n")
-              .concat(source.map(_.asInstanceOf[InstantwinExtended]).map(t => s"${t.activate_date}\t${t.gameprize_id}\t${t.gameprize_id}\t${t.prize.id}\t${t.prize.`type`.toString}\t${t.prize.label}\t${t.prize.vendor_code.getOrElse("")}\t${t.prize.face_value.getOrElse("")}\n"))
+          val mapStream = Source.single("activate_date\tattribution_date\tgameprize_id\tprize_id\tprize_type\tprize_label\tprize_vendor_code\tprize_face_value\n")
+            .concat(source.map(_.asInstanceOf[InstantwinExtended]).map(t => s"${t.activate_date}\t${t.gameprize_id}\t${t.gameprize_id}\t${t.prize.id}\t${t.prize.`type`.toString}\t${t.prize.label}\t${t.prize.vendor_code.getOrElse("")}\t${t.prize.face_value.getOrElse("")}\n"))
 
 
-
-              .map(ByteString.apply)
-            HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
-          }
+            .map(ByteString.apply)
+          HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
+        }
       }
     }
   }

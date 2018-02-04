@@ -7,14 +7,14 @@ import akka.NotUsed
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
+import fr.sysf.sample.Repository
 import fr.sysf.sample.actors.BoGameActor._
 import fr.sysf.sample.actors.BoInstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
 import fr.sysf.sample.models.GameDto._
 import fr.sysf.sample.models.GameEntity._
+import fr.sysf.sample.utils.ActorUtil
 import fr.sysf.sample.utils.AuthenticateSupport.UserContext
 import fr.sysf.sample.utils.HttpSupport.{GameIdNotFoundException, GamePrizeIdNotFoundException, InvalidInputException, NotAuthorizedException}
-import fr.sysf.sample.Repository
-import fr.sysf.sample.utils.ActorUtil
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -22,12 +22,15 @@ import scala.concurrent.duration.Duration
 
 object BoGameActor {
 
-  def props(implicit repository: Repository, materializer: ActorMaterializer, clusterSingletonProxy: ActorRef) = Props(new BoGameActor)
-
   val Name = "games-singleton"
+
+  def props(implicit repository: Repository, materializer: ActorMaterializer, clusterSingletonProxy: ActorRef) = Props(new BoGameActor)
 
   // Query
   sealed trait Query
+
+  // Command
+  sealed trait Cmd
 
   case class GameListQuery(uc: UserContext, types: Option[String], status: Option[String], parent: Option[String]) extends Query
 
@@ -36,9 +39,6 @@ object BoGameActor {
   case class GameGetInstantwinQuery(uc: UserContext, id: UUID) extends Query
 
   case class GameListPrizesQuery(uc: UserContext, id: UUID) extends Query
-
-  // Command
-  sealed trait Cmd
 
   case class GameCreateCmd(uc: UserContext, gameCreateRequest: GameCreateRequest) extends Cmd
 
@@ -573,29 +573,6 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
     })
   }
 
-  private def checkGamePrizeInputForCreation(game: Game, request: GamePrizeCreateRequest): Iterable[(String, String)] = {
-    //Validation input
-    Option(
-      if (request.start_date.isDefined && request.start_date.get.isBefore(Instant.now))
-        ("start_date", s"INVALID_VALUE : should be is the future") else null
-    ) ++ Option(
-      if (request.start_date.isDefined && request.start_date.get.isBefore(game.start_date))
-        ("start_date", s"INVALID_VALUE : should be after start_date of the game") else null
-    ) ++ Option(
-      if (request.start_date.isDefined && request.start_date.get.isAfter(game.end_date))
-        ("start_date", s"INVALID_VALUE : should be before end_date of the game") else null
-    ) ++ Option(
-      if (request.end_date.isDefined && request.start_date.isDefined && request.end_date.get.isBefore(request.start_date.get))
-        ("end_date", s"INVALID_VALUE : should be after start_date") else null
-    ) ++ Option(
-      if (request.end_date.isDefined && request.end_date.get.isBefore(game.start_date))
-        ("end_date", s"INVALID_VALUE : should be after start_date of the game") else null
-    ) ++ Option(
-      if (request.end_date.isDefined && request.end_date.get.isAfter(game.end_date))
-        ("end_date", s"INVALID_VALUE : should be before end_date of the game") else null
-    )
-  }
-
   private def checkGameLimitInput(index: Int, requestLimit: GameLimitRequest): Iterable[(String, String)] = {
     Option(
       if (requestLimit.`type`.isEmpty)
@@ -628,6 +605,29 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
   }
   catch {
     case _: java.time.zone.ZoneRulesException => false
+  }
+
+  private def checkGamePrizeInputForCreation(game: Game, request: GamePrizeCreateRequest): Iterable[(String, String)] = {
+    //Validation input
+    Option(
+      if (request.start_date.isDefined && request.start_date.get.isBefore(Instant.now))
+        ("start_date", s"INVALID_VALUE : should be is the future") else null
+    ) ++ Option(
+      if (request.start_date.isDefined && request.start_date.get.isBefore(game.start_date))
+        ("start_date", s"INVALID_VALUE : should be after start_date of the game") else null
+    ) ++ Option(
+      if (request.start_date.isDefined && request.start_date.get.isAfter(game.end_date))
+        ("start_date", s"INVALID_VALUE : should be before end_date of the game") else null
+    ) ++ Option(
+      if (request.end_date.isDefined && request.start_date.isDefined && request.end_date.get.isBefore(request.start_date.get))
+        ("end_date", s"INVALID_VALUE : should be after start_date") else null
+    ) ++ Option(
+      if (request.end_date.isDefined && request.end_date.get.isBefore(game.start_date))
+        ("end_date", s"INVALID_VALUE : should be after start_date of the game") else null
+    ) ++ Option(
+      if (request.end_date.isDefined && request.end_date.get.isAfter(game.end_date))
+        ("end_date", s"INVALID_VALUE : should be before end_date of the game") else null
+    )
   }
 
   private def getInstantwinActor(game_id: UUID): ActorRef = context.child(BoInstantwinActor.name(game_id))

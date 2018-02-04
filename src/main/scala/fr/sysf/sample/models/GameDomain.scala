@@ -109,6 +109,25 @@ object GameEntity {
 
 object GameDto {
 
+  trait GameJsonFormats extends DefaultJsonFormats {
+    implicit val gameLimitRequest: RootJsonFormat[GameLimitRequest] = jsonFormat4(GameLimitRequest)
+    implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat12(GameCreateRequest)
+    implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat11(GameUpdateRequest)
+    implicit val gamePrizeCreateRequest: RootJsonFormat[GamePrizeCreateRequest] = jsonFormat4(GamePrizeCreateRequest)
+
+    implicit val gameType: RootJsonFormat[GameType.Value] = enumFormat(GameType)
+    implicit val gameInputType: RootJsonFormat[GameInputType.Value] = enumFormat(GameInputType)
+    implicit val gameLimitType: RootJsonFormat[GameLimitType.Value] = enumFormat(GameLimitType)
+    implicit val gameStatus: RootJsonFormat[GameStatusType.Value] = enumFormat(GameStatusType)
+
+    implicit val gameLimitUnit: RootJsonFormat[GameLimitUnit.Value] = enumFormat(GameLimitUnit)
+    implicit val gameLimitResponse: RootJsonFormat[GameLimit] = jsonFormat4(GameLimit)
+    implicit val gamePrizeResponse: RootJsonFormat[GamePrize] = jsonFormat5(GamePrize)
+
+    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat15(GameResponse)
+    implicit val gameForListResponse: RootJsonFormat[GameForListDto] = jsonFormat11(GameForListDto)
+  }
+
   case class GameCreateRequest(
                                 @ApiModelProperty(position = 1, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
                                 `type`: Option[String],
@@ -234,7 +253,6 @@ object GameDto {
     def this(game: Game) = this(id = game.id, game.`type`, status = game.status, parent_id = game.parent_id, code = game.code, title = game.title, start_date = game.start_date, timezone = game.timezone, end_date = game.end_date, input_type = game.input_type, input_point = game.input_point)
   }
 
-
   /**
     * --------------------------------------------
     * Game Prize
@@ -250,26 +268,6 @@ object GameDto {
                                      @ApiModelProperty(position = 4, value = "quantity", example = "10")
                                      quantity: Option[Int]
                                    )
-
-
-  trait GameJsonFormats extends DefaultJsonFormats {
-    implicit val gameLimitRequest: RootJsonFormat[GameLimitRequest] = jsonFormat4(GameLimitRequest)
-    implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat12(GameCreateRequest)
-    implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat11(GameUpdateRequest)
-    implicit val gamePrizeCreateRequest: RootJsonFormat[GamePrizeCreateRequest] = jsonFormat4(GamePrizeCreateRequest)
-
-    implicit val gameType: RootJsonFormat[GameType.Value] = enumFormat(GameType)
-    implicit val gameInputType: RootJsonFormat[GameInputType.Value] = enumFormat(GameInputType)
-    implicit val gameLimitType: RootJsonFormat[GameLimitType.Value] = enumFormat(GameLimitType)
-    implicit val gameStatus: RootJsonFormat[GameStatusType.Value] = enumFormat(GameStatusType)
-
-    implicit val gameLimitUnit: RootJsonFormat[GameLimitUnit.Value] = enumFormat(GameLimitUnit)
-    implicit val gameLimitResponse: RootJsonFormat[GameLimit] = jsonFormat4(GameLimit)
-    implicit val gamePrizeResponse: RootJsonFormat[GamePrize] = jsonFormat5(GamePrize)
-
-    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat15(GameResponse)
-    implicit val gameForListResponse: RootJsonFormat[GameForListDto] = jsonFormat11(GameForListDto)
-  }
 
 }
 

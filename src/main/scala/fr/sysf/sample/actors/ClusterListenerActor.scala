@@ -6,11 +6,12 @@ import akka.cluster.ClusterEvent._
 
 object ClusterListenerActor {
 
-  case object GetMemberNodes
-
   val name = "clusterListener"
 
   def props: Props = Props(new ClusterListenerActor)
+
+  case object GetMemberNodes
+
 }
 
 class ClusterListenerActor extends Actor with ActorLogging {

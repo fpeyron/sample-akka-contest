@@ -72,6 +72,8 @@ trait InstantwinRepository extends InstantwinTable with PrizeTable {
       })
       .map(r => new InstantwinExtended(r._1, r._2))
 
+    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
+
     /**
       * Schema
       */
@@ -82,19 +84,19 @@ trait InstantwinRepository extends InstantwinTable with PrizeTable {
       )
     }
 
-    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
+    def schemaCreate(): Unit = Await.result(schemaCreateFuture, Duration.Inf)
 
     def schemaCreateFuture: Future[Unit] = database.run {
       DBIO.seq(instantwinTableQuery.schema.create.asTry)
     }
-
-    def schemaCreate(): Unit = Await.result(schemaCreateFuture, Duration.Inf)
 
   }
 
 }
 
 private[repositories] trait InstantwinTable {
+
+  protected val instantwinTableQuery = TableQuery[InstantwinTable]
 
   class InstantwinTable(tag: Tag) extends Table[Instantwin](tag, "REF_INSTANTWIN") {
 
@@ -103,6 +105,7 @@ private[repositories] trait InstantwinTable {
       ts => Instant.ofEpochMilli(ts.getTime)
     )
 
+    override def * = (id, game_id, gameprize_id, prize_id, activate_date) <> (create, extract)
 
     def id = column[UUID]("id", O.PrimaryKey)
 
@@ -114,14 +117,10 @@ private[repositories] trait InstantwinTable {
 
     def activate_date = column[Timestamp]("activate_date")
 
-    override def * = (id, game_id, gameprize_id, prize_id, activate_date) <> (create, extract)
-
-
     def create(d: (UUID, UUID, UUID, UUID, Timestamp)) = Instantwin(id = d._1, game_id = d._2, gameprize_id = d._3, prize_id = d._4, activate_date = Instant.ofEpochMilli(d._5.getTime))
 
     def extract(p: Instantwin) = Option(p.id, p.game_id, p.gameprize_id, p.prize_id, Timestamp.from(p.activate_date))
   }
 
-  protected val instantwinTableQuery = TableQuery[InstantwinTable]
 }
 
