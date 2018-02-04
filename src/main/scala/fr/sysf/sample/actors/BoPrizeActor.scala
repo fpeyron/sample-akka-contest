@@ -7,7 +7,7 @@ import fr.sysf.sample.actors.BoPrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, Prize
 import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeResponse}
 import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
 import fr.sysf.sample.routes.AuthentifierSupport.UserContext
-import fr.sysf.sample.routes.HttpSupport.{PrizeIdNotFoundException, InvalidInputException, NotAuthorizedException}
+import fr.sysf.sample.routes.HttpSupport.{InvalidInputException, NotAuthorizedException, PrizeIdNotFoundException}
 import fr.sysf.sample.{ActorUtil, Repository}
 
 import scala.concurrent.Await
