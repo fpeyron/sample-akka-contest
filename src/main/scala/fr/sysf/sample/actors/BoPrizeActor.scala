@@ -6,9 +6,10 @@ import akka.actor.{Actor, ActorLogging, Props}
 import fr.sysf.sample.actors.BoPrizeActor.{PrizeCreateCmd, PrizeDeleteCmd, PrizeUpdateCmd, _}
 import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeResponse}
 import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
-import fr.sysf.sample.routes.AuthentifierSupport.UserContext
-import fr.sysf.sample.routes.HttpSupport.{InvalidInputException, NotAuthorizedException, PrizeIdNotFoundException}
-import fr.sysf.sample.{ActorUtil, Repository}
+import fr.sysf.sample.utils.AuthenticateSupport.UserContext
+import fr.sysf.sample.utils.HttpSupport.{InvalidInputException, NotAuthorizedException, PrizeIdNotFoundException}
+import fr.sysf.sample.Repository
+import fr.sysf.sample.utils.ActorUtil
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -37,7 +38,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
   import context.dispatcher
 
 
-  def receive: Receive = {
+  override def receive: Receive = {
 
 
     case PrizeListQuery(uc, game_id) => try {
@@ -118,7 +119,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
       }
       */
 
-      // Persist updrade
+      // Persist upgrade
       val entityUpdated = Prize(
         id = entity.id,
         country_code = entity.country_code,

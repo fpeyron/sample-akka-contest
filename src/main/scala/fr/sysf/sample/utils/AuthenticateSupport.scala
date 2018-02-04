@@ -1,24 +1,24 @@
-package fr.sysf.sample.routes
+package fr.sysf.sample.utils
 
-import akka.http.scaladsl.server
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.Credentials
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.implicitConversions
 
 
-object AuthentifierSupport {
+object AuthenticateSupport {
 
-  def asAuthentified(route: UserContext => server.Route)(implicit ec: ExecutionContext): Route =
-      authenticateBasicAsync(realm = "secure site", userPassAuthenticator)(route)
+  def asAuthenticated(route: UserContext => Route)(implicit ec: ExecutionContext): Route =
+    authenticateBasicAsync(realm = "secure site", userPassAuthenticator)(route)
 
   private def userPassAuthenticator(credentials: Credentials)(implicit ec: ExecutionContext): Future[Option[UserContext]] =
     credentials match {
       case p@Credentials.Provided(username) =>
         Future {
           // potentially
-          users.filter(u => u.username == username && p.verify(u.password)).headOption.map(u => UserContext(username = u.username, country_code = u.country_code))
+          users.find(u => u.username == username && p.verify(u.password)).map(u => UserContext(username = u.username, country_code = u.country_code))
         }
       case _ => Future.successful(None)
     }
@@ -28,12 +28,13 @@ object AuthentifierSupport {
     * Case class containing basic information about user
     *
     * @param username The username as used when authenticating
-    * @param password   The hashed password to verify against
+    * @param password The hashed password to verify against
     */
   sealed case class UserEntry(username: String, password: String, country_code: String)
+
   sealed case class UserContext(username: String, country_code: String)
 
-  implicit def userEntryToUserContext(u:UserEntry): UserContext = UserContext(username = u.username, country_code = u.country_code)
+  implicit def userEntryToUserContext(u: UserEntry): UserContext = UserContext(username = u.username, country_code = u.country_code)
 
   private val users = List(
     UserEntry("admin_fr", "p4ssw0rd", "FR"),

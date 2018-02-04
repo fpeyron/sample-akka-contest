@@ -1,4 +1,4 @@
-package fr.sysf.sample.routes
+package fr.sysf.sample.utils
 
 import java.util.UUID
 
@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.{HttpHeader, HttpResponse, StatusCode, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
-import fr.sysf.sample.routes.HttpSupport._
+import fr.sysf.sample.utils.HttpSupport._
 import spray.json._
 
 

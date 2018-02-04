@@ -10,7 +10,8 @@ import akka.util.Timeout
 import fr.sysf.sample.Config
 import fr.sysf.sample.actors.ParticipationActor.ParticipateCmd
 import fr.sysf.sample.models.ParticipationDto.{ParticipateRequest, ParticipateResponse, PartnerJsonFormats}
-import fr.sysf.sample.routes.HttpSupport.ErrorResponse
+import fr.sysf.sample.utils.HttpSupport.ErrorResponse
+import fr.sysf.sample.utils.DefaultJsonFormats
 import io.swagger.annotations._
 
 import scala.concurrent.ExecutionContext

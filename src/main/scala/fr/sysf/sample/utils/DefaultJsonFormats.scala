@@ -1,4 +1,4 @@
-package fr.sysf.sample.routes
+package fr.sysf.sample.utils
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDate}
@@ -63,7 +63,6 @@ trait DefaultJsonFormats extends DefaultJsonProtocol with SprayJsonSupport {
 
     override def read(jsv: JsValue): LocalDate = jsv match {
       case JsString(s) => LocalDate.parse(s)
-      // Be merciful - for now. Note that Zalando JSON guidelines do NOT allow non-UTC offsets in stored data.
       //case JsString(s) => LocalDate.from(DateTimeFormatter.ISO_OFFSET_DATE.parse(s))
       case _ => deserializationError(s"Unknown Date (ISO 8601): $jsv")
     }

@@ -13,8 +13,9 @@ import fr.sysf.sample.Config
 import fr.sysf.sample.actors.BoPrizeActor._
 import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeJsonFormats, PrizeResponse}
 import fr.sysf.sample.models.PrizeDomain.Prize
-import fr.sysf.sample.routes.AuthentifierSupport.UserContext
-import fr.sysf.sample.routes.HttpSupport.ErrorResponse
+import fr.sysf.sample.utils.AuthenticateSupport.UserContext
+import fr.sysf.sample.utils.HttpSupport.ErrorResponse
+import fr.sysf.sample.utils.{AuthenticateSupport, DefaultJsonFormats}
 import io.swagger.annotations._
 
 import scala.concurrent.ExecutionContext
@@ -39,7 +40,7 @@ trait BoPrizeRoute
   implicit val prizeActor: ActorRef
 
   def prizeRoute: Route = pathPrefix("bo" / "prizes") {
-    AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
+    AuthenticateSupport.asAuthenticated { implicit uc: UserContext =>
       prize_getAll ~ prize_get ~ prize_create ~ prize_update ~ prize_delete
     }
   }

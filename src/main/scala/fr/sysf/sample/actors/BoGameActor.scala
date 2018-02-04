@@ -11,9 +11,10 @@ import fr.sysf.sample.actors.BoGameActor._
 import fr.sysf.sample.actors.BoInstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
 import fr.sysf.sample.models.GameDto._
 import fr.sysf.sample.models.GameEntity._
-import fr.sysf.sample.routes.AuthentifierSupport.UserContext
-import fr.sysf.sample.routes.HttpSupport.{GameIdNotFoundException, GamePrizeIdNotFoundException, InvalidInputException, NotAuthorizedException}
-import fr.sysf.sample.{ActorUtil, Repository}
+import fr.sysf.sample.utils.AuthenticateSupport.UserContext
+import fr.sysf.sample.utils.HttpSupport.{GameIdNotFoundException, GamePrizeIdNotFoundException, InvalidInputException, NotAuthorizedException}
+import fr.sysf.sample.Repository
+import fr.sysf.sample.utils.ActorUtil
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

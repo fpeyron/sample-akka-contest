@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import fr.sysf.sample.models.PrizeDao.{PrizeJsonFormats, PrizeResponse}
-import fr.sysf.sample.routes.DefaultJsonFormats
+import fr.sysf.sample.utils.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 

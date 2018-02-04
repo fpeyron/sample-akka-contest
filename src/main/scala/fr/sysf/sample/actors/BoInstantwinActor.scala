@@ -12,7 +12,7 @@ import fr.sysf.sample.Repository
 import fr.sysf.sample.actors.BoInstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinGetQuery, InstanwinUpdateCmd}
 import fr.sysf.sample.models.GameEntity.GamePrize
 import fr.sysf.sample.models.InstantwinDomain.Instantwin
-import fr.sysf.sample.routes.HttpSupport.InvalidInputException
+import fr.sysf.sample.utils.HttpSupport.InvalidInputException
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

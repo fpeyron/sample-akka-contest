@@ -8,7 +8,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import fr.sysf.sample.actors.ClusterSingletonActor.{GameDeleteEvent, GameLinesEvent, GameUpdateEvent}
 import fr.sysf.sample.models.GameEntity.{Game, GameStatusType}
-import fr.sysf.sample.routes.HttpSupport._
+import fr.sysf.sample.utils.HttpSupport._
 import fr.sysf.sample.{Config, Repository}
 
 import scala.concurrent.Await
@@ -46,7 +46,7 @@ class ClusterSingletonActor(implicit val repository: Repository, implicit val ma
         .filter(_.status == GameStatusType.Activated).runWith(Sink.collection), Duration.Inf)
   }
 
-  override def receive: PartialFunction[Any, Unit] = {
+  override def receive: Receive = {
 
     case GameUpdateEvent(game) =>
       if (game.status == GameStatusType.Activated)

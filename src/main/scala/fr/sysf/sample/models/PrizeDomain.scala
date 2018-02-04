@@ -3,7 +3,7 @@ package fr.sysf.sample.models
 import java.util.UUID
 
 import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
-import fr.sysf.sample.routes.DefaultJsonFormats
+import fr.sysf.sample.utils.DefaultJsonFormats
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 

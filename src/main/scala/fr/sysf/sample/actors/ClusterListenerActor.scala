@@ -19,13 +19,15 @@ class ClusterListenerActor extends Actor with ActorLogging {
 
   val cluster = Cluster(context.system)
 
+  //noinspection ActorMutableStateInspection
   private var members = Set.empty[Address]
 
   override def preStart(): Unit = cluster.subscribe(self, classOf[MemberEvent], classOf[UnreachableMember])
 
   override def postStop(): Unit = cluster.unsubscribe(self)
 
-  override def receive = {
+  override def receive: Receive = {
+
     case GetMemberNodes =>
       sender() ! members
     case MemberJoined(member) =>

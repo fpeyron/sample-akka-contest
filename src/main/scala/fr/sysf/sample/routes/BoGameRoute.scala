@@ -15,8 +15,9 @@ import fr.sysf.sample.actors.BoGameActor._
 import fr.sysf.sample.models.GameDto._
 import fr.sysf.sample.models.GameEntity.GamePrize
 import fr.sysf.sample.models.InstantwinDomain.InstantwinExtended
-import fr.sysf.sample.routes.AuthentifierSupport.UserContext
-import fr.sysf.sample.routes.HttpSupport.ErrorResponse
+import fr.sysf.sample.utils.AuthenticateSupport.UserContext
+import fr.sysf.sample.utils.HttpSupport.ErrorResponse
+import fr.sysf.sample.utils.{AuthenticateSupport, DefaultJsonFormats}
 import io.swagger.annotations._
 
 import scala.concurrent.ExecutionContext
@@ -43,7 +44,7 @@ trait BoGameRoute
   implicit val gameActor: ActorRef
 
   def gameRoute: Route = pathPrefix("bo" / "games") {
-    AuthentifierSupport.asAuthentified { implicit uc: UserContext =>
+    AuthenticateSupport.asAuthenticated { implicit uc: UserContext =>
       game_findBy ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
         game_getPrizes ~ game_addPrize ~ game_deletePrize ~ game_updatePrize ~
         game_downloadInstantwins

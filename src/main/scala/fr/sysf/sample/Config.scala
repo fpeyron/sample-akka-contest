@@ -14,7 +14,6 @@ object Config {
   }
 
   object Cluster {
-//    lazy val shardCount: Int = ConfigFactory.load().getInt("homeworkzen.cluster.shardCount")
     lazy val port: Int = ConfigFactory.load().getInt("akka.remote.netty.tcp.port")
     lazy val hostname: String = ConfigFactory.load().getString("akka.remote.netty.tcp.hostname")
   }
