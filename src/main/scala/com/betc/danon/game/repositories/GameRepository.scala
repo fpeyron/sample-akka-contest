@@ -53,6 +53,8 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       DBIO.seq(
         gamePrizeTableQuery.filter(_.game_id === game_id).delete,
         gameLimitTableQuery.filter(_.game_id === game_id).delete,
+        gameEanTableQuery.filter(_.game_id === game_id).delete,
+        gameFreecodeTableQuery.filter(_.game_id === game_id).delete,
         gameTableQuery.filter(_.id === game_id).delete
       ).asTry
     }
