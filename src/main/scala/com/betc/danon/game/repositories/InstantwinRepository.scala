@@ -72,11 +72,12 @@ trait InstantwinRepository extends InstantwinTable with PrizeTable {
       })
       .map(r => new InstantwinExtended(r._1, r._2))
 
-    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
 
     /**
       * Schema
       */
+
+    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
 
     def schemaDropCreateFuture: Future[Unit] = database.run {
       DBIO.seq(

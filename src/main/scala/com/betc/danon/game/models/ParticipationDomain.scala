@@ -14,17 +14,19 @@ object ParticipationDto {
 
   trait PartnerJsonSupport extends DefaultJsonSupport with PrizeJsonSupport {
     implicit val participationStatusType: RootJsonFormat[ParticipationStatusType.Value] = enumFormat(ParticipationStatusType)
-    implicit val participateRequest: RootJsonFormat[ParticipateRequest] = jsonFormat3(ParticipateRequest)
+    implicit val participateRequest: RootJsonFormat[ParticipateRequest] = jsonFormat4(ParticipateRequest)
     implicit val participateResponse: RootJsonFormat[ParticipateResponse] = jsonFormat4(ParticipateResponse)
   }
 
   case class ParticipateRequest(
                                  @ApiModelProperty(position = 1, value = "game code", required = true, example = "MY_CONTEST")
                                  game_code: Option[String],
-                                 @ApiModelProperty(position = 2, value = "transaction_id", required = false, example = "22345465656")
-                                 transaction_id: Option[String],
+                                 @ApiModelProperty(position = 2, value = "transaction_code", required = false, example = "22345465656")
+                                 transaction_code: Option[String],
                                  @ApiModelProperty(position = 3, value = "ean", required = false, example = "10")
-                                 ean: Option[String]
+                                 ean: Option[String],
+                                 @ApiModelProperty(position = 4, value = "metadata", required = false)
+                                 metadata: Option[Map[String, String]] = None
                                )
 
   implicit object ParticipationStatusType extends Enumeration {

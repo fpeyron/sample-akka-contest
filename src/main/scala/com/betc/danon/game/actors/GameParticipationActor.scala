@@ -8,7 +8,7 @@ import akka.persistence.{PersistentActor, RecoveryCompleted}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import com.betc.danon.game.Repository
-import com.betc.danon.game.actors.ParticipationActor.{ParticipateCmd, ParticipationEvent}
+import com.betc.danon.game.actors.GameParticipationActor.{ParticipateCmd, ParticipationEvent}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.models.ParticipationDto.{ParticipateResponse, ParticipationStatusType}
 import com.betc.danon.game.models.PrizeDao.PrizeResponse
@@ -17,11 +17,11 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 
-object ParticipationActor {
+object GameParticipationActor {
 
-  def props(id: UUID)(implicit repository: Repository, materializer: ActorMaterializer) = Props(new ParticipationActor(id))
+  def props(id: UUID)(implicit repository: Repository, materializer: ActorMaterializer) = Props(new GameParticipationActor(id))
 
-  def name(id: UUID) = s"participation-$id"
+  def name(id: UUID) = s"game-participation-$id"
 
   // Command
   sealed trait Cmd
@@ -35,7 +35,7 @@ object ParticipationActor {
 
 }
 
-class ParticipationActor(gameId: UUID)(implicit val repository: Repository, val materializer: ActorMaterializer) extends PersistentActor with ActorLogging {
+class GameParticipationActor(gameId: UUID)(implicit val repository: Repository, val materializer: ActorMaterializer) extends PersistentActor with ActorLogging {
 
   var lastInstantWin: Option[InstantwinExtended] = None
   var nextInstantWins: List[InstantwinExtended] = List.empty[InstantwinExtended]
@@ -43,7 +43,7 @@ class ParticipationActor(gameId: UUID)(implicit val repository: Repository, val 
 
   override def receiveCommand: Receive = {
 
-    case ClusterSingletonActor.GameLinesEvent =>
+    case GamesActor.GameLinesEvent =>
       refreshInstantWins()
 
 

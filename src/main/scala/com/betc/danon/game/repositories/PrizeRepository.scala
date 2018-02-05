@@ -51,11 +51,11 @@ trait PrizeRepository extends PrizeTable with GamePrizeTable {
           .to[List].result
       })
 
-    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
-
     /**
       * Schema
       */
+
+    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
 
     def schemaDropCreateFuture: Future[Unit] = database.run {
       DBIO.seq(

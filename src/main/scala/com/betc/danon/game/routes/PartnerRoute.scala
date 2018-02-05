@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
 import com.betc.danon.game.Config
-import com.betc.danon.game.actors.ParticipationActor.ParticipateCmd
+import com.betc.danon.game.actors.GameParticipationActor.ParticipateCmd
 import com.betc.danon.game.models.ParticipationDto.{ParticipateRequest, ParticipateResponse, PartnerJsonSupport}
 import com.betc.danon.game.utils.HttpSupport.ErrorResponse
 import com.betc.danon.game.utils.{CorsSupport, DefaultJsonSupport}

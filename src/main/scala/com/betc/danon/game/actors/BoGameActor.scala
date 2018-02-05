@@ -158,7 +158,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       sender ! new GameResponse(game)
 
       // Push event
-      clusterSingletonProxy ! ClusterSingletonActor.GameCreateEvent(game = game)
+      clusterSingletonProxy ! GamesActor.GameCreateEvent(game = game)
 
     } catch {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
@@ -231,7 +231,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       sender ! new GameResponse(gameToUpdate)
 
       // Push event
-      clusterSingletonProxy ! ClusterSingletonActor.GameUpdateEvent(game = gameToUpdate)
+      clusterSingletonProxy ! GamesActor.GameUpdateEvent(game = gameToUpdate)
 
     } catch {
       case e: GameIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
@@ -264,7 +264,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       sender ! None
 
       // Push event
-      clusterSingletonProxy ! ClusterSingletonActor.GameDeleteEvent(id = id)
+      clusterSingletonProxy ! GamesActor.GameDeleteEvent(id = id)
 
     }
     catch {
@@ -292,7 +292,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       sender ! None
 
       // Push event
-      clusterSingletonProxy ! ClusterSingletonActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Activated))
+      clusterSingletonProxy ! GamesActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Activated))
 
     }
     catch {
@@ -320,7 +320,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       sender ! None
 
       // Push event
-      clusterSingletonProxy ! ClusterSingletonActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Archived))
+      clusterSingletonProxy ! GamesActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Archived))
 
     }
     catch {

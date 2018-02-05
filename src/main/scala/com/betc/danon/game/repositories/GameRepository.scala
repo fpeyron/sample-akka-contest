@@ -185,11 +185,11 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       gameFreecodeTableQuery.filter(e => e.game_id === game_id && e.freecode === freecode).delete
     }
 
-    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
-
     /**
       * Schema
       */
+
+    def schemaDropCreate(): Unit = Await.result(schemaDropCreateFuture, Duration.Inf)
 
     def schemaDropCreateFuture: Future[Unit] = database.run {
       DBIO.seq(

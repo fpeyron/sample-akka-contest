@@ -6,7 +6,7 @@ import java.util.UUID
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
-import com.betc.danon.game.actors.ClusterSingletonActor.{GameDeleteEvent, GameLinesEvent, GameUpdateEvent}
+import com.betc.danon.game.actors.GamesActor.{GameDeleteEvent, GameLinesEvent, GameUpdateEvent}
 import com.betc.danon.game.models.GameEntity.{Game, GameStatusType}
 import com.betc.danon.game.utils.HttpSupport._
 import com.betc.danon.game.{Config, Repository}
@@ -14,11 +14,11 @@ import com.betc.danon.game.{Config, Repository}
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-object ClusterSingletonActor {
+object GamesActor {
 
-  final val name = "clusterSingleton"
+  final val name = "games"
 
-  def props(implicit repository: Repository, materializer: ActorMaterializer) = Props(new ClusterSingletonActor)
+  def props(implicit repository: Repository, materializer: ActorMaterializer) = Props(new GamesActor)
 
   // Command
   sealed trait Cmd
@@ -36,7 +36,7 @@ object ClusterSingletonActor {
 
 }
 
-class ClusterSingletonActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer) extends Actor with ActorLogging {
+class GamesActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer) extends Actor with ActorLogging {
 
   var games: Seq[Game] = Seq.empty[Game]
 
@@ -63,8 +63,9 @@ class ClusterSingletonActor(implicit val repository: Repository, implicit val ma
       getParticipationActor(event.id).foreach(_ forward event)
 
 
-    case cmd: ParticipationActor.ParticipateCmd => try {
+    case cmd: GameParticipationActor.ParticipateCmd => try {
 
+      // get Game in state
       val game: Option[Game] = games.find(r => r.country_code == cmd.country_code && r.code == cmd.game_code && r.status == GameStatusType.Activated)
 
       // check existing game
@@ -82,6 +83,7 @@ class ClusterSingletonActor(implicit val repository: Repository, implicit val ma
         throw ParticipationCloseException(code = cmd.game_code)
       }
 
+      // forward to dedicated actor
       getOrCreateParticipationActor(game.get.id) forward cmd
     }
     catch {
@@ -92,22 +94,13 @@ class ClusterSingletonActor(implicit val repository: Repository, implicit val ma
     case _ =>
       sender() ! s"${Config.Cluster.hostname}:${Config.Cluster.port}"
 
-    //  ClusterSingletonActor.doItAsynchronously.pipeTo(self)
 
   }
 
-  /*
-  def forwardToActor: Actor.Receive = {
-    case cmd: ParticipationActor.Cmd =>
-      context.child(ParticipationActor.name(cmd.reference))
-        .fold(context.actorOf(ParticipationActor.props(cmd.reference), ParticipationActor.name(cmd.reference)) forward cmd)(_ forward cmd)
-  }
-  */
+  def getParticipationActor(id: UUID): Option[ActorRef] = context.child(GameParticipationActor.name(id))
 
-  def getParticipationActor(id: UUID): Option[ActorRef] = context.child(ParticipationActor.name(id))
-
-  def getOrCreateParticipationActor(id: UUID): ActorRef = context.child(ParticipationActor.name(id))
-    .getOrElse(context.actorOf(ParticipationActor.props(id), ParticipationActor.name(id)))
+  def getOrCreateParticipationActor(id: UUID): ActorRef = context.child(GameParticipationActor.name(id))
+    .getOrElse(context.actorOf(GameParticipationActor.props(id), GameParticipationActor.name(id)))
 
 }
 

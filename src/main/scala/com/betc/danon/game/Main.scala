@@ -6,8 +6,8 @@ import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
-import com.betc.danon.game.actors.{BoGameActor, BoPrizeActor, ClusterListenerActor, ClusterSingletonActor}
-import com.betc.danon.game.repositories.{GameRepository, InstantwinRepository, PrizeRepository}
+import com.betc.danon.game.actors.{BoGameActor, BoPrizeActor, ClusterListenerActor, GamesActor}
+import com.betc.danon.game.repositories.{JournalRepository, InstantwinRepository, PrizeRepository}
 import com.betc.danon.game.routes._
 import com.betc.danon.game.utils.CustomMySqlProfile.api.Database
 import com.betc.danon.game.utils.HttpSupport
@@ -38,11 +38,11 @@ object Main extends App with RouteConcatenation with HttpSupport {
   // Start Actor Singleton
   val clusterSingleton: ActorRef = system.actorOf(
     ClusterSingletonManager.props(
-      singletonProps = ClusterSingletonActor.props,
+      singletonProps = GamesActor.props,
       terminationMessage = PoisonPill,
       settings = ClusterSingletonManagerSettings(system)
     ),
-    name = ClusterSingletonActor.name
+    name = GamesActor.name
   )
 
   // Start Actor Singleton Proxy
@@ -51,7 +51,7 @@ object Main extends App with RouteConcatenation with HttpSupport {
       singletonManagerPath = clusterSingleton.path.toStringWithoutAddress,
       settings = ClusterSingletonProxySettings(system).withRole(None)
     ),
-    name = s"${ClusterSingletonActor.name}Proxy"
+    name = s"${GamesActor.name}Proxy"
   )
 
   // Start actors
@@ -80,4 +80,4 @@ class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef, val clusterSi
   val routes: Route = healthCheckRoute ~ gameRoute ~ prizeRoute ~ partnerRoute ~ swaggerRoute ~ swaggerUiRoute
 }
 
-class Repository(implicit val ec: ExecutionContext, implicit val database: Database, val materializer: ActorMaterializer) extends PrizeRepository with GameRepository with InstantwinRepository
+class Repository(implicit val ec: ExecutionContext, implicit val database: Database, val materializer: ActorMaterializer) extends PrizeRepository with JournalRepository with InstantwinRepository
