@@ -11,11 +11,11 @@ import akka.stream.scaladsl.Source
 import akka.util.Timeout
 import fr.sysf.sample.Config
 import fr.sysf.sample.actors.BoPrizeActor._
-import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeJsonFormats, PrizeResponse}
+import fr.sysf.sample.models.PrizeDao.{PrizeCreateRequest, PrizeJsonSupport, PrizeResponse}
 import fr.sysf.sample.models.PrizeDomain.Prize
 import fr.sysf.sample.utils.AuthenticateSupport.UserContext
 import fr.sysf.sample.utils.HttpSupport.ErrorResponse
-import fr.sysf.sample.utils.{AuthenticateSupport, CorsSupport, DefaultJsonFormats}
+import fr.sysf.sample.utils.{AuthenticateSupport, CorsSupport, DefaultJsonSupport}
 import io.swagger.annotations._
 
 import scala.concurrent.ExecutionContext
@@ -31,7 +31,7 @@ import scala.concurrent.ExecutionContext
 ))
 @Path("/bo/prizes")
 trait BoPrizeRoute
-  extends Directives with DefaultJsonFormats with PrizeJsonFormats with CorsSupport {
+  extends Directives with DefaultJsonSupport with PrizeJsonSupport with CorsSupport {
 
   import akka.pattern.ask
 

@@ -15,7 +15,7 @@ import scala.reflect.ClassTag
   * when creating traits that contain the ``JsonReader`` and ``JsonWriter`` instances
   * for types that contain ``Date``s, ``UUID``s and such like.
   */
-trait DefaultJsonFormats extends DefaultJsonProtocol with SprayJsonSupport {
+trait DefaultJsonSupport extends DefaultJsonProtocol with SprayJsonSupport {
 
   /**
     * Computes ``RootJsonFormat`` for type ``A`` if ``A`` is object

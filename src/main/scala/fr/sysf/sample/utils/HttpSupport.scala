@@ -2,10 +2,7 @@ package fr.sysf.sample.utils
 
 import java.util.UUID
 
-import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.{HttpResponse, StatusCode, StatusCodes}
-import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import fr.sysf.sample.utils.HttpSupport._
 import spray.json._
@@ -14,13 +11,12 @@ import spray.json._
 object HttpSupport {
 
   // Error body
-  case class ErrorResponse(code: Int, `type`: String, message: Option[String] = None, detail: Option[Map[String, String]] = None)
+  case class ErrorResponse(code: Int = 500, `type`: String, message: Option[String] = None, detail: Option[Map[String, String]] = None)
 
   // Exception
   class FunctionalException(val statusCode: StatusCode, val `type`: Option[String] = None, val message: String) extends RuntimeException
 
   case class InvalidInputException(message: Option[String] = None, detail: Map[String, String]) extends RuntimeException
-
 
   case class GameIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("GameNotFoundException"), message = s"game not found with id : $id")
 
@@ -38,7 +34,7 @@ object HttpSupport {
 
 }
 
-trait HttpSupport extends Directives with DefaultJsonFormats {
+trait HttpSupport extends Directives with DefaultJsonSupport {
 
   implicit val errorResponse: RootJsonFormat[ErrorResponse] = jsonFormat4(ErrorResponse)
 
@@ -91,26 +87,4 @@ trait HttpSupport extends Directives with DefaultJsonFormats {
 
   implicit val timeout: Timeout = requestTimeout
   */
-}
-
-trait CorsSupport {
-
-  // Wrap the Route with this method to enable adding of CORS headers
-  def corsHandler(r: Route): Route = (headerValueByName("origin") | provide("*")) { origin =>
-    addAccessControlHeaders(origin)(preflightRequestHandler ~ r)
-  }
-
-  //this handles preflight OPTIONS requests.
-  private val preflightRequestHandler: Route = options {
-    complete(HttpResponse(StatusCodes.OK).withHeaders(`Access-Control-Allow-Methods`(OPTIONS, POST, PUT, GET, DELETE)))
-  }
-
-  //this directive adds access control headers to normal responses
-  private def addAccessControlHeaders(origin: String): Directive0 = {
-    respondWithHeaders(List(
-      Some(origin).filterNot(_ == "*").map(`Access-Control-Allow-Origin`(_)).getOrElse(`Access-Control-Allow-Origin`.*),
-      `Access-Control-Allow-Credentials`(true),
-      `Access-Control-Allow-Headers`("Authorization", "Content-Type", "X-Requested-With")
-    ))
-  }
 }

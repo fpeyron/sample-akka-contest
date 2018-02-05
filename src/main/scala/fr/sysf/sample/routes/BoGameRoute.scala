@@ -17,7 +17,7 @@ import fr.sysf.sample.models.GameEntity.GamePrize
 import fr.sysf.sample.models.InstantwinDomain.InstantwinExtended
 import fr.sysf.sample.utils.AuthenticateSupport.UserContext
 import fr.sysf.sample.utils.HttpSupport.ErrorResponse
-import fr.sysf.sample.utils.{AuthenticateSupport, CorsSupport, DefaultJsonFormats}
+import fr.sysf.sample.utils.{AuthenticateSupport, CorsSupport, DefaultJsonSupport}
 import io.swagger.annotations._
 
 import scala.concurrent.ExecutionContext
@@ -34,7 +34,7 @@ import scala.concurrent.ExecutionContext
 ))
 @Path("/bo/games")
 trait BoGameRoute
-  extends Directives with DefaultJsonFormats with GameJsonFormats with CorsSupport {
+  extends Directives with DefaultJsonSupport with GameJsonSupport with CorsSupport {
 
   import akka.pattern.ask
 

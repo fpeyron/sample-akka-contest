@@ -3,7 +3,7 @@ package fr.sysf.sample.models
 import java.util.UUID
 
 import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
-import fr.sysf.sample.utils.DefaultJsonFormats
+import fr.sysf.sample.utils.DefaultJsonSupport
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 
@@ -33,7 +33,7 @@ object PrizeDomain {
 
 object PrizeDao {
 
-  trait PrizeJsonFormats extends DefaultJsonFormats {
+  trait PrizeJsonSupport extends DefaultJsonSupport {
     implicit val prizeCreateRequest: RootJsonFormat[PrizeCreateRequest] = jsonFormat7(PrizeCreateRequest)
 
     implicit val prizeType: RootJsonFormat[PrizeType.Value] = enumFormat(PrizeType)

@@ -3,8 +3,8 @@ package fr.sysf.sample.models
 import java.time.Instant
 import java.util.UUID
 
-import fr.sysf.sample.models.PrizeDao.{PrizeJsonFormats, PrizeResponse}
-import fr.sysf.sample.utils.DefaultJsonFormats
+import fr.sysf.sample.models.PrizeDao.{PrizeJsonSupport, PrizeResponse}
+import fr.sysf.sample.utils.DefaultJsonSupport
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 
@@ -12,7 +12,7 @@ object ParticipationEntity
 
 object ParticipationDto {
 
-  trait PartnerJsonFormats extends DefaultJsonFormats with PrizeJsonFormats {
+  trait PartnerJsonSupport extends DefaultJsonSupport with PrizeJsonSupport {
     implicit val participationStatusType: RootJsonFormat[ParticipationStatusType.Value] = enumFormat(ParticipationStatusType)
     implicit val participateRequest: RootJsonFormat[ParticipateRequest] = jsonFormat3(ParticipateRequest)
     implicit val participateResponse: RootJsonFormat[ParticipateResponse] = jsonFormat4(ParticipateResponse)

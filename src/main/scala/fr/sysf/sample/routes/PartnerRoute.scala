@@ -9,9 +9,9 @@ import akka.http.scaladsl.server._
 import akka.util.Timeout
 import fr.sysf.sample.Config
 import fr.sysf.sample.actors.ParticipationActor.ParticipateCmd
-import fr.sysf.sample.models.ParticipationDto.{ParticipateRequest, ParticipateResponse, PartnerJsonFormats}
+import fr.sysf.sample.models.ParticipationDto.{ParticipateRequest, ParticipateResponse, PartnerJsonSupport}
 import fr.sysf.sample.utils.HttpSupport.ErrorResponse
-import fr.sysf.sample.utils.{CorsSupport, DefaultJsonFormats}
+import fr.sysf.sample.utils.{CorsSupport, DefaultJsonSupport}
 import io.swagger.annotations._
 
 import scala.concurrent.ExecutionContext
@@ -27,7 +27,7 @@ import scala.concurrent.ExecutionContext
 ))
 @Path("/partner")
 trait PartnerRoute
-  extends Directives with DefaultJsonFormats with PartnerJsonFormats with CorsSupport {
+  extends Directives with DefaultJsonSupport with PartnerJsonSupport with CorsSupport {
 
   import akka.pattern.ask
 

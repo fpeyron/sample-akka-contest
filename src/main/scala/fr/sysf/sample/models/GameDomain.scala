@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import fr.sysf.sample.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
-import fr.sysf.sample.utils.DefaultJsonFormats
+import fr.sysf.sample.utils.DefaultJsonSupport
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
 
@@ -109,7 +109,7 @@ object GameEntity {
 
 object GameDto {
 
-  trait GameJsonFormats extends DefaultJsonFormats {
+  trait GameJsonSupport extends DefaultJsonSupport {
     implicit val gameLimitRequest: RootJsonFormat[GameLimitRequest] = jsonFormat4(GameLimitRequest)
     implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat12(GameCreateRequest)
     implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat11(GameUpdateRequest)
