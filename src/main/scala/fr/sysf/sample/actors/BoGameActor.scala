@@ -368,6 +368,10 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
         throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
       }
 
+      if (request.prize_id.isDefined && Await.result(repository.prize.getById(request.prize_id.get), Duration.Inf).isEmpty) {
+        throw InvalidInputException(detail = Map("prize_id" -> s"INVALID_VALUE : prize is unknown with id : $request.prize_id"))
+      }
+
       // Persist
       val newId = UUID.randomUUID
       val gamePrize = GamePrize(
