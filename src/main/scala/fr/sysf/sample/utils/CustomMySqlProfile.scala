@@ -1,4 +1,4 @@
-package fr.sysf.sample
+package fr.sysf.sample.utils
 
 import java.sql.{PreparedStatement, ResultSet}
 

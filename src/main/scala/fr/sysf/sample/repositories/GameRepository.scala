@@ -6,8 +6,8 @@ import java.util.UUID
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import fr.sysf.sample.CustomMySqlProfile.api._
 import fr.sysf.sample.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
+import fr.sysf.sample.utils.CustomMySqlProfile.api._
 import slick.ast.BaseTypedType
 import slick.jdbc.JdbcType
 import slick.sql.SqlProfile.ColumnOption.SqlType

@@ -6,9 +6,9 @@ import java.util.UUID
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import fr.sysf.sample.CustomMySqlProfile.api._
 import fr.sysf.sample.models.PrizeDomain
 import fr.sysf.sample.models.PrizeDomain.{Prize, PrizeType}
+import fr.sysf.sample.utils.CustomMySqlProfile.api._
 import slick.ast.BaseTypedType
 import slick.jdbc.JdbcType
 

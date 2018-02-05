@@ -6,10 +6,10 @@ import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
-import fr.sysf.sample.CustomMySqlProfile.api.Database
 import fr.sysf.sample.actors.{BoGameActor, BoPrizeActor, ClusterListenerActor, ClusterSingletonActor}
 import fr.sysf.sample.repositories.{GameRepository, InstantwinRepository, PrizeRepository}
 import fr.sysf.sample.routes._
+import fr.sysf.sample.utils.CustomMySqlProfile.api.Database
 import fr.sysf.sample.utils.HttpSupport
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
