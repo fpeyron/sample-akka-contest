@@ -3,7 +3,7 @@ import java.time.Instant
 import com.typesafe.sbt.packager.docker.Cmd
 import sbt.enablePlugins
 
-organization := "com.betc.danon.fusion"
+organization := "com.betc.danon"
 name := "fusion-game"
 description := "Fusion provider Game"
 
@@ -57,7 +57,7 @@ dependencyOverrides += "com.google.guava"             % "guava"                 
 // ----------------
 // Run
 // ----------------
-mainClass in (Compile, run) := Some("fr.sysf.sample.Main")
+mainClass in (Compile, run) := Some("com.betc.danon.game.Main")
 fork in run := true
 
 
