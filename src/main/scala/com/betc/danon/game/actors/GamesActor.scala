@@ -41,7 +41,6 @@ object GamesActor {
   case class GameFindQuery(country_code: String, games: Seq[String], tags: Seq[String], customer_id: Option[String]) extends Query
 
 
-
   def msort(xs: List[Game]): List[Game] = {
 
     def less(a: Game, b: Game): Boolean = {
@@ -149,7 +148,16 @@ class GamesActor(implicit val repository: Repository, implicit val materializer:
             && Some(query.tags).filterNot(_.isEmpty).forall(_.map(t => r.tags.contains(t)).forall(b => b))
             && Some(query.games).filterNot(_.isEmpty).forall(_.contains(r.code))
         )
-      sender() ! GamesActor.msort(result.toList).map(new CustomerGameResponse(_))
+      sender() ! GamesActor.msort(result.toList).map(game => CustomerGameResponse(
+        `type` = game.`type`,
+        code = game.code,
+        title = game.title,
+        start_date = game.start_date,
+        end_date = game.end_date,
+        input_type = game.input_type,
+        input_point = game.input_point,
+        parent = game.parent_id.flatMap(parent_id => games.find(_.id == parent_id).map(_.code))
+      ))
     }
     catch {
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
