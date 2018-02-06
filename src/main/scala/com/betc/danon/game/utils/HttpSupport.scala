@@ -75,8 +75,13 @@ trait HttpSupport extends Directives with DefaultJsonSupport {
     .handleAll[MethodRejection] { methodRejection =>
     complete(StatusCodes.MethodNotAllowed, ErrorResponse(code = StatusCodes.MethodNotAllowed.intValue, `type` = "MethodRejection", message = Some(s"Can't do that! Supported: ${methodRejection.map(_.supported.name).mkString(" or ")}!")))
   }
+    .handleAll[MalformedRequestContentRejection] { malformedRequestContentRejection =>
+    complete(StatusCodes.BadRequest, ErrorResponse(code = StatusCodes.BadRequest.intValue, `type` = "MalformedRequestContentRejection", message = malformedRequestContentRejection.headOption.map(_.message)))
+  }
+    .handleAll[Rejection] { rejection =>
+    complete(StatusCodes.BadRequest, ErrorResponse(code = StatusCodes.BadRequest.intValue, `type` = "UnknownRejection", message = rejection.headOption.map(_.toString)))
+  }
     .result()
-
 
   /*
   def requestTimeout: Timeout = {
