@@ -14,7 +14,7 @@ object GameEntity {
                    id: UUID,
                    `type`: GameType.Value,
                    status: GameStatusType.Value,
-                   parent_id: Option[UUID] = None,
+                   parents: Seq[UUID] = Seq.empty,
                    code: String,
                    country_code: String,
                    title: Option[String] = None,
@@ -134,8 +134,8 @@ object GameDto {
                                 `type`: Option[String],
                                 @ApiModelProperty(position = 2, value = "code", required = true, example = "MY_CONTEST")
                                 code: Option[String],
-                                @ApiModelProperty(position = 3, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
-                                parent_id: Option[UUID],
+                                @ApiModelProperty(position = 3, value = "parent games", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
+                                parents: Option[Seq[UUID]] = None,
                                 @ApiModelProperty(position = 4, value = "title", example = "My new game")
                                 title: Option[String],
                                 @ApiModelProperty(position = 5, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
@@ -161,8 +161,8 @@ object GameDto {
   case class GameUpdateRequest(
                                 @ApiModelProperty(position = 1, value = "code", required = true, example = "MY_CONTEST")
                                 code: Option[String],
-                                @ApiModelProperty(position = 2, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
-                                parent_id: Option[UUID],
+                                @ApiModelProperty(position = 2, value = "parent games", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
+                                parents: Option[Seq[UUID]] = None,
                                 @ApiModelProperty(position = 4, value = "title", example = "My new game")
                                 title: Option[String],
                                 @ApiModelProperty(position = 5, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
@@ -203,8 +203,8 @@ object GameDto {
                            `type`: GameType.Value,
                            @ApiModelProperty(position = 3, value = "status", dataType = "string", required = true, example = "DRAFT", allowableValues = "DRAFT,ACTIVATE,ARCHIVED")
                            status: GameStatusType.Value,
-                           @ApiModelProperty(position = 4, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
-                           parent_id: Option[UUID] = None,
+                           @ApiModelProperty(position = 4, value = "parent games", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
+                           parents: Option[Seq[UUID]] = None,
                            @ApiModelProperty(position = 5, value = "code", required = true, example = "MY_CONTEST")
                            code: String,
                            @ApiModelProperty(position = 6, value = "title", example = "My new game")
@@ -230,7 +230,7 @@ object GameDto {
                            @ApiModelProperty(position = 14, value = "tags")
                            tags: Option[Seq[String]] = None
                          ) {
-    def this(r: Game) = this(id = r.id, `type` = r.`type`, status = r.status, parent_id = r.parent_id, code = r.code, title = r.title, start_date = r.start_date, timezone = r.timezone, end_date = r.end_date, input_type = r.input_type, input_point = r.input_point, limits = Some(r.limits).filterNot(_.isEmpty), prizes = Some(r.prizes).filterNot(_.isEmpty), input_eans = Some(r.input_eans).filterNot(_.isEmpty), input_freecodes = Some(r.input_freecodes).filterNot(_.isEmpty), tags = Some(r.tags).filterNot(_.isEmpty))
+    def this(r: Game) = this(id = r.id, `type` = r.`type`, status = r.status, parents = Some(r.parents).find(_.nonEmpty), code = r.code, title = r.title, start_date = r.start_date, timezone = r.timezone, end_date = r.end_date, input_type = r.input_type, input_point = r.input_point, limits = Some(r.limits).find(_.nonEmpty), prizes = Some(r.prizes).find(_.nonEmpty), input_eans = Some(r.input_eans).find(_.nonEmpty), input_freecodes = Some(r.input_freecodes).find(_.nonEmpty), tags = Some(r.tags).find(_.nonEmpty))
   }
 
   case class GameForListDto(
@@ -241,7 +241,7 @@ object GameDto {
                              @ApiModelProperty(position = 3, value = "status", dataType = "string", required = true, example = "DRAFT", allowableValues = "DRAFT,ACTIVATE,ARCHIVED")
                              status: GameStatusType.Value,
                              @ApiModelProperty(position = 4, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
-                             parent_id: Option[UUID] = None,
+                             parents: Option[Seq[UUID]] = None,
                              @ApiModelProperty(position = 5, value = "code", required = true, example = "MY_CONTEST")
                              code: String,
                              @ApiModelProperty(position = 6, value = "title", example = "My new game")
@@ -259,7 +259,7 @@ object GameDto {
                              @ApiModelProperty(position = 12, value = "tags")
                              tags: Option[Seq[String]] = None
                            ) {
-    def this(game: Game) = this(id = game.id, `type` = game.`type`, status = game.status, parent_id = game.parent_id, code = game.code, title = game.title, start_date = game.start_date, timezone = game.timezone, end_date = game.end_date, input_type = game.input_type, input_point = game.input_point, tags = Some(game.tags).filterNot(_.isEmpty))
+    def this(game: Game) = this(id = game.id, `type` = game.`type`, status = game.status, parents = Some(game.parents).find(_.nonEmpty), code = game.code, title = game.title, start_date = game.start_date, timezone = game.timezone, end_date = game.end_date, input_type = game.input_type, input_point = game.input_point, tags = Some(game.tags).find(_.nonEmpty))
   }
 
   /**

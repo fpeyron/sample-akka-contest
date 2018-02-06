@@ -44,12 +44,13 @@ object GamesActor {
   def msort(xs: List[Game]): List[Game] = {
 
     def less(a: Game, b: Game): Boolean = {
-      if (b.parent_id.isDefined && b.parent_id.get == a.id) true
-      else if (a.parent_id.isDefined && a.parent_id.get == b.id) false
-      else if (a.parent_id.isEmpty && b.parent_id.isEmpty) a.id.compareTo(b.id) > 0
-      else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get != b.parent_id.get) a.parent_id.get.compareTo(b.parent_id.get) > 0
-      else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get == b.parent_id.get) b.id.compareTo(a.id) > 0
-      else b.parent_id.getOrElse(b.id).compareTo(a.parent_id.getOrElse(a.id)) > 0
+      if (b.parents.contains(a.id)) true
+      else if (a.parents.contains(b.id)) false
+      //else if (a.parent_id.isEmpty && b.parent_id.isEmpty) a.id.compareTo(b.id) > 0
+      //else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get != b.parent_id.get) a.parent_id.get.compareTo(b.parent_id.get) > 0
+      //else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get == b.parent_id.get) b.id.compareTo(a.id) > 0
+      //else b.parent_id.getOrElse(b.id).compareTo(a.parent_id.getOrElse(a.id)) > 0
+      else a.code.compareTo(b.code) < 0
     }
 
     def merge(xs: List[Game], ys: List[Game]): List[Game] = (xs, ys) match {
@@ -84,9 +85,9 @@ class GamesActor(implicit val repository: Repository, implicit val materializer:
 
     case GameUpdateEvent(game) => try {
       if (game.status == GameStatusType.Activated)
-        games = games.filter(_.id == game.id) :+ game.copy(prizes = Seq.empty, input_eans = Seq.empty, input_freecodes = Seq.empty)
+        games = games.filterNot(_.id == game.id) :+ game.copy(prizes = Seq.empty, input_eans = Seq.empty, input_freecodes = Seq.empty)
       else
-        games = games.filter(_.id == game.id)
+        games = games.filterNot(_.id == game.id)
     }
     catch {
       case e: Exception => throw e
@@ -94,7 +95,7 @@ class GamesActor(implicit val repository: Repository, implicit val materializer:
 
 
     case GameDeleteEvent(id) => try {
-      games = games.filter(_.id == id)
+      games = games.filterNot(_.id == id)
     }
     catch {
       case e: Exception => throw e
@@ -156,7 +157,7 @@ class GamesActor(implicit val repository: Repository, implicit val materializer:
         end_date = game.end_date,
         input_type = game.input_type,
         input_point = game.input_point,
-        parent = game.parent_id.flatMap(parent_id => games.find(_.id == parent_id).map(_.code))
+        parents = Some(game.parents.flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty)
       ))
     }
     catch {

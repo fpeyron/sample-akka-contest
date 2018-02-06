@@ -7,6 +7,7 @@ import java.util.UUID
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
+import com.betc.danon.game.utils.ActorUtil
 import com.betc.danon.game.utils.CustomMySqlProfile.api._
 import slick.ast.BaseTypedType
 import slick.jdbc.JdbcType
@@ -71,6 +72,11 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     }
 
 
+    def findByIds(ids: Seq[UUID]): Future[Seq[Game]] = {
+      database.run(gameTableQuery.filter(_.id inSet ids).to[Seq].result)
+    }
+
+
     def getExtendedById(game_id: UUID): Future[Option[Game]] = {
       /*
             val query = gameTableQuery.filter(_.id === game_id)
@@ -106,12 +112,10 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       gameTableQuery.filter(_.code === code).to[List].result
     }
 
-
     def fetchBy(
                  country_code: Option[String] = None,
                  status: Iterable[GameStatusType.Value] = Iterable.empty,
                  types: Iterable[GameType.Value] = Iterable.empty,
-                 parent: Option[UUID] = None,
                  code: Option[String] = None,
                ): Source[Game, NotUsed] = Source.fromPublisher {
       database.stream {
@@ -119,10 +123,8 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
           .filter(row => (if (types.isEmpty) None else Some(types)).map(s => row.`type` inSet s.map(_.toString)).getOrElse(true: Rep[Boolean]))
           .filter(row => (if (status.isEmpty) None else Some(status)).map(s => row.status inSet s.map(_.toString)).getOrElse(true: Rep[Boolean]))
           .filter(row => if (country_code.isDefined) row.country_code === country_code.get else true: Rep[Boolean])
-          .filter(row => if (parent.isDefined) row.parent_id.get === parent.get else true: Rep[Boolean])
           .filter(row => if (code.isDefined) row.code === code.get else true: Rep[Boolean])
           .to[List]
-        //println(query.result.statements.headOption)
         query.result
       }
     }
@@ -245,11 +247,7 @@ private[repositories] trait GameTable {
       s => GameInputType.withName(s)
     )
 
-    def input_eans = column[Option[String]]("input_eans", O.Length(255, varying = true))
-
-    def input_freecodes = column[Option[String]]("input_freecodes", O.Length(255, varying = true))
-
-    override def * = (id, `type`, status, code, parent_id, country_code, title, start_date, timezone, end_date, input_type, input_point, tags) <> (create, extract)
+    override def * = (id, `type`, status, code, parents, country_code, title, start_date, timezone, end_date, input_type, input_point, tags) <> (create, extract)
 
     def id = column[UUID]("id", O.PrimaryKey)
 
@@ -259,7 +257,7 @@ private[repositories] trait GameTable {
 
     def code = column[String]("code", O.Length(36, varying = true))
 
-    def parent_id = column[Option[UUID]]("parent_id")
+    def parents = column[Option[String]]("parents", O.Length(255, varying = true))
 
     def country_code = column[String]("country_code", O.Length(2, varying = true))
 
@@ -277,13 +275,13 @@ private[repositories] trait GameTable {
 
     def tags = column[Option[String]]("tags", O.Length(255, varying = true))
 
-    def create(t: (UUID, String, String, String, Option[UUID], String, Option[String], Instant, String, Instant, GameInputType.Value, Option[Int], Option[String])) =
+    def create(t: (UUID, String, String, String, Option[String], String, Option[String], Instant, String, Instant, GameInputType.Value, Option[Int], Option[String])) =
       Game(
         id = t._1,
         `type` = GameType.withName(t._2),
         status = GameStatusType.withName(t._3),
         code = t._4,
-        parent_id = t._5,
+        parents = t._5.map(_.split(",").flatMap(ActorUtil.string2UUID).toSeq).getOrElse(Seq.empty),
         country_code = t._6,
         title = t._7,
         start_date = t._8,
@@ -299,7 +297,7 @@ private[repositories] trait GameTable {
       g.`type`.toString,
       g.status.toString,
       g.code,
-      g.parent_id,
+      Some(g.parents).find(_.nonEmpty).map(_.mkString(",")),
       g.country_code,
       g.title,
       g.start_date,
@@ -307,7 +305,7 @@ private[repositories] trait GameTable {
       g.end_date,
       g.input_type,
       g.input_point,
-      if (g.tags.isEmpty) None else Some(g.tags.mkString(","))
+      Some(g.tags).find(_.nonEmpty).map(_.mkString(","))
     )
   }
 

@@ -3,7 +3,7 @@ package com.betc.danon.game.models
 import java.time.Instant
 import java.util.UUID
 
-import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameType}
+import com.betc.danon.game.models.GameEntity.{GameInputType, GameType}
 import com.betc.danon.game.models.PrizeDao.{PrizeJsonSupport, PrizeResponse}
 import com.betc.danon.game.utils.DefaultJsonSupport
 import io.swagger.annotations.ApiModelProperty
@@ -21,15 +21,15 @@ object ParticipationDto {
   }
 
   case class CustomerParticipateRequest(
-                                 @ApiModelProperty(position = 1, value = "game code", required = true, example = "MY_CONTEST")
-                                 game_code: String,
-                                 @ApiModelProperty(position = 2, value = "transaction_code", required = false, example = "22345465656")
-                                 transaction_code: Option[String],
-                                 @ApiModelProperty(position = 3, value = "ean", required = false, example = "10")
-                                 ean: Option[String],
-                                 @ApiModelProperty(position = 4, value = "metadata", required = false)
-                                 metadata: Option[Map[String, String]] = None
-                               )
+                                         @ApiModelProperty(position = 1, value = "game code", required = true, example = "MY_CONTEST")
+                                         game_code: String,
+                                         @ApiModelProperty(position = 2, value = "transaction_code", required = false, example = "22345465656")
+                                         transaction_code: Option[String],
+                                         @ApiModelProperty(position = 3, value = "ean", required = false, example = "10")
+                                         ean: Option[String],
+                                         @ApiModelProperty(position = 4, value = "metadata", required = false)
+                                         metadata: Option[Map[String, String]] = None
+                                       )
 
   implicit object ParticipationStatusType extends Enumeration {
     val Lost: ParticipationStatusType.Value = Value("LOST")
@@ -61,7 +61,7 @@ object ParticipationDto {
                                    @ApiModelProperty(position = 1, value = "code", required = true, example = "MY_CONTEST")
                                    code: String,
                                    @ApiModelProperty(position = 2, value = "parent", required = false, example = "MY_PARENT")
-                                   parent: Option[String] = None,
+                                   parents: Option[Seq[String]] = None,
                                    @ApiModelProperty(position = 3, value = "type", dataType = "string", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
                                    `type`: GameType.Value,
                                    @ApiModelProperty(position = 4, value = "title", example = "My new game")
@@ -74,8 +74,6 @@ object ParticipationDto {
                                    input_type: GameInputType.Value,
                                    @ApiModelProperty(position = 8, value = "input point", required = false, example = "10")
                                    input_point: Option[Int] = None
-                                 ) {
-    def this(game: Game) = this(`type` = game.`type`, code = game.code, title = game.title, start_date = game.start_date, end_date = game.end_date, input_type = game.input_type, input_point = game.input_point)
-  }
+                                 )
 
 }

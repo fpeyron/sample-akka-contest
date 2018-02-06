@@ -12,7 +12,6 @@ import com.betc.danon.game.actors.BoGameActor._
 import com.betc.danon.game.actors.BoInstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
 import com.betc.danon.game.models.GameDto._
 import com.betc.danon.game.models.GameEntity._
-import com.betc.danon.game.utils.ActorUtil
 import com.betc.danon.game.utils.AuthenticateSupport.UserContext
 import com.betc.danon.game.utils.HttpSupport.{GameIdNotFoundException, GamePrizeIdNotFoundException, InvalidInputException, NotAuthorizedException}
 
@@ -32,7 +31,7 @@ object BoGameActor {
   // Command
   sealed trait Cmd
 
-  case class GameListQuery(uc: UserContext, types: Option[String], status: Option[String], parent: Option[String]) extends Query
+  case class GameListQuery(uc: UserContext, types: Option[String], status: Option[String]) extends Query
 
   case class GameGetQuery(uc: UserContext, id: UUID) extends Query
 
@@ -66,17 +65,15 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
 
   override def receive: Receive = {
 
-    case GameListQuery(uc, types, status, parent) => try {
+    case GameListQuery(uc, types, status) => try {
 
       val restrictedTypes = types.map(_.split(",").flatMap(GameType.withNameOptional).toSeq)
       val restrictedStatus = status.map(_.split(",").flatMap(GameStatusType.withNameOptional).toSeq)
-      val restrictedParent = parent.flatMap(ActorUtil.string2UUID)
 
       val sourceList: Source[GameForListDto, NotUsed] = repository.game.fetchBy(
         country_code = Some(uc.country_code),
         types = restrictedTypes.getOrElse(Seq.empty[GameType.Value]),
-        status = restrictedStatus.getOrElse(Seq.empty[GameStatusType.Value]),
-        parent = restrictedParent
+        status = restrictedStatus.getOrElse(Seq.empty[GameStatusType.Value])
       )
         .map(new GameForListDto(_))
 
@@ -123,7 +120,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
         start_date = request.start_date.getOrElse(Instant.now),
         end_date = request.end_date.getOrElse(Instant.now),
         timezone = request.timezone.map(ZoneId.of(_).toString).getOrElse("UTC"),
-        parent_id = request.parent_id,
+        parents = request.parents.getOrElse(Seq.empty),
         input_type = request.input_type.map(GameInputType.withName).getOrElse(GameInputType.Other),
         input_point = request.input_point,
         limits = request.limits.getOrElse(Seq.empty)
@@ -141,14 +138,16 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       // Check existing code
       if (Await.result(repository.game.findByCode(game.code), Duration.Inf)
         .exists(r => r.country_code == game.country_code && r.status != GameStatusType.Archived)) {
-        throw InvalidInputException(detail = Map("code" -> "ALREADY_EXISTS : already exists with same code and status ACTIVE"))
+        throw InvalidInputException(detail = Map("code" -> "GAME_ALREADY_EXISTS : already exists with same code and status ACTIVE"))
       }
 
       // Check existing parent
-      if (game.parent_id.isDefined) {
-        val parent = Await.result(repository.game.getExtendedById(game.parent_id.get), Duration.Inf)
-        if (!parent.exists(r => r.country_code == game.country_code)) {
-          throw InvalidInputException(detail = Map("parent_id" -> "ENTITY_NOT_FOUND : should already exists"))
+      if (game.parents.nonEmpty) {
+        val parentIds = Await.result(repository.game.findByIds(game.parents), Duration.Inf).filter(_.country_code == uc.country_code).map(_.id)
+        val errors = game.parents.flatMap(p => if (!parentIds.contains(p)) Some("parents", s"GAME_NOT_FOUND : parent should already exists : $p") else None)
+        if (errors.nonEmpty) {
+          var index = -1
+          throw InvalidInputException(detail = errors.map { r => index += 1; s"${r._1}.$index" -> r._2 }.toMap)
         }
       }
 
@@ -196,10 +195,12 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       }
 
       // Check existing parent
-      if (game.get.parent_id.isDefined) {
-        val parent = Await.result(repository.game.getExtendedById(game.get.parent_id.get), Duration.Inf)
-        if (!parent.exists(r => r.country_code == game.get.country_code)) {
-          throw InvalidInputException(detail = Map("parent_id" -> "ENTITY_NOT_FOUND : should already exists"))
+      if (request.parents.exists(_.nonEmpty)) {
+        val parentIds = Await.result(repository.game.findByIds(request.parents.get), Duration.Inf).filter(_.country_code == uc.country_code).map(_.id)
+        val errors = request.parents.get.flatMap(p => if (!parentIds.contains(p)) Some(("parent_id", "ENTITY_NOT_FOUND : should already exists")) else None)
+        if (errors.nonEmpty) {
+          var index = -1
+          throw InvalidInputException(detail = errors.map { r => index += 1; s"${r._1}.$index" -> r._2 }.toMap)
         }
       }
       // Persist
@@ -213,7 +214,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
         start_date = request.start_date.getOrElse(game.get.start_date),
         end_date = request.end_date.getOrElse(game.get.end_date),
         timezone = request.timezone.getOrElse("UTC"),
-        parent_id = request.parent_id,
+        parents = request.parents.getOrElse(game.get.parents),
         input_type = request.input_type.map(GameInputType.withName).getOrElse(GameInputType.Other),
         input_point = request.input_point.orElse(game.get.input_point),
         limits = request.limits.map(
@@ -254,7 +255,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       if (game.get.status != GameStatusType.Draft) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
 
       // Check dependency
-      if (game.get.parent_id.isDefined) throw NotAuthorizedException(id = id, message = "HAS_DEPENDENCIES")
+      if (game.get.parents.nonEmpty) throw NotAuthorizedException(id = id, message = "HAS_DEPENDENCIES")
 
       // Delete instantwins
       getInstantwinActor(game.get.id) ! InstanwinDeleteCmd
