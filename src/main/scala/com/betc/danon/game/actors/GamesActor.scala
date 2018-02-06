@@ -6,10 +6,11 @@ import java.util.UUID
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
-import com.betc.danon.game.actors.GamesActor.{GameDeleteEvent, GameLinesEvent, GameUpdateEvent}
+import com.betc.danon.game.Repository
+import com.betc.danon.game.actors.GamesActor.{GameDeleteEvent, GameFindQuery, GameLinesEvent, GameUpdateEvent}
 import com.betc.danon.game.models.GameEntity.{Game, GameStatusType}
+import com.betc.danon.game.models.ParticipationDto.CustomerGameResponse
 import com.betc.danon.game.utils.HttpSupport._
-import com.betc.danon.game.{Config, Repository}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -34,6 +35,39 @@ object GamesActor {
 
   case class GameDeleteEvent(id: UUID) extends Event
 
+  // Query
+  sealed trait Query
+
+  case class GameFindQuery(country_code: String, games: Seq[String], tags: Seq[String], customer_id: Option[String]) extends Query
+
+
+
+  def msort(xs: List[Game]): List[Game] = {
+
+    def less(a: Game, b: Game): Boolean = {
+      if (b.parent_id.isDefined && b.parent_id.get == a.id) true
+      else if (a.parent_id.isDefined && a.parent_id.get == b.id) false
+      else if (a.parent_id.isEmpty && b.parent_id.isEmpty) a.id.compareTo(b.id) > 0
+      else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get != b.parent_id.get) a.parent_id.get.compareTo(b.parent_id.get) > 0
+      else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get == b.parent_id.get) b.id.compareTo(a.id) > 0
+      else b.parent_id.getOrElse(b.id).compareTo(a.parent_id.getOrElse(a.id)) > 0
+    }
+
+    def merge(xs: List[Game], ys: List[Game]): List[Game] = (xs, ys) match {
+      case (Nil, _) => ys
+      case (_, Nil) => xs
+      case (x :: xs1, y :: ys1) =>
+        if (less(x, y)) x :: merge(xs1, ys)
+        else y :: merge(xs, ys1)
+    }
+
+    val n = xs.length / 2
+    if (n == 0) xs
+    else {
+      val (ys, zs) = xs splitAt n
+      merge(msort(ys), msort(zs))
+    }
+  }
 }
 
 class GamesActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer) extends Actor with ActorLogging {
@@ -48,19 +82,32 @@ class GamesActor(implicit val repository: Repository, implicit val materializer:
 
   override def receive: Receive = {
 
-    case GameUpdateEvent(game) =>
+
+    case GameUpdateEvent(game) => try {
       if (game.status == GameStatusType.Activated)
         games = games.filter(_.id == game.id) :+ game.copy(prizes = Seq.empty, input_eans = Seq.empty, input_freecodes = Seq.empty)
       else
         games = games.filter(_.id == game.id)
+    }
+    catch {
+      case e: Exception => throw e
+    }
 
 
-    case GameDeleteEvent(id) =>
+    case GameDeleteEvent(id) => try {
       games = games.filter(_.id == id)
+    }
+    catch {
+      case e: Exception => throw e
+    }
 
 
-    case event: GameLinesEvent =>
+    case event: GameLinesEvent => try {
       getParticipationActor(event.id).foreach(_ forward event)
+    }
+    catch {
+      case e: Exception => throw e
+    }
 
 
     case cmd: GameParticipationActor.ParticipateCmd => try {
@@ -91,9 +138,22 @@ class GamesActor(implicit val repository: Repository, implicit val materializer:
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
-    case _ =>
-      sender() ! s"${Config.Cluster.hostname}:${Config.Cluster.port}"
 
+    case query: GameFindQuery => try {
+
+      // get Game in state
+      val result: Seq[Game] = games
+        .filter(
+          r => r.country_code == query.country_code
+            && r.status == GameStatusType.Activated
+            && Some(query.tags).filterNot(_.isEmpty).forall(_.map(t => r.tags.contains(t)).forall(b => b))
+            && Some(query.games).filterNot(_.isEmpty).forall(_.contains(r.code))
+        )
+      sender() ! GamesActor.msort(result.toList).map(new CustomerGameResponse(_))
+    }
+    catch {
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+    }
 
   }
 

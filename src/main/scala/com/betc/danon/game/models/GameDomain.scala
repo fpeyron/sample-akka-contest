@@ -26,7 +26,8 @@ object GameEntity {
                    input_eans: Seq[String] = Seq.empty,
                    input_freecodes: Seq[String] = Seq.empty,
                    limits: Seq[GameLimit] = Seq.empty,
-                   prizes: Seq[GamePrize] = Seq.empty
+                   prizes: Seq[GamePrize] = Seq.empty,
+                   tags: Seq[String] = Seq.empty
                  )
 
   case class GameLimit(
@@ -111,8 +112,8 @@ object GameDto {
 
   trait GameJsonSupport extends DefaultJsonSupport {
     implicit val gameLimitRequest: RootJsonFormat[GameLimitRequest] = jsonFormat4(GameLimitRequest)
-    implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat12(GameCreateRequest)
-    implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat11(GameUpdateRequest)
+    implicit val gameCreateRequest: RootJsonFormat[GameCreateRequest] = jsonFormat13(GameCreateRequest)
+    implicit val gameUpdateRequest: RootJsonFormat[GameUpdateRequest] = jsonFormat12(GameUpdateRequest)
     implicit val gamePrizeCreateRequest: RootJsonFormat[GamePrizeCreateRequest] = jsonFormat4(GamePrizeCreateRequest)
 
     implicit val gameType: RootJsonFormat[GameType.Value] = enumFormat(GameType)
@@ -124,8 +125,8 @@ object GameDto {
     implicit val gameLimitResponse: RootJsonFormat[GameLimit] = jsonFormat4(GameLimit)
     implicit val gamePrizeResponse: RootJsonFormat[GamePrize] = jsonFormat5(GamePrize)
 
-    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat15(GameResponse)
-    implicit val gameForListResponse: RootJsonFormat[GameForListDto] = jsonFormat11(GameForListDto)
+    implicit val gameResponse: RootJsonFormat[GameResponse] = jsonFormat16(GameResponse)
+    implicit val gameForListResponse: RootJsonFormat[GameForListDto] = jsonFormat12(GameForListDto)
   }
 
   case class GameCreateRequest(
@@ -152,7 +153,9 @@ object GameDto {
                                 @ApiModelProperty(position = 11, value = "input eans")
                                 input_eans: Option[Seq[String]] = None,
                                 @ApiModelProperty(position = 12, value = "input freecodes")
-                                input_freecodes: Option[Seq[String]] = None
+                                input_freecodes: Option[Seq[String]] = None,
+                                @ApiModelProperty(position = 14, value = "tags")
+                                tags: Option[Seq[String]] = None
                               )
 
   case class GameUpdateRequest(
@@ -177,7 +180,9 @@ object GameDto {
                                 @ApiModelProperty(position = 14, value = "input eans")
                                 input_eans: Option[Seq[String]] = None,
                                 @ApiModelProperty(position = 15, value = "input freecodes")
-                                input_freecodes: Option[Seq[String]] = None
+                                input_freecodes: Option[Seq[String]] = None,
+                                @ApiModelProperty(position = 14, value = "tags")
+                                tags: Option[Seq[String]] = None
                               )
 
   case class GameLimitRequest(
@@ -221,9 +226,11 @@ object GameDto {
                            @ApiModelProperty(position = 14, value = "input eans")
                            input_eans: Option[Seq[String]] = None,
                            @ApiModelProperty(position = 15, value = "input freecodes")
-                           input_freecodes: Option[Seq[String]] = None
+                           input_freecodes: Option[Seq[String]] = None,
+                           @ApiModelProperty(position = 14, value = "tags")
+                           tags: Option[Seq[String]] = None
                          ) {
-    def this(r: Game) = this(id = r.id, `type` = r.`type`, status = r.status, parent_id = r.parent_id, code = r.code, title = r.title, start_date = r.start_date, timezone = r.timezone, end_date = r.end_date, input_type = r.input_type, input_point = r.input_point, limits = Some(r.limits).filterNot(_.isEmpty), prizes = Some(r.prizes).filterNot(_.isEmpty), input_eans = Some(r.input_eans).filterNot(_.isEmpty), input_freecodes = Some(r.input_freecodes).filterNot(_.isEmpty))
+    def this(r: Game) = this(id = r.id, `type` = r.`type`, status = r.status, parent_id = r.parent_id, code = r.code, title = r.title, start_date = r.start_date, timezone = r.timezone, end_date = r.end_date, input_type = r.input_type, input_point = r.input_point, limits = Some(r.limits).filterNot(_.isEmpty), prizes = Some(r.prizes).filterNot(_.isEmpty), input_eans = Some(r.input_eans).filterNot(_.isEmpty), input_freecodes = Some(r.input_freecodes).filterNot(_.isEmpty), tags = Some(r.tags).filterNot(_.isEmpty))
   }
 
   case class GameForListDto(
@@ -248,9 +255,11 @@ object GameDto {
                              @ApiModelProperty(position = 10, value = "input type", dataType = "string", required = true, example = "POINT", allowableValues = "OTHER,POINT,SKU")
                              input_type: GameInputType.Value,
                              @ApiModelProperty(position = 11, value = "input point", required = false, example = "10")
-                             input_point: Option[Int] = None
+                             input_point: Option[Int] = None,
+                             @ApiModelProperty(position = 12, value = "tags")
+                             tags: Option[Seq[String]] = None
                            ) {
-    def this(game: Game) = this(id = game.id, game.`type`, status = game.status, parent_id = game.parent_id, code = game.code, title = game.title, start_date = game.start_date, timezone = game.timezone, end_date = game.end_date, input_type = game.input_type, input_point = game.input_point)
+    def this(game: Game) = this(id = game.id, `type` = game.`type`, status = game.status, parent_id = game.parent_id, code = game.code, title = game.title, start_date = game.start_date, timezone = game.timezone, end_date = game.end_date, input_type = game.input_type, input_point = game.input_point, tags = Some(game.tags).filterNot(_.isEmpty))
   }
 
   /**

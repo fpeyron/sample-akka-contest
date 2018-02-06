@@ -7,7 +7,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
 import com.betc.danon.game.actors.{BoGameActor, BoPrizeActor, ClusterListenerActor, GamesActor}
-import com.betc.danon.game.repositories.{JournalRepository, InstantwinRepository, PrizeRepository}
+import com.betc.danon.game.repositories.{GameRepository, InstantwinRepository, PrizeRepository}
 import com.betc.danon.game.routes._
 import com.betc.danon.game.utils.CustomMySqlProfile.api.Database
 import com.betc.danon.game.utils.HttpSupport
@@ -80,4 +80,4 @@ class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef, val clusterSi
   val routes: Route = healthCheckRoute ~ gameRoute ~ prizeRoute ~ partnerRoute ~ swaggerRoute ~ swaggerUiRoute
 }
 
-class Repository(implicit val ec: ExecutionContext, implicit val database: Database, val materializer: ActorMaterializer) extends PrizeRepository with JournalRepository with InstantwinRepository
+class Repository(implicit val ec: ExecutionContext, implicit val database: Database, val materializer: ActorMaterializer) extends PrizeRepository with GameRepository with InstantwinRepository

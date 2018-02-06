@@ -133,8 +133,9 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
             unit_value = f.unit_value,
             value = f.value.getOrElse(1)
           )),
-        input_eans = request.input_eans.getOrElse(Seq.empty),
-        input_freecodes = request.input_freecodes.getOrElse(Seq.empty)
+        input_eans = request.input_eans.getOrElse(Seq.empty).distinct,
+        input_freecodes = request.input_freecodes.getOrElse(Seq.empty).distinct,
+        tags = request.tags.getOrElse(Seq.empty).map(_.toUpperCase).distinct
       )
 
       // Check existing code
@@ -222,8 +223,9 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
             unit_value = f.unit_value,
             value = f.value.getOrElse(1)
           ))).getOrElse(game.get.limits),
-        input_eans = request.input_eans.getOrElse(game.get.input_eans),
-        input_freecodes = request.input_freecodes.getOrElse(game.get.input_freecodes)
+        input_eans = request.input_eans.getOrElse(game.get.input_eans).distinct,
+        input_freecodes = request.input_freecodes.getOrElse(game.get.input_freecodes).distinct,
+        tags = request.tags.getOrElse(game.get.tags).map(_.toUpperCase).distinct
       )
       Await.result(repository.game.update(gameToUpdate), Duration.Inf)
 

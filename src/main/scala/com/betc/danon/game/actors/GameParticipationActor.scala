@@ -10,7 +10,7 @@ import akka.stream.scaladsl.Sink
 import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.GameParticipationActor.{ParticipateCmd, ParticipationEvent}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
-import com.betc.danon.game.models.ParticipationDto.{ParticipateResponse, ParticipationStatusType}
+import com.betc.danon.game.models.ParticipationDto.{CustomerParticipateResponse, ParticipationStatusType}
 import com.betc.danon.game.models.PrizeDao.PrizeResponse
 
 import scala.concurrent.Await
@@ -29,9 +29,25 @@ object GameParticipationActor {
   // Event
   sealed trait Event
 
-  case class ParticipateCmd(country_code: String, game_code: String, customerId: String) extends Cmd
+  case class ParticipateCmd(
+                             country_code: String,
+                             game_code: String,
+                             customerId: String,
+                             transaction_code: Option[String],
+                             ean: Option[String],
+                             metadata: Map[String, String]
+                           ) extends Cmd
 
-  case class ParticipationEvent(participationId: UUID, participationDate: Instant, gameId: UUID, customerId: String, instantwin: Option[InstantwinExtended] = None) extends Event
+  case class ParticipationEvent(
+                                 participationId: UUID,
+                                 participationDate: Instant,
+                                 gameId: UUID,
+                                 customerId: String,
+                                 instantwin: Option[InstantwinExtended] = None,
+                                 transaction_code: Option[String],
+                                 ean: Option[String],
+                                 metadata: Map[String, String]
+                               ) extends Event
 
 }
 
@@ -58,12 +74,15 @@ class GameParticipationActor(gameId: UUID)(implicit val repository: Repository, 
           participationDate = now,
           gameId = gameId,
           customerId = cmd.customerId,
-          instantwin = getInstantWin(now)
+          instantwin = getInstantWin(now),
+          transaction_code = cmd.transaction_code,
+          ean = cmd.ean,
+          metadata = cmd.metadata
         )
       } { event =>
 
         // Return response
-        originalSender ! ParticipateResponse(
+        originalSender ! CustomerParticipateResponse(
           id = event.participationId,
           date = event.participationDate,
           status = event.instantwin.map(_ => ParticipationStatusType.Win).getOrElse(ParticipationStatusType.Lost),

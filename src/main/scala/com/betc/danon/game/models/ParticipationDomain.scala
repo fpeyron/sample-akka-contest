@@ -3,6 +3,7 @@ package com.betc.danon.game.models
 import java.time.Instant
 import java.util.UUID
 
+import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameType}
 import com.betc.danon.game.models.PrizeDao.{PrizeJsonSupport, PrizeResponse}
 import com.betc.danon.game.utils.DefaultJsonSupport
 import io.swagger.annotations.ApiModelProperty
@@ -13,14 +14,15 @@ object ParticipationEntity
 object ParticipationDto {
 
   trait PartnerJsonSupport extends DefaultJsonSupport with PrizeJsonSupport {
-    implicit val participationStatusType: RootJsonFormat[ParticipationStatusType.Value] = enumFormat(ParticipationStatusType)
-    implicit val participateRequest: RootJsonFormat[ParticipateRequest] = jsonFormat4(ParticipateRequest)
-    implicit val participateResponse: RootJsonFormat[ParticipateResponse] = jsonFormat4(ParticipateResponse)
+    implicit val customerParticipationStatusType: RootJsonFormat[ParticipationStatusType.Value] = enumFormat(ParticipationStatusType)
+    implicit val customerParticipateRequest: RootJsonFormat[CustomerParticipateRequest] = jsonFormat4(CustomerParticipateRequest)
+    implicit val customerParticipateResponse: RootJsonFormat[CustomerParticipateResponse] = jsonFormat4(CustomerParticipateResponse)
+    implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat8(CustomerGameResponse)
   }
 
-  case class ParticipateRequest(
+  case class CustomerParticipateRequest(
                                  @ApiModelProperty(position = 1, value = "game code", required = true, example = "MY_CONTEST")
-                                 game_code: Option[String],
+                                 game_code: String,
                                  @ApiModelProperty(position = 2, value = "transaction_code", required = false, example = "22345465656")
                                  transaction_code: Option[String],
                                  @ApiModelProperty(position = 3, value = "ean", required = false, example = "10")
@@ -43,15 +45,37 @@ object ParticipationDto {
 
   }
 
-  case class ParticipateResponse(
-                                  @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
-                                  id: UUID,
-                                  @ApiModelProperty(position = 2, value = "date", required = true, example = "2018-01-01T00:00:00.000+02:00")
-                                  date: Instant,
-                                  @ApiModelProperty(position = 3, value = "status", required = true, example = "OTHER", allowableValues = "REJECTED,LOST,WIN")
-                                  status: ParticipationStatusType.Value,
-                                  @ApiModelProperty(position = 4, value = "prize", required = false)
-                                  prize: Option[PrizeResponse] = None
-                                )
+  case class CustomerParticipateResponse(
+                                          @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
+                                          id: UUID,
+                                          @ApiModelProperty(position = 2, value = "date", required = true, example = "2018-01-01T00:00:00.000+02:00")
+                                          date: Instant,
+                                          @ApiModelProperty(position = 3, value = "status", required = true, example = "OTHER", allowableValues = "REJECTED,LOST,WIN")
+                                          status: ParticipationStatusType.Value,
+                                          @ApiModelProperty(position = 4, value = "prize", required = false)
+                                          prize: Option[PrizeResponse] = None
+                                        )
+
+
+  case class CustomerGameResponse(
+                                   @ApiModelProperty(position = 1, value = "code", required = true, example = "MY_CONTEST")
+                                   code: String,
+                                   @ApiModelProperty(position = 2, value = "parent", required = false, example = "MY_PARENT")
+                                   parent: Option[String] = None,
+                                   @ApiModelProperty(position = 3, value = "type", dataType = "string", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
+                                   `type`: GameType.Value,
+                                   @ApiModelProperty(position = 4, value = "title", example = "My new game")
+                                   title: Option[String] = None,
+                                   @ApiModelProperty(position = 5, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
+                                   start_date: Instant,
+                                   @ApiModelProperty(position = 6, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
+                                   end_date: Instant,
+                                   @ApiModelProperty(position = 7, value = "input type", dataType = "string", required = true, example = "OTHER", allowableValues = "OTHER,POINT,SKU")
+                                   input_type: GameInputType.Value,
+                                   @ApiModelProperty(position = 8, value = "input point", required = false, example = "10")
+                                   input_point: Option[Int] = None
+                                 ) {
+    def this(game: Game) = this(`type` = game.`type`, code = game.code, title = game.title, start_date = game.start_date, end_date = game.end_date, input_type = game.input_type, input_point = game.input_point)
+  }
 
 }

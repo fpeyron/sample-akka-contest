@@ -249,7 +249,7 @@ private[repositories] trait GameTable {
 
     def input_freecodes = column[Option[String]]("input_freecodes", O.Length(255, varying = true))
 
-    override def * = (id, `type`, status, code, parent_id, country_code, title, start_date, timezone, end_date, input_type, input_point) <> (create, extract)
+    override def * = (id, `type`, status, code, parent_id, country_code, title, start_date, timezone, end_date, input_type, input_point, tags) <> (create, extract)
 
     def id = column[UUID]("id", O.PrimaryKey)
 
@@ -275,7 +275,9 @@ private[repositories] trait GameTable {
 
     def input_point = column[Option[Int]]("input_point")
 
-    def create(t: (UUID, String, String, String, Option[UUID], String, Option[String], Instant, String, Instant, GameInputType.Value, Option[Int])) =
+    def tags = column[Option[String]]("tags", O.Length(255, varying = true))
+
+    def create(t: (UUID, String, String, String, Option[UUID], String, Option[String], Instant, String, Instant, GameInputType.Value, Option[Int], Option[String])) =
       Game(
         id = t._1,
         `type` = GameType.withName(t._2),
@@ -288,7 +290,8 @@ private[repositories] trait GameTable {
         timezone = t._9,
         end_date = t._10,
         input_type = t._11,
-        input_point = t._12
+        input_point = t._12,
+        tags = t._13.map(_.split(",").toSeq).getOrElse(Seq.empty)
       )
 
     def extract(g: Game) = Option(
@@ -303,7 +306,8 @@ private[repositories] trait GameTable {
       g.timezone,
       g.end_date,
       g.input_type,
-      g.input_point
+      g.input_point,
+      if (g.tags.isEmpty) None else Some(g.tags.mkString(","))
     )
   }
 
