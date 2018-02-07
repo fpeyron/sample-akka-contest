@@ -9,6 +9,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.GameParticipationActor.{ParticipateCmd, ParticipationEvent}
+import com.betc.danon.game.models.Event
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.models.ParticipationDto.{CustomerParticipateResponse, ParticipationStatusType}
 import com.betc.danon.game.models.PrizeDao.PrizeResponse
@@ -27,7 +28,7 @@ object GameParticipationActor {
   sealed trait Cmd
 
   // Event
-  sealed trait Event
+  sealed trait GameEvent extends Event
 
   case class ParticipateCmd(
                              country_code: String,
@@ -39,15 +40,17 @@ object GameParticipationActor {
                            ) extends Cmd
 
   case class ParticipationEvent(
+                                 timestamp: Instant = Instant.now,
                                  participationId: UUID,
                                  participationDate: Instant,
                                  gameId: UUID,
+                                 countryCode: String,
                                  customerId: String,
                                  instantwin: Option[InstantwinExtended] = None,
                                  transaction_code: Option[String],
                                  ean: Option[String],
                                  metadata: Map[String, String]
-                               ) extends Event
+                               ) extends GameEvent
 
 }
 
@@ -73,6 +76,7 @@ class GameParticipationActor(gameId: UUID)(implicit val repository: Repository, 
           participationId = UUID.randomUUID(),
           participationDate = now,
           gameId = gameId,
+          countryCode = cmd.country_code,
           customerId = cmd.customerId,
           instantwin = getInstantWin(now),
           transaction_code = cmd.transaction_code,
