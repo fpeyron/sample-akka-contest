@@ -7,7 +7,7 @@ organization := "com.betc.danon"
 name := "fusion-game"
 description := "Fusion provider Game"
 
-lazy val akkaVersion = "2.5.8"
+lazy val akkaVersion = "2.5.9"
 lazy val akkaHttpVersion = "10.0.11"
 lazy val ConstructrAkka   = "0.18.1"
 
@@ -36,7 +36,7 @@ libraryDependencies += "com.lightbend.akka"           %% "akka-management-cluste
 libraryDependencies += "de.heikoseeberger"            %% "constructr"                     % ConstructrAkka
 libraryDependencies += "com.github.everpeace"         %% "constructr-coordination-redis"  % "0.0.4"
 // --- Akka Persistent / Mysql
-libraryDependencies += "com.github.dnvriend"           %% "akka-persistence-jdbc"         % "3.1.0"
+libraryDependencies += "com.github.dnvriend"           %% "akka-persistence-jdbc"         % "3.2.0"
 //libraryDependencies += "com.h2database"                % "h2"                             % "1.4.193"
 libraryDependencies += "mysql"                         % "mysql-connector-java"           % "6.0.6"
 // ---Serializer for akka
