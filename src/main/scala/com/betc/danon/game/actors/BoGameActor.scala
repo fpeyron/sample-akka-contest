@@ -5,13 +5,13 @@ import java.util.UUID
 
 import akka.NotUsed
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
+import akka.stream.{ActorMaterializer, OverflowStrategy}
 import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.BoGameActor._
-import com.betc.danon.game.actors.BoInstantwinActor.{InstanwinCreateCmd, InstanwinDeleteCmd, InstanwinUpdateCmd}
 import com.betc.danon.game.models.GameDto._
 import com.betc.danon.game.models.GameEntity._
+import com.betc.danon.game.models.InstantwinDomain.Instantwin
 import com.betc.danon.game.utils.AuthenticateSupport.UserContext
 import com.betc.danon.game.utils.HttpSupport.{GameIdNotFoundException, GamePrizeIdNotFoundException, InvalidInputException, NotAuthorizedException}
 
@@ -258,7 +258,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       if (game.get.parents.nonEmpty) throw NotAuthorizedException(id = id, message = "HAS_DEPENDENCIES")
 
       // Delete instantwins
-      getInstantwinActor(game.get.id) ! InstanwinDeleteCmd
+      deleteInstantWins(game.get.id)
 
       // Persist
       Await.result(repository.game.delete(id), Duration.Inf)
@@ -386,11 +386,12 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       )
       Await.result(repository.game.addPrize(id, gamePrize), Duration.Inf)
 
-      // to generate instantwins (asynchronous)
-      getInstantwinActor(id) ! InstanwinCreateCmd(gamePrize)
-
       // Return response
       sender ! gamePrize
+
+      // to generate instantwins (asynchronous)
+      createInstantwins(id, gamePrize)
+
 
     } catch {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
@@ -435,13 +436,13 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       )
       Await.result(repository.game.updatePrize(game.get.id, gamePrizeUpdated), Duration.Inf)
 
-      // to recreate instantwins
-      //Await.result(
-      getInstantwinActor(id) ! InstanwinUpdateCmd(gamePrizeUpdated)
-      //, Duration.Inf)
-
       // Return response
       sender ! gamePrizeUpdated
+
+      // recreate instantWin
+      deleteInstantWins(game.get.id, gamePrize.map(_.id))
+      createInstantwins(game.get.id, gamePrizeUpdated)
+
 
     } catch {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
@@ -478,8 +479,8 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       // Persist
       Await.result(repository.game.removePrize(game_id = game.get.id, prize_id = gamePrize.get.id), Duration.Inf)
 
-      // Forward to delete instantwins
-      getInstantwinActor(id).forward(InstanwinDeleteCmd(Some(prize_id)))
+      // delete instantwins
+      deleteInstantWins(game.get.id)
 
     } catch {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
@@ -637,7 +638,35 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
     )
   }
 
-  private def getInstantwinActor(game_id: UUID): ActorRef = context.child(BoInstantwinActor.name(game_id))
-    .getOrElse(context.actorOf(BoInstantwinActor.props(game_id), BoInstantwinActor.name(game_id)))
 
+  private def generateInstantWinDates(quantity: Int, start_date: Instant, end_date: Instant): Source[Instant, NotUsed] = {
+
+    val r = scala.util.Random
+    val pas = (end_date.toEpochMilli - start_date.toEpochMilli) / quantity
+
+    Source(1 to quantity)
+      .map { i => Instant.ofEpochMilli(start_date.toEpochMilli + (i * pas + r.nextFloat * pas).toLong) }
+  }
+
+  private def createInstantwins(id: UUID, gameprize: GamePrize): Unit = {
+
+    Await.result(repository.instantwin.insertAsStream(
+      generateInstantWinDates(gameprize.quantity, gameprize.start_date, gameprize.end_date)
+        .buffer(1000, OverflowStrategy.backpressure)
+        .map { date =>
+          Instantwin(
+            id = UUID.randomUUID(),
+            game_id = id,
+            gameprize_id = gameprize.id,
+            prize_id = gameprize.prize_id,
+            activate_date = date
+          )
+        }
+    ), Duration.Inf)
+  }
+
+  private def deleteInstantWins(id: UUID, gameprize_id: Option[UUID] = None): Unit = {
+
+    Await.result(repository.instantwin.deleteBy(game_id = id, gameprize_id), Duration.Inf)
+  }
 }
