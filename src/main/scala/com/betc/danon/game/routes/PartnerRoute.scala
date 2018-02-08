@@ -99,7 +99,7 @@ trait PartnerRoute
           tags = tagsOptional.map(_.toUpperCase.split(",").toSeq).getOrElse(Seq.empty),
           customer_id = Some(customer_id.toUpperCase()))
         ) {
-          case response: Seq[CustomerGameResponse] => complete(StatusCodes.OK, response)
+          case response: Seq[Any] => complete(StatusCodes.OK, response.asInstanceOf[Seq[CustomerGameResponse]])
         }
       }
     }
