@@ -97,7 +97,7 @@ trait PartnerRoute
           country_code = country_code.toUpperCase,
           games = codesOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
           tags = tagsOptional.map(_.toUpperCase.split(",").toSeq).getOrElse(Seq.empty),
-          customer_id = Some(customer_id.toUpperCase()))
+          customer_id = customer_id.toUpperCase())
         ) {
           case response: Seq[Any] => complete(StatusCodes.OK, response.asInstanceOf[Seq[CustomerGameResponse]])
         }

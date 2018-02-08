@@ -17,7 +17,7 @@ object ParticipationDto {
     implicit val customerParticipationStatusType: RootJsonFormat[ParticipationStatusType.Value] = enumFormat(ParticipationStatusType)
     implicit val customerParticipateRequest: RootJsonFormat[CustomerParticipateRequest] = jsonFormat4(CustomerParticipateRequest)
     implicit val customerParticipateResponse: RootJsonFormat[CustomerParticipateResponse] = jsonFormat4(CustomerParticipateResponse)
-    implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat8(CustomerGameResponse)
+    implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat10(CustomerGameResponse)
   }
 
   case class CustomerParticipateRequest(
@@ -73,7 +73,11 @@ object ParticipationDto {
                                    @ApiModelProperty(position = 7, value = "input type", dataType = "string", required = true, example = "OTHER", allowableValues = "OTHER,POINT,SKU")
                                    input_type: GameInputType.Value,
                                    @ApiModelProperty(position = 8, value = "input point", required = false, example = "10")
-                                   input_point: Option[Int] = None
+                                   input_point: Option[Int] = None,
+                                   @ApiModelProperty(position = 9, value = "participations count", required = true, example = "10")
+                                   participationCount: Int,
+                                   @ApiModelProperty(position = 10, value = "win count", required = true, example = "10")
+                                   instantWinCount: Int
                                  )
 
 }

@@ -10,7 +10,7 @@ import akka.persistence.{PersistentActor, RecoveryCompleted}
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import com.betc.danon.game.Repository
-import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerParticipateCmd, CustomerParticipationEvent, CustomerParticipationState}
+import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerGetParticipationQuery, CustomerParticipateCmd, CustomerParticipationEvent, CustomerParticipationState}
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
 import com.betc.danon.game.models.Event
 import com.betc.danon.game.models.GameEntity.{Game, GameLimit, GameLimitType, GameLimitUnit, GameStatusType}
@@ -30,12 +30,13 @@ object CustomerWorkerActor {
   def name(id: String) = s"customer-$id"
 
 
+  // Query
+  sealed trait CustomerQuery
+
+  case class CustomerGetParticipationQuery(gameIds: Seq[UUID]) extends CustomerQuery
+
   // Cmd
   sealed trait CustomerCmd
-
-  // Event
-  sealed trait CustomerEvent extends Event
-
 
   case class CustomerParticipateCmd(
                                      country_code: String,
@@ -45,6 +46,10 @@ object CustomerWorkerActor {
                                      metadata: Map[String, String],
                                      game: Game
                                    ) extends CustomerCmd
+
+
+  // Event
+  sealed trait CustomerEvent extends Event
 
   case class CustomerParticipationEvent(
                                          timestamp: Instant = Instant.now,
@@ -78,6 +83,10 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
 
   override def receiveCommand: Receive = {
+
+    case CustomerGetParticipationQuery(gameIds) =>
+      sender() ! participations.filter(p => gameIds.contains(p.game_id))
+
 
     case cmd: CustomerParticipateCmd => try {
 

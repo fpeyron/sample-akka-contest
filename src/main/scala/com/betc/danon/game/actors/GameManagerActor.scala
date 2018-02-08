@@ -4,12 +4,14 @@ import java.time.Instant
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
-import com.betc.danon.game.Repository
+import com.betc.danon.game.{Config, Repository}
+import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerGetParticipationQuery, CustomerParticipationState}
 import com.betc.danon.game.actors.GameManagerActor.{GameDeleteEvent, GameFindQuery, GameLinesEvent, GameUpdateEvent}
 import com.betc.danon.game.models.GameEntity.{Game, GameLimit, GameStatusType}
-import com.betc.danon.game.models.ParticipationDto.CustomerGameResponse
+import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, ParticipationStatusType}
 import com.betc.danon.game.utils.HttpSupport._
 
 import scala.concurrent.Await
@@ -38,7 +40,7 @@ object GameManagerActor {
   // Query
   sealed trait Query
 
-  case class GameFindQuery(country_code: String, games: Seq[String], tags: Seq[String], customer_id: Option[String]) extends Query
+  case class GameFindQuery(country_code: String, games: Seq[String], tags: Seq[String], customer_id: String) extends Query
 
 
   def msort(xs: List[Game]): List[Game] = {
@@ -150,6 +152,16 @@ class GameManagerActor(implicit val repository: Repository, implicit val materia
             && Some(query.tags).filterNot(_.isEmpty).forall(_.map(t => r.tags.contains(t)).forall(b => b))
             && Some(query.games).filterNot(_.isEmpty).forall(_.contains(r.code))
         )
+
+      implicit val  timeout: akka.util.Timeout = Config.Api.timeout
+      val customerParticipations: Seq[CustomerParticipationState] = Await.result(
+        getOrCreateCustomerWorkerActor(query.customer_id.toString) ? CustomerGetParticipationQuery(gameIds = result.map(_.id)
+        ), Duration.Inf) match {
+        case response: Seq[Any] if response.isEmpty || response.headOption.exists(_.isInstanceOf[CustomerParticipationState]) =>
+          response.asInstanceOf[Seq[CustomerParticipationState]]
+        case _ => Seq.empty[CustomerParticipationState]
+      }
+
       sender() ! GameManagerActor.msort(result.toList).map(game => CustomerGameResponse(
         `type` = game.`type`,
         code = game.code,
@@ -158,7 +170,9 @@ class GameManagerActor(implicit val repository: Repository, implicit val materia
         end_date = game.end_date,
         input_type = game.input_type,
         input_point = game.input_point,
-        parents = Some(game.parents.flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty)
+        parents = Some(game.parents.flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty),
+        participationCount = customerParticipations.count(_.game_id == game.id),
+        instantWinCount = customerParticipations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatusType.Win)
       ))
     }
     catch {
