@@ -18,8 +18,8 @@ import scala.util.Try
 
 trait PrizeRepository extends PrizeTable with GamePrizeTable {
 
-  implicit val database: Database
-  implicit val ec: ExecutionContext
+  private[repositories] implicit val database: Database
+  private[repositories] implicit val ec: ExecutionContext
 
   object prize {
 

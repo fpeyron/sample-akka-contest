@@ -7,10 +7,11 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
 import com.betc.danon.game.actors.{BoGameActor, BoPrizeActor, ClusterListenerActor, GameManagerActor}
+import com.betc.danon.game.queries.CustomerQuery
 import com.betc.danon.game.repositories.{GameRepository, InstantwinRepository, PrizeRepository}
 import com.betc.danon.game.routes._
 import com.betc.danon.game.utils.CustomMySqlProfile.api.Database
-import com.betc.danon.game.utils.HttpSupport
+import com.betc.danon.game.utils.{HttpSupport, JdbcJournalReader, JournalReader}
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
@@ -28,12 +29,18 @@ object Main extends App with RouteConcatenation with HttpSupport {
 
   // Start repository
   implicit val database: Database = Database.forConfig("slick.db")
-  implicit val repository: Repository = new Repository
+  implicit val repository: Repository = Repository()
 
   // initialization schemas
   repository.prize.schemaCreate()
   repository.game.schemaCreate()
   repository.instantwin.schemaCreate()
+
+  // initial journal reader
+  implicit val journalReader: JournalReader = JdbcJournalReader()
+
+  // initial query
+  implicit val query: Query = Query()
 
   // Start Actor Singleton
   val clusterSingleton: ActorRef = system.actorOf(
@@ -62,7 +69,7 @@ object Main extends App with RouteConcatenation with HttpSupport {
   val clusterListenerActor = system.actorOf(ClusterListenerActor.props, ClusterListenerActor.name)
 
   // start http services
-  val mainRoute = new MainRoute(gameActor, prizeActor, clusterSingletonProxy)
+  val mainRoute = MainRoute(gameActor, prizeActor, clusterSingletonProxy)
   val bindingFuture = Http().bindAndHandle(mainRoute.routes, Config.Api.hostname, Config.Api.port)
 
   // logger
@@ -74,10 +81,25 @@ object Main extends App with RouteConcatenation with HttpSupport {
   logger.info(s"Swagger ui            http://${Config.Api.hostname}:${Config.Api.port}/swagger")
 }
 
-class MainRoute(val gameActor: ActorRef, val prizeActor: ActorRef, val clusterSingletonProxy: ActorRef)(implicit val ec: ExecutionContext, implicit val materializer: ActorMaterializer)
-  extends HttpSupport with BoGameRoute with SwaggerRoute with BoPrizeRoute with PartnerRoute with SwaggerUiRoute with HealthRoute {
+case class MainRoute(gameActor: ActorRef, prizeActor: ActorRef, clusterSingletonProxy: ActorRef)
+                    (implicit
+                     val ec: ExecutionContext,
+                     val materializer: ActorMaterializer,
+                     val query: Query
+                    ) extends HttpSupport with BoGameRoute with SwaggerRoute with BoPrizeRoute with PartnerRoute with SwaggerUiRoute with HealthRoute {
 
   val routes: Route = healthCheckRoute ~ gameRoute ~ prizeRoute ~ partnerRoute ~ swaggerRoute ~ swaggerUiRoute
 }
 
-class Repository(implicit val ec: ExecutionContext, implicit val database: Database, val materializer: ActorMaterializer) extends PrizeRepository with GameRepository with InstantwinRepository
+case class Repository()(
+  implicit val ec: ExecutionContext,
+  val database: Database,
+  val materializer: ActorMaterializer
+) extends PrizeRepository with GameRepository with InstantwinRepository
+
+case class Query()(
+  implicit val ec: ExecutionContext,
+  val materializer: ActorMaterializer,
+  val repository: Repository,
+  val journalReader: JournalReader)
+  extends CustomerQuery

@@ -165,7 +165,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
     }
   }
 
-  override def persistenceId: String = s"CUSTOMER-$customerId"
+  override def persistenceId: String = s"CUSTOMER-${customerId.toUpperCase}"
 
 
   private def getOrCreateGameWorkerActor(id: UUID): ActorRef = context.child(GameWorkerActor.name(id))

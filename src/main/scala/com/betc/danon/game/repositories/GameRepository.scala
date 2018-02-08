@@ -19,8 +19,8 @@ import scala.util.Try
 
 trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable with GameEanTable with GameFreeCodeTable {
 
-  implicit val database: Database
-  implicit val ec: ExecutionContext
+  private[repositories] implicit val database: Database
+  private[repositories] implicit val ec: ExecutionContext
 
   object game {
 
@@ -108,6 +108,10 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
 
     def findByCode(code: String): Future[Seq[Game]] = database.run {
       gameTableQuery.filter(_.code === code).to[List].result
+    }
+
+    def findByTags(tag: String): Future[Seq[Game]] = database.run {
+      gameTableQuery.filter(_.tags === tag).to[List].result
     }
 
     def fetchExtendedBy(

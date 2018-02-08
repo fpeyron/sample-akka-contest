@@ -7,12 +7,11 @@ import akka.actor.ActorRef
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
-import com.betc.danon.game.Config
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipateCmd
-import com.betc.danon.game.actors.GameManagerActor.GameFindQuery
 import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateRequest, CustomerParticipateResponse, PartnerJsonSupport}
 import com.betc.danon.game.utils.HttpSupport.ErrorResponse
 import com.betc.danon.game.utils.{CorsSupport, DefaultJsonSupport}
+import com.betc.danon.game.{Config, Query}
 import io.swagger.annotations._
 
 import scala.concurrent.ExecutionContext
@@ -33,8 +32,9 @@ trait PartnerRoute
   import akka.pattern.ask
 
   implicit val ec: ExecutionContext
-  private implicit val timeout: Timeout = Config.Api.timeout
+  implicit val timeout: Timeout = Config.Api.timeout
   implicit val clusterSingletonProxy: ActorRef
+  implicit val query: Query
 
   def partnerRoute: Route = pathPrefix("partner") {
     corsHandler(partner_customer_participate ~ partner_customer_findGames)
@@ -91,7 +91,7 @@ trait PartnerRoute
     new ApiImplicitParam(name = "tags", value = "tags", required = false, dataType = "string", paramType = "query")
   ))
   def partner_customer_findGames: Route = path(Segment / "customers" / Segment / "games") { (country_code, customer_id) =>
-    get {
+    /*get {
       parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
         onSuccess(clusterSingletonProxy ? GameFindQuery(
           country_code = country_code.toUpperCase,
@@ -102,7 +102,19 @@ trait PartnerRoute
           case response: Seq[Any] => complete(StatusCodes.OK, response.asInstanceOf[Seq[CustomerGameResponse]])
         }
       }
+    }*/
+    get {
+      parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
+        onSuccess(query.customer.getGames(
+          countryCode = country_code.toUpperCase,
+          customerId = customer_id.toUpperCase,
+          tag = tagsOptional.map(_.toUpperCase.split(",").toSeq).getOrElse(Seq.empty)
+        )) {
+          response => complete(StatusCodes.OK, response)
+        }
+      }
     }
   }
+
 }
 

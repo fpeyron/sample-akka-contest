@@ -21,8 +21,8 @@ import scala.util.{Failure, Success, Try}
 trait InstantwinRepository extends InstantwinTable with PrizeTable {
 
   private[repositories] implicit val database: Database
-  implicit val ec: ExecutionContext
-  implicit val materializer: ActorMaterializer
+  private[repositories] implicit val ec: ExecutionContext
+  private[repositories] implicit val materializer: ActorMaterializer
 
   object instantwin {
 
