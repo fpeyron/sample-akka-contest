@@ -464,7 +464,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
 
       // Get existing game
       if (gamePrize.isEmpty) {
-        throw GameIdNotFoundException(id = id)
+        throw GamePrizeIdNotFoundException(id = prize_id)
       }
 
       // check status
@@ -481,7 +481,10 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       Await.result(repository.game.removePrize(game_id = game.get.id, prize_id = gamePrize.get.id), Duration.Inf)
 
       // delete instantwins
-      deleteInstantWins(game.get.id)
+      deleteInstantWins(game.get.id, Some(gamePrize.get.id))
+
+      // return to sender
+      sender() ! None
 
     } catch {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
