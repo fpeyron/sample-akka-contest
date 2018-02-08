@@ -10,10 +10,11 @@ import akka.persistence.{PersistentActor, RecoveryCompleted}
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import com.betc.danon.game.Repository
-import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerParticipateCmd, CustomerParticipationState}
+import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerParticipateCmd, CustomerParticipationEvent, CustomerParticipationState}
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
 import com.betc.danon.game.models.Event
 import com.betc.danon.game.models.GameEntity.{Game, GameLimit, GameLimitType, GameLimitUnit, GameStatusType}
+import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.models.ParticipationDto.{CustomerParticipateResponse, ParticipationStatusType}
 import com.betc.danon.game.models.PrizeDao.PrizeResponse
 import com.betc.danon.game.utils.HttpSupport._
@@ -45,6 +46,19 @@ object CustomerWorkerActor {
                                      game: Game
                                    ) extends CustomerCmd
 
+  case class CustomerParticipationEvent(
+                                         timestamp: Instant = Instant.now,
+                                         participationId: UUID,
+                                         gameId: UUID,
+                                         countryCode: String,
+                                         customerId: String,
+                                         instantwin: Option[InstantwinExtended] = None,
+                                         transaction_code: Option[String] = None,
+                                         ean: Option[String] = None,
+                                         metadata: Map[String, String] = Map.empty
+                                       ) extends CustomerEvent {
+    def this(r: GameParticipationEvent) = this(timestamp = r.timestamp, participationId = r.participationId, gameId = r.gameId, countryCode = r.countryCode, customerId = r.customerId, instantwin = r.instantwin, transaction_code = r.transaction_code, ean = r.ean, metadata = r.metadata)
+  }
 
   case class CustomerParticipationState(game_id: UUID, participationDate: Instant, participationStatus: ParticipationStatusType.Value)
 
@@ -56,7 +70,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
   override def receiveRecover: Receive = {
 
-    case event: GameParticipationEvent =>
+    case event: CustomerParticipationEvent =>
       participations = participations :+ CustomerParticipationState(game_id = event.gameId, participationDate = event.timestamp, participationStatus = event.instantwin.map(_ => ParticipationStatusType.Lost).getOrElse(ParticipationStatusType.Lost))
 
     case RecoveryCompleted =>
@@ -122,7 +136,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
         case event: GameParticipationEvent =>
           //val originalSender = sender
-          persistAsync(event) { _ =>
+          persistAsync(new CustomerParticipationEvent(event)) { _ =>
             // Return response
             sender() ! CustomerParticipateResponse(
               id = event.participationId,

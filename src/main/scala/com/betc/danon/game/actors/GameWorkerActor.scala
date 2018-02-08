@@ -59,9 +59,9 @@ object GameWorkerActor {
                                      countryCode: String,
                                      customerId: String,
                                      instantwin: Option[InstantwinExtended] = None,
-                                     transaction_code: Option[String],
-                                     ean: Option[String],
-                                     metadata: Map[String, String]
+                                     transaction_code: Option[String] = None,
+                                     ean: Option[String] = None,
+                                     metadata: Map[String, String] = Map.empty
                                    ) extends GameEvent
 
 
