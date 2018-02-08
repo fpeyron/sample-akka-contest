@@ -6,7 +6,7 @@ import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
-import com.betc.danon.game.actors.{BoGameActor, BoPrizeActor, ClusterListenerActor, GamesActor}
+import com.betc.danon.game.actors.{BoGameActor, BoPrizeActor, ClusterListenerActor, GameManagerActor}
 import com.betc.danon.game.repositories.{GameRepository, InstantwinRepository, PrizeRepository}
 import com.betc.danon.game.routes._
 import com.betc.danon.game.utils.CustomMySqlProfile.api.Database
@@ -38,11 +38,11 @@ object Main extends App with RouteConcatenation with HttpSupport {
   // Start Actor Singleton
   val clusterSingleton: ActorRef = system.actorOf(
     ClusterSingletonManager.props(
-      singletonProps = GamesActor.props,
+      singletonProps = GameManagerActor.props,
       terminationMessage = PoisonPill,
       settings = ClusterSingletonManagerSettings(system)
     ),
-    name = GamesActor.name
+    name = GameManagerActor.name
   )
 
   // Start Actor Singleton Proxy
@@ -51,7 +51,7 @@ object Main extends App with RouteConcatenation with HttpSupport {
       singletonManagerPath = clusterSingleton.path.toStringWithoutAddress,
       settings = ClusterSingletonProxySettings(system).withRole(None)
     ),
-    name = s"${GamesActor.name}Proxy"
+    name = s"${GameManagerActor.name}Proxy"
   )
 
   // Start actors

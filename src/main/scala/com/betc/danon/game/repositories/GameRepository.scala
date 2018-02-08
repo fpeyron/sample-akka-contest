@@ -66,18 +66,16 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     }
 
 
-    def getById(game_id: UUID): Future[Option[Game]] = {
-
-      database.run(gameTableQuery.filter(_.id === game_id).result.headOption)
+    def getLimits(game_id: UUID): Future[Seq[GameLimit]] = {
+      database.run(gameLimitTableQuery.filter(_.game_id === game_id).to[Seq].result.map(_.map(_._2)))
     }
-
 
     def findByIds(ids: Seq[UUID]): Future[Seq[Game]] = {
       database.run(gameTableQuery.filter(_.id inSet ids).to[Seq].result)
     }
 
 
-    def getExtendedById(game_id: UUID): Future[Option[Game]] = {
+    def getById(game_id: UUID, extensions: Seq[GameExtension.Value] = Seq.empty): Future[Option[Game]] = {
       /*
             val query = gameTableQuery.filter(_.id === game_id)
               .joinLeft(gameLimitTableQuery).on(_.id === _.game_id)
@@ -98,10 +96,10 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
 
       val query: DBIO[(Option[Game], Seq[GameLimit], Seq[String], Seq[String], Seq[GamePrize])] = for {
         game <- gameTableQuery.filter(_.id === game_id).result.headOption
-        gameLimit <- if (game.isDefined) gameLimitTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
-        gameEans <- if (game.isDefined) gameEanTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
-        gameFreeCodes <- if (game.isDefined) gameFreecodeTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
-        gamePrizes <- if (game.isDefined) gamePrizeTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
+        gameLimit <- if (game.isDefined && extensions.contains(GameExtension.limits)) gameLimitTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
+        gameEans <- if (game.isDefined && extensions.contains(GameExtension.eans)) gameEanTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
+        gameFreeCodes <- if (game.isDefined && extensions.contains(GameExtension.freecodes)) gameFreecodeTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
+        gamePrizes <- if (game.isDefined && extensions.contains(GameExtension.prizes)) gamePrizeTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
       } yield (game, gameLimit, gameEans, gameFreeCodes, gamePrizes)
 
       database.run(query).map(r => r._1.map(_.copy(limits = r._2, input_eans = r._3, input_freecodes = r._4, prizes = r._5)))
@@ -112,11 +110,39 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       gameTableQuery.filter(_.code === code).to[List].result
     }
 
+    def fetchExtendedBy(
+                         country_code: Option[String] = None,
+                         status: Iterable[GameStatusType.Value] = Iterable.empty,
+                         types: Iterable[GameType.Value] = Iterable.empty,
+                         code: Option[String] = None
+                       ): Source[Game, NotUsed] = Source.fromPublisher {
+      database.stream {
+        val query = gameTableQuery
+          .filter(row => (if (types.isEmpty) None else Some(types)).map(s => row.`type` inSet s.map(_.toString)).getOrElse(true: Rep[Boolean]))
+          .filter(row => (if (status.isEmpty) None else Some(status)).map(s => row.status inSet s.map(_.toString)).getOrElse(true: Rep[Boolean]))
+          .filter(row => if (country_code.isDefined) row.country_code === country_code.get else true: Rep[Boolean])
+          .filter(row => if (code.isDefined) row.code === code.get else true: Rep[Boolean])
+          .joinLeft(gameLimitTableQuery).on(_.id === _.game_id)
+          .to[List]
+        query.result
+      }.mapResult(r => r._1.copy(limits = r._2.map(_._2).toSeq))
+    }
+
+    /*
+            .map(_.groupBy(t => t._1)
+            .map(t => (
+              t._1,
+              t._2.flatMap(_._2).map(_._2)
+            ))
+            .map(t => t._1.copy(limits = t._2))
+          )
+          */
+
     def fetchBy(
                  country_code: Option[String] = None,
                  status: Iterable[GameStatusType.Value] = Iterable.empty,
                  types: Iterable[GameType.Value] = Iterable.empty,
-                 code: Option[String] = None,
+                 code: Option[String] = None
                ): Source[Game, NotUsed] = Source.fromPublisher {
       database.stream {
         val query = gameTableQuery
@@ -433,4 +459,12 @@ private[repositories] trait GameFreeCodeTable {
     override def * = (game_id, freecode)
   }
 
+}
+
+object GameExtension extends Enumeration {
+  val limits: GameExtension.Value = Value("limits")
+  val eans: GameExtension.Value = Value("eans")
+  val freecodes: GameExtension.Value = Value("freecodes")
+  val prizes: GameExtension.Value = Value("prizes")
+  val all = Seq(limits, eans, freecodes, prizes)
 }

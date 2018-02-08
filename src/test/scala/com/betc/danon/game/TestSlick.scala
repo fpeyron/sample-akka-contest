@@ -75,6 +75,6 @@ object TestSlick extends App {
   repository.game.fetchBy(country_code = Some("CA")).runForeach { r => println(r) }
 
   println("repository.game.getById: ")
-  repository.game.getExtendedById(ids.head._2).foreach(r => println(r))
+  repository.game.getById(ids.head._2).foreach(r => println(r))
 
 }

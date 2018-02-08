@@ -12,6 +12,7 @@ import com.betc.danon.game.actors.BoGameActor._
 import com.betc.danon.game.models.GameDto._
 import com.betc.danon.game.models.GameEntity._
 import com.betc.danon.game.models.InstantwinDomain.Instantwin
+import com.betc.danon.game.repositories.GameExtension
 import com.betc.danon.game.utils.AuthenticateSupport.UserContext
 import com.betc.danon.game.utils.HttpSupport.{GameIdNotFoundException, GamePrizeIdNotFoundException, InvalidInputException, NotAuthorizedException}
 
@@ -85,7 +86,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
 
     case GameGetQuery(uc, id) => try {
 
-      repository.game.getExtendedById(id).map { game =>
+      repository.game.getById(id, GameExtension.all).map { game =>
         // check existing game
         if (!game.exists(_.country_code == uc.country_code)) {
           throw GameIdNotFoundException(id = id)
@@ -158,7 +159,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       sender ! new GameResponse(game)
 
       // Push event
-      clusterSingletonProxy ! GamesActor.GameCreateEvent(game = game)
+      clusterSingletonProxy ! GameManagerActor.GameCreateEvent(game = game)
 
     } catch {
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
@@ -169,7 +170,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
     case GameUpdateCmd(uc, id, request) => try {
 
       // Get existing game
-      val game = Await.result(repository.game.getExtendedById(id), Duration.Inf)
+      val game = Await.result(repository.game.getById(id, GameExtension.all), Duration.Inf)
 
       // check existing game
       if (!game.exists(_.country_code == uc.country_code)) {
@@ -234,7 +235,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       sender ! new GameResponse(gameToUpdate)
 
       // Push event
-      clusterSingletonProxy ! GamesActor.GameUpdateEvent(game = gameToUpdate)
+      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = gameToUpdate)
 
     } catch {
       case e: GameIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
@@ -267,7 +268,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       sender ! None
 
       // Push event
-      clusterSingletonProxy ! GamesActor.GameDeleteEvent(id = id)
+      clusterSingletonProxy ! GameManagerActor.GameDeleteEvent(id = id)
 
     }
     catch {
@@ -295,7 +296,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       sender ! None
 
       // Push event
-      clusterSingletonProxy ! GamesActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Activated))
+      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Activated))
 
     }
     catch {
@@ -323,7 +324,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       sender ! None
 
       // Push event
-      clusterSingletonProxy ! GamesActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Archived))
+      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Archived))
 
     }
     catch {
@@ -335,7 +336,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
 
     case GameListPrizesQuery(uc, id) => try {
 
-      repository.game.getExtendedById(id).map { game =>
+      repository.game.getById(id, GameExtension.all).map { game =>
         // check existing game
         if (!game.exists(_.country_code == uc.country_code)) {
           throw GameIdNotFoundException(id = id)
@@ -353,7 +354,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
     case GameAddPrizeCmd(uc, id, request) => try {
 
       // Get existing game
-      val game = Await.result(repository.game.getExtendedById(id), Duration.Inf)
+      val game = Await.result(repository.game.getById(id, GameExtension.all), Duration.Inf)
 
       // check existing game
       if (!game.exists(_.country_code == uc.country_code)) {
@@ -402,7 +403,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
     case GameUpdatePrizeCmd(uc, id, prizeId, request) => try {
 
       // Get existing game
-      val game = Await.result(repository.game.getExtendedById(id), Duration.Inf)
+      val game = Await.result(repository.game.getById(id, GameExtension.all), Duration.Inf)
       val gamePrize: Option[GamePrize] = game.flatMap(_.prizes.find(_.id == prizeId))
 
       // check existing game
@@ -453,7 +454,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
     case GameRemovePrizeCmd(uc, id, prize_id) => try {
 
       // Get existing game
-      val game = Await.result(repository.game.getExtendedById(id), Duration.Inf)
+      val game = Await.result(repository.game.getById(id, GameExtension.all), Duration.Inf)
       val gamePrize: Option[GamePrize] = game.flatMap(_.prizes.find(_.id == prize_id))
 
       // check existing game

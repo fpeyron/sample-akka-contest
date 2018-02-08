@@ -32,6 +32,9 @@ object HttpSupport {
 
   case class ParticipationCloseException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationClosedException"), message = s"game with code : $code is finished")
 
+  case class ParticipationDependenciesException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationDependenciesException"), message = s"Participations depencies fail for game with code : $code")
+
+  case class ParticipationLimitException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationLimitException"), message = s"Limit participations is reached from game with code : $code")
 }
 
 trait HttpSupport extends Directives with DefaultJsonSupport {

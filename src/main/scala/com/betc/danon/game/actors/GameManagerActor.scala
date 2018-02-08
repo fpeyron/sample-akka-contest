@@ -7,19 +7,19 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import com.betc.danon.game.Repository
-import com.betc.danon.game.actors.GamesActor.{GameDeleteEvent, GameFindQuery, GameLinesEvent, GameUpdateEvent}
-import com.betc.danon.game.models.GameEntity.{Game, GameStatusType}
+import com.betc.danon.game.actors.GameManagerActor.{GameDeleteEvent, GameFindQuery, GameLinesEvent, GameUpdateEvent}
+import com.betc.danon.game.models.GameEntity.{Game, GameLimit, GameStatusType}
 import com.betc.danon.game.models.ParticipationDto.CustomerGameResponse
 import com.betc.danon.game.utils.HttpSupport._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-object GamesActor {
+object GameManagerActor {
 
   final val name = "games"
 
-  def props(implicit repository: Repository, materializer: ActorMaterializer) = Props(new GamesActor)
+  def props(implicit repository: Repository, materializer: ActorMaterializer) = Props(new GameManagerActor)
 
   // Command
   sealed trait Cmd
@@ -70,18 +70,20 @@ object GamesActor {
   }
 }
 
-class GamesActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer) extends Actor with ActorLogging {
+class GameManagerActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer) extends Actor with ActorLogging {
 
   var games: Seq[Game] = Seq.empty[Game]
 
   override def preStart(): Unit = {
     games = Await.result(
-      repository.game.fetchBy()
+      repository.game.fetchExtendedBy()
         .filter(_.status == GameStatusType.Activated).runWith(Sink.collection), Duration.Inf)
+      .groupBy(_.id)
+      .map(t => t._2.head.copy(limits = t._2.map(_.limits.toList).foldLeft(List.empty[GameLimit])((acc, item) => acc ::: item)))
+      .toSeq
   }
 
   override def receive: Receive = {
-
 
     case GameUpdateEvent(game) => try {
       if (game.status == GameStatusType.Activated)
@@ -103,14 +105,14 @@ class GamesActor(implicit val repository: Repository, implicit val materializer:
 
 
     case event: GameLinesEvent => try {
-      getParticipationActor(event.id).foreach(_ forward event)
+      getGameWorkerActor(event.id).foreach(_ forward event)
     }
     catch {
       case e: Exception => throw e
     }
 
 
-    case cmd: GameParticipationActor.ParticipateCmd => try {
+    case cmd: GameWorkerActor.GameParticipateCmd => try {
 
       // get Game in state
       val game: Option[Game] = games.find(r => r.country_code == cmd.country_code && r.code == cmd.game_code && r.status == GameStatusType.Activated)
@@ -131,13 +133,12 @@ class GamesActor(implicit val repository: Repository, implicit val materializer:
       }
 
       // forward to dedicated actor
-      getOrCreateParticipationActor(game.get.id) forward cmd
+      getOrCreateGameWorkerActor(game.get.id) forward cmd
     }
     catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
-
 
     case query: GameFindQuery => try {
 
@@ -149,7 +150,7 @@ class GamesActor(implicit val repository: Repository, implicit val materializer:
             && Some(query.tags).filterNot(_.isEmpty).forall(_.map(t => r.tags.contains(t)).forall(b => b))
             && Some(query.games).filterNot(_.isEmpty).forall(_.contains(r.code))
         )
-      sender() ! GamesActor.msort(result.toList).map(game => CustomerGameResponse(
+      sender() ! GameManagerActor.msort(result.toList).map(game => CustomerGameResponse(
         `type` = game.`type`,
         code = game.code,
         title = game.title,
@@ -166,10 +167,12 @@ class GamesActor(implicit val repository: Repository, implicit val materializer:
 
   }
 
-  def getParticipationActor(id: UUID): Option[ActorRef] = context.child(GameParticipationActor.name(id))
+  def getGameWorkerActor(id: UUID): Option[ActorRef] = context.child(GameWorkerActor.name(id))
 
-  def getOrCreateParticipationActor(id: UUID): ActorRef = context.child(GameParticipationActor.name(id))
-    .getOrElse(context.actorOf(GameParticipationActor.props(id), GameParticipationActor.name(id)))
+  def getOrCreateGameWorkerActor(id: UUID): ActorRef = context.child(GameWorkerActor.name(id))
+    .getOrElse(context.actorOf(GameWorkerActor.props(id), GameWorkerActor.name(id)))
 
+  def getOrCreateCustomerWorkerActor(id: String): ActorRef = context.child(CustomerWorkerActor.name(id))
+    .getOrElse(context.actorOf(CustomerWorkerActor.props(id), CustomerWorkerActor.name(id)))
 }
 
