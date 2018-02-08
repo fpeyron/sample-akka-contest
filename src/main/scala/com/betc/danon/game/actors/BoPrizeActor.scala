@@ -77,13 +77,11 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
 
     case PrizeCreateCmd(uc, request) => try {
 
-      /*
       // Validation input
-      val request_error = checkContestInputForCreation(request)
+      val request_error = checkPrizeInputForCreation(request)
       if (request_error.nonEmpty) {
         throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
       }
-      */
 
       // Persist
       val newId = UUID.randomUUID
@@ -96,7 +94,8 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
         description = request.description,
         picture = request.picture,
         vendor_code = request.vendor_code,
-        face_value = request.face_value
+        face_value = request.face_value,
+        points = request.points
       )
 
       Await.result(repository.prize.create(prize), Duration.Inf)
@@ -136,7 +135,8 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
         description = request.description.map(Some(_)).getOrElse(entity.description),
         picture = request.picture.orElse(entity.picture),
         vendor_code = request.vendor_code.map(Some(_)).getOrElse(entity.vendor_code),
-        face_value = request.face_value.map(Some(_)).getOrElse(entity.face_value)
+        face_value = request.face_value.map(Some(_)).getOrElse(entity.face_value),
+        points = request.points.map(Some(_)).getOrElse(entity.points)
       )
 
       Await.result(repository.prize.update(entityUpdated), Duration.Inf)
@@ -169,4 +169,36 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
     }
 
   }
+
+
+  private def checkPrizeInputForCreation(request: PrizeCreateRequest): Iterable[(String, String)] = {
+    //Validation input
+    Option(
+      if (request.`type`.isEmpty)
+        ("type", s"MANDATORY_VALUE") else null
+    ) ++ Option(
+      if (request.`type`.isDefined && !PrizeType.values.map(_.toString).contains(request.`type`.get))
+        ("type", s"UNKNOWN_VALUE : list of values : ${PrizeType.all.mkString(",")}") else null
+    ) ++ Option(
+      if (request.label.isEmpty)
+        ("label", s"MANDATORY_VALUE") else null
+    ) ++ Option(
+      if (request.label.exists(_.length < 2))
+        ("label", s"INVALID_VALUE : should have more 2 chars") else null
+    ) ++ Option(
+      if (request.`type`.contains(PrizeType.Point.toString) && request.points.isEmpty)
+        ("points", s"MANDATORY_VALUE") else null
+    ) ++ Option(
+      if (request.`type`.contains(PrizeType.GiftShop.toString) && request.vendor_code.isEmpty)
+        ("vendor_code", s"MANDATORY_VALUE") else null
+    ) ++ Option(
+      if (request.`type`.contains(PrizeType.GiftShop.toString) && request.vendor_code.exists(_.length < 2))
+        ("vendor_code", s"INVALID_VALUE : should have more 2 chars") else null
+    ) ++ Option(
+      if (request.`type`.contains(PrizeType.GiftShop.toString) && request.face_value.isEmpty)
+        ("face_value", s"MANDATORY_VALUE") else null
+    )
+  }
+
+
 }

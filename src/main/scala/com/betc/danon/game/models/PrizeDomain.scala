@@ -18,7 +18,8 @@ object PrizeDomain {
                     description: Option[String] = None,
                     picture: Option[String] = None,
                     vendor_code: Option[String] = None,
-                    face_value: Option[Int] = None
+                    face_value: Option[Int] = None,
+                    points: Option[Int] = None
                   )
 
   implicit object PrizeType extends Enumeration {
@@ -34,10 +35,10 @@ object PrizeDomain {
 object PrizeDao {
 
   trait PrizeJsonSupport extends DefaultJsonSupport {
-    implicit val prizeCreateRequest: RootJsonFormat[PrizeCreateRequest] = jsonFormat7(PrizeCreateRequest)
+    implicit val prizeCreateRequest: RootJsonFormat[PrizeCreateRequest] = jsonFormat8(PrizeCreateRequest)
 
     implicit val prizeType: RootJsonFormat[PrizeType.Value] = enumFormat(PrizeType)
-    implicit val prizeResponse: RootJsonFormat[PrizeResponse] = jsonFormat8(PrizeResponse)
+    implicit val prizeResponse: RootJsonFormat[PrizeResponse] = jsonFormat9(PrizeResponse)
   }
 
   // Service
@@ -55,7 +56,9 @@ object PrizeDao {
                                  @ApiModelProperty(position = 6, value = "gift vendor code", example = "VENDOR")
                                  vendor_code: Option[String],
                                  @ApiModelProperty(position = 7, value = "giftshop face value", example = "200")
-                                 face_value: Option[Int]
+                                 face_value: Option[Int],
+                                 @ApiModelProperty(position = 8, value = "points", example = "200")
+                                 points: Option[Int]
                                )
 
   case class PrizeResponse(
@@ -74,9 +77,11 @@ object PrizeDao {
                             @ApiModelProperty(position = 7, value = "gift vendor code", example = "VENDOR")
                             vendor_code: Option[String] = None,
                             @ApiModelProperty(position = 8, value = "giftshop face value", example = "200")
-                            face_value: Option[Int] = None
+                            face_value: Option[Int] = None,
+                            @ApiModelProperty(position = 9, value = "points", example = "200")
+                            points: Option[Int]
                           ) {
-    def this(prize: Prize) = this(prize.id, prize.`type`, prize.title, prize.label, prize.description, prize.picture, prize.vendor_code, prize.face_value)
+    def this(prize: Prize) = this(prize.id, prize.`type`, prize.title, prize.label, prize.description, prize.picture, prize.vendor_code, prize.face_value, points = prize.points)
   }
 
 }
