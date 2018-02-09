@@ -138,7 +138,8 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
     }
 
 
-    case CustomerGetGamesQuery(countryCode, _, codes, tags) => try {
+    case CustomerGetGamesQuery(countryCode, _, tags, codes) => try {
+      /*
       val result = for {
 
         games <- repository.game.findByTagsAndCodes(tags, codes).filter(g => g.countryCode == countryCode.toUpperCase && g.status == GameStatus.Activated).runWith(Sink.seq)
@@ -172,6 +173,27 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
             instant_win_count = result._2.get(game.id).map(_._2).getOrElse(0)
           ))
       }.pipeTo(sender)
+      */
+      repository
+        .game
+        .findByTagsAndCodes(tags, codes).filter(g => g.countryCode == countryCode.toUpperCase && g.status == GameStatus.Activated)
+        .runWith(Sink.seq)
+        .map { games =>
+          games
+            .map(game => CustomerGameResponse(
+              `type` = game.`type`,
+              code = game.code,
+              title = game.title,
+              start_date = game.startDate,
+              end_date = game.endDate,
+              input_type = game.inputType,
+              input_point = game.inputPoint,
+              parents = Some(game.parents.flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty),
+              participation_count = participations.count(_.game_id == game.id),
+              instant_win_count = participations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatus.Win)
+            ))
+        }.pipeTo(sender)
+
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
@@ -210,7 +232,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
       }
 
       // check Ean
-      if(cmd.game.inputType == GameInputType.Pincode && ! cmd.ean.exists(e => cmd.game.inputEans.contains(e))) {
+      if (cmd.game.inputType == GameInputType.Pincode && !cmd.ean.exists(e => cmd.game.inputEans.contains(e))) {
         throw ParticipationEanException(code = cmd.game.code)
       }
 

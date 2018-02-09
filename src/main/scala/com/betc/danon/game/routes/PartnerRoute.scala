@@ -8,6 +8,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
 import com.betc.danon.game.actors.CustomerWorkerActor
+import com.betc.danon.game.actors.CustomerWorkerActor.CustomerGetGamesQuery
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipateCmd
 import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateRequest, CustomerParticipateResponse, PartnerJsonSupport}
 import com.betc.danon.game.utils.HttpSupport.ErrorResponse
@@ -105,6 +106,7 @@ trait PartnerRoute
         }
       }
     }*/
+   /*
     get {
       parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
         onSuccess(query.customer.getGames(
@@ -117,6 +119,20 @@ trait PartnerRoute
         }
       }
     }
+    */
+    get {
+      parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
+        onSuccess( clusterSingletonProxy ? CustomerGetGamesQuery(
+          countryCode = country_code.toUpperCase,
+          customerId = customer_id.toUpperCase,
+          tags = tagsOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
+          codes = codesOptional.map(_.split(",").toSeq).getOrElse(Seq.empty)
+        )) {
+          case response: Seq[Any] => complete(StatusCodes.OK, response.asInstanceOf[Seq[CustomerGameResponse]])
+        }
+      }
+    }
+
   }
 
 
