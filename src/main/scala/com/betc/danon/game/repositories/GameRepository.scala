@@ -106,11 +106,13 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       gameTableQuery.filter(_.code === code).to[List].result
     }
 
-    def findByTagsAndCodes(tags: Seq[String], codes: Seq[String]): Future[Seq[Game]] = database.run {
-      gameTableQuery
-        .filter(game => tags.map(tag => game.tags.getOrElse("") like s"%$tag%").reduceLeftOption(_ && _).getOrElse(true: Rep[Boolean]))
-        .filter(game => if (codes.nonEmpty) game.code.inSetBind(codes) else true: Rep[Boolean])
-        .to[List].result
+    def findByTagsAndCodes(tags: Seq[String], codes: Seq[String]): Source[Game, NotUsed] = Source.fromPublisher {
+      database.stream {
+        gameTableQuery
+          .filter(game => tags.map(tag => game.tags.getOrElse("") like s"%$tag%").reduceLeftOption(_ && _).getOrElse(true: Rep[Boolean]))
+          .filter(game => if (codes.nonEmpty) game.code.inSetBind(codes) else true: Rep[Boolean])
+          .to[List].result
+      }
     }
 
     def fetchExtendedBy(
@@ -249,6 +251,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
   }
 
 }
+
 
 private[repositories] trait GameTable {
 

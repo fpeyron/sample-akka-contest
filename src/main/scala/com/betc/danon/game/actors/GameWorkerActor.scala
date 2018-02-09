@@ -10,11 +10,12 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipateCmd
-import com.betc.danon.game.actors.GameWorkerActor.{GameParticipateCmd, GameParticipationEvent, GamePlayCmd, Stop}
+import com.betc.danon.game.actors.GameWorkerActor._
 import com.betc.danon.game.models.Event
 import com.betc.danon.game.models.GameEntity.Game
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.repositories.GameExtension
+import com.betc.danon.game.utils.JournalReader
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -22,14 +23,14 @@ import scala.concurrent.duration._
 
 object GameWorkerActor {
 
-  def props(id: UUID)(implicit repository: Repository, materializer: ActorMaterializer) = Props(new GameWorkerActor(id))
+  def props(id: UUID)(implicit repository: Repository, materializer: ActorMaterializer, clusterSingletonProxy: ActorRef, journalReader: JournalReader) = Props(new GameWorkerActor(id))
 
   def name(id: UUID) = s"game-$id"
 
   // Command
-  sealed trait Cmd
+  sealed trait GameCmd
 
-  case object Stop
+  case object GameStopCmd extends GameCmd
 
   // Event
   sealed trait GameEvent extends Event
@@ -41,7 +42,7 @@ object GameWorkerActor {
                                  transaction_code: Option[String],
                                  ean: Option[String],
                                  metadata: Map[String, String]
-                               ) extends Cmd
+                               ) extends GameCmd
 
   case class GamePlayCmd(
                           country_code: String,
@@ -49,7 +50,7 @@ object GameWorkerActor {
                           transaction_code: Option[String],
                           ean: Option[String],
                           metadata: Map[String, String]
-                        ) extends Cmd
+                        ) extends GameCmd
 
 
   case class GameParticipationEvent(
@@ -67,7 +68,7 @@ object GameWorkerActor {
 
 }
 
-class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val materializer: ActorMaterializer) extends PersistentActor with ActorLogging {
+class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val materializer: ActorMaterializer, val clusterSingletonProxy: ActorRef, val journalReader: JournalReader) extends PersistentActor with ActorLogging {
 
   context.setReceiveTimeout(120.minutes)
 
@@ -90,7 +91,7 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
 
     case cmd: GameParticipateCmd => try {
 
-      getOrCreateCustomerWorkerActor(cmd.customerId) forward CustomerParticipateCmd(
+      clusterSingletonProxy forward CustomerParticipateCmd(
         country_code = cmd.country_code,
         customerId = cmd.customerId,
         transaction_code = cmd.transaction_code,
@@ -140,8 +141,9 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
-    case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = Stop)
-    case Stop ⇒ context.stop(self)
+    case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = GameStopCmd)
+
+    case GameStopCmd ⇒ context.stop(self)
   }
 
   override def persistenceId: String = s"GAME-$gameId"

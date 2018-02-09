@@ -3,6 +3,7 @@ package com.betc.danon.game.queries
 import java.util.UUID
 
 import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.Sink
 import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipationEvent
 import com.betc.danon.game.models.GameEntity.GameStatusType
@@ -26,7 +27,7 @@ trait CustomerQuery {
 
       val result = for {
 
-        games <- repository.game.findByTagsAndCodes(tags, codes)
+        games <- repository.game.findByTagsAndCodes(tags, codes).filter(g => g.country_code == countryCode.toUpperCase && g.status == GameStatusType.Activated).runWith(Sink.seq)
 
         participations <- {
           val gameIds = games.map(_.id)
@@ -44,7 +45,6 @@ trait CustomerQuery {
 
       result.map { result =>
         result._1
-          .filter(r => r.country_code == countryCode && r.status == GameStatusType.Activated)
           .map(game => CustomerGameResponse(
             `type` = game.`type`,
             code = game.code,

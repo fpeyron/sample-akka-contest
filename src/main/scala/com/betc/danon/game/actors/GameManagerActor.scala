@@ -7,12 +7,14 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
-import com.betc.danon.game.{Config, Repository}
-import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerGetParticipationQuery, CustomerParticipationState}
+import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerCmd, CustomerGetParticipationQuery, CustomerParticipationState, CustomerQuery}
 import com.betc.danon.game.actors.GameManagerActor.{GameDeleteEvent, GameFindQuery, GameLinesEvent, GameUpdateEvent}
+import com.betc.danon.game.actors.GameWorkerActor.GameStopCmd
 import com.betc.danon.game.models.GameEntity.{Game, GameLimit, GameStatusType}
 import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, ParticipationStatusType}
 import com.betc.danon.game.utils.HttpSupport._
+import com.betc.danon.game.utils.JournalReader
+import com.betc.danon.game.{Config, Repository}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -21,7 +23,7 @@ object GameManagerActor {
 
   final val name = "games"
 
-  def props(implicit repository: Repository, materializer: ActorMaterializer) = Props(new GameManagerActor)
+  def props(implicit repository: Repository, materializer: ActorMaterializer, journalReader: JournalReader) = Props(new GameManagerActor)
 
   // Command
   sealed trait Cmd
@@ -72,7 +74,7 @@ object GameManagerActor {
   }
 }
 
-class GameManagerActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer) extends Actor with ActorLogging {
+class GameManagerActor(implicit val repository: Repository, val materializer: ActorMaterializer, val journalReader: JournalReader) extends Actor with ActorLogging {
 
   var games: Seq[Game] = Seq.empty[Game]
 
@@ -92,6 +94,8 @@ class GameManagerActor(implicit val repository: Repository, implicit val materia
         games = games.filterNot(_.id == game.id) :+ game.copy(prizes = Seq.empty, input_eans = Seq.empty, input_freecodes = Seq.empty)
       else
         games = games.filterNot(_.id == game.id)
+
+      getGameWorkerActor(game.id).foreach(_ ! GameStopCmd)
     }
     catch {
       case e: Exception => throw e
@@ -142,6 +146,7 @@ class GameManagerActor(implicit val repository: Repository, implicit val materia
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
+
     case query: GameFindQuery => try {
 
       // get Game in state
@@ -153,9 +158,9 @@ class GameManagerActor(implicit val repository: Repository, implicit val materia
             && Some(query.games).filterNot(_.isEmpty).forall(_.contains(r.code))
         )
 
-      implicit val  timeout: akka.util.Timeout = Config.Api.timeout
+      implicit val timeout: akka.util.Timeout = Config.Api.timeout
       val customerParticipations: Seq[CustomerParticipationState] = Await.result(
-        getOrCreateCustomerWorkerActor(query.customer_id.toString) ? CustomerGetParticipationQuery(gameIds = result.map(_.id)
+        getOrCreateCustomerWorkerActor(query.customer_id.toString) ? CustomerGetParticipationQuery(customerId = query.customer_id, gameIds = result.map(_.id)
         ), Duration.Inf) match {
         case response: Seq[Any] if response.isEmpty || response.headOption.exists(_.isInstanceOf[CustomerParticipationState]) =>
           response.asInstanceOf[Seq[CustomerParticipationState]]
@@ -177,6 +182,21 @@ class GameManagerActor(implicit val repository: Repository, implicit val materia
     }
     catch {
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+    }
+
+
+    case cmd: CustomerCmd => try {
+      getOrCreateCustomerWorkerActor(cmd.customerId) forward cmd
+    }
+    catch {
+      case e: Exception => throw e
+    }
+
+    case query: CustomerQuery => try {
+      getOrCreateCustomerWorkerActor(query.customerId) forward query
+    }
+    catch {
+      case e: Exception => throw e
     }
 
   }

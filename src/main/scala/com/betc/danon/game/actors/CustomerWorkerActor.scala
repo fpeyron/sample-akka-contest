@@ -8,16 +8,18 @@ import akka.actor.{ActorLogging, ActorRef, Props}
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, RecoveryCompleted}
 import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.Sink
 import akka.util.Timeout
 import com.betc.danon.game.Repository
-import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerGetParticipationQuery, CustomerParticipateCmd, CustomerParticipationEvent, CustomerParticipationState}
+import com.betc.danon.game.actors.CustomerWorkerActor._
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
 import com.betc.danon.game.models.Event
 import com.betc.danon.game.models.GameEntity.{Game, GameLimit, GameLimitType, GameLimitUnit, GameStatusType}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
-import com.betc.danon.game.models.ParticipationDto.{CustomerParticipateResponse, ParticipationStatusType}
+import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateResponse, ParticipationStatusType}
 import com.betc.danon.game.models.PrizeDao.PrizeResponse
 import com.betc.danon.game.utils.HttpSupport._
+import com.betc.danon.game.utils.JournalReader
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -25,18 +27,27 @@ import scala.concurrent.duration._
 
 object CustomerWorkerActor {
 
-  def props(id: String)(implicit repository: Repository, materializer: ActorMaterializer) = Props(new CustomerWorkerActor(id))
+  def props(id: String)(implicit repository: Repository, materializer: ActorMaterializer, journalReader: JournalReader) = Props(new CustomerWorkerActor(id))
 
   def name(id: String) = s"customer-$id"
 
 
   // Query
-  sealed trait CustomerQuery
+  sealed trait CustomerQuery {
+    def customerId: String
+  }
 
-  case class CustomerGetParticipationQuery(gameIds: Seq[UUID]) extends CustomerQuery
+  case class CustomerGetParticipationQuery(customerId: String, gameIds: Seq[UUID]) extends CustomerQuery
+
+  case class CustomerGetGamesQuery(countryCode: String, customerId: String, codes: Seq[String], tags: Seq[String]) extends CustomerQuery
+
 
   // Cmd
-  sealed trait CustomerCmd
+  sealed trait CustomerCmd {
+    def customerId: String
+  }
+
+  case class CustomerReloadCmd(customerId: String) extends CustomerCmd
 
   case class CustomerParticipateCmd(
                                      country_code: String,
@@ -69,14 +80,17 @@ object CustomerWorkerActor {
 
 }
 
-class CustomerWorkerActor(customerId: String)(implicit val repository: Repository, val materializer: ActorMaterializer) extends PersistentActor with ActorLogging {
+class CustomerWorkerActor(customerId: String)(implicit val repository: Repository, val materializer: ActorMaterializer, val journalReader: JournalReader) extends PersistentActor with ActorLogging {
+
+  import akka.pattern.pipe
+  import context.dispatcher
 
   var participations: Seq[CustomerParticipationState] = Seq.empty[CustomerParticipationState]
 
   override def receiveRecover: Receive = {
 
     case event: CustomerParticipationEvent =>
-      participations = participations :+ CustomerParticipationState(game_id = event.gameId, participationDate = event.timestamp, participationStatus = event.instantwin.map(_ => ParticipationStatusType.Lost).getOrElse(ParticipationStatusType.Lost))
+      participations = participations :+ CustomerParticipationState(game_id = event.gameId, participationDate = event.timestamp, participationStatus = event.instantwin.map(_ => ParticipationStatusType.Win).getOrElse(ParticipationStatusType.Lost))
 
     case RecoveryCompleted =>
   }
@@ -84,8 +98,49 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
   override def receiveCommand: Receive = {
 
-    case CustomerGetParticipationQuery(gameIds) =>
+    case CustomerGetParticipationQuery(_, gameIds) =>
       sender() ! participations.filter(p => gameIds.contains(p.game_id))
+
+
+    case CustomerGetGamesQuery(countryCode, _, codes, tags) => try {
+      val result = for {
+
+        games <- repository.game.findByTagsAndCodes(tags, codes).filter(g => g.country_code == countryCode.toUpperCase && g.status == GameStatusType.Activated).runWith(Sink.seq)
+
+        participations <- {
+          val gameIds = games.map(_.id)
+          journalReader.currentEventsByPersistenceId(s"CUSTOMER-${customerId.toUpperCase}")
+            .map(_.event)
+            .collect {
+              case event: CustomerParticipationEvent => (event.gameId, 1, event.instantwin.map(_ => 1).getOrElse(0))
+            }
+            .filter(event => gameIds.contains(event._1))
+            .runFold(Map.empty[UUID, (Int, Int)]) { (current, event) =>
+              current.filterNot(_._1 == event._1) + (event._1 -> current.get(event._1).map(c => (c._1 + event._2, c._2 + event._3)).getOrElse((event._2, event._3)))
+            }
+        }
+      } yield (games, participations)
+
+      result.map { result =>
+        result._1
+          .map(game => CustomerGameResponse(
+            `type` = game.`type`,
+            code = game.code,
+            title = game.title,
+            start_date = game.start_date,
+            end_date = game.end_date,
+            input_type = game.input_type,
+            input_point = game.input_point,
+            parents = Some(game.parents.flatMap(p => result._1.find(_.id == p)).map(_.code)).find(_.nonEmpty),
+            participationCount = result._2.get(game.id).map(_._1).getOrElse(0),
+            instantWinCount = result._2.get(game.id).map(_._2).getOrElse(0)
+          ))
+      }.pipeTo(sender)
+
+    } catch {
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+    }
 
 
     case cmd: CustomerParticipateCmd => try {
@@ -155,7 +210,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
             )
           }
           // Refresh state list
-          participations = participations :+ CustomerParticipationState(game_id = event.gameId, participationDate = event.timestamp, participationStatus = event.instantwin.map(_ => ParticipationStatusType.Lost).getOrElse(ParticipationStatusType.Lost))
+          participations = participations :+ CustomerParticipationState(game_id = event.gameId, participationDate = event.timestamp, participationStatus = event.instantwin.map(_ => ParticipationStatusType.Win).getOrElse(ParticipationStatusType.Lost))
 
         case _ => sender() ! _
       }
@@ -177,15 +232,27 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
   }
 
   private def getParticipationLimitsInFail(game: Game): Seq[GameLimit] = game.limits.filter { limit =>
+    val now = Instant.now
     limit.unit match {
-      case GameLimitUnit.Game =>
-        participations.count(_.game_id == game.id) >= limit.value
-      case GameLimitUnit.Second =>
-        val limitDate = Instant.now().minusSeconds(limit.unit_value.getOrElse(1).toLong).minusNanos(1)
+      case GameLimitUnit.Game if limit.`type` == GameLimitType.Participation =>
+        participations.count(p => p.game_id == game.id) >= limit.value
+      case GameLimitUnit.Game if limit.`type` == GameLimitType.Win =>
+        participations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatusType.Win) >= limit.value
+
+      case GameLimitUnit.Second if limit.`type` == GameLimitType.Participation =>
+        val limitDate = now.minusSeconds(limit.unit_value.getOrElse(1).toLong).minusNanos(1)
         participations.count(p => p.game_id == game.id && p.participationDate.isAfter(limitDate)) >= limit.value
-      case GameLimitUnit.Day =>
-        val limitDate = Instant.now.atZone(ZoneId.of(game.timezone)).truncatedTo(ChronoUnit.DAYS).minusDays(limit.unit_value.getOrElse(1).toLong).minusNanos(1).toInstant
+      case GameLimitUnit.Second if limit.`type` == GameLimitType.Win =>
+        val limitDate = now.minusSeconds(limit.unit_value.getOrElse(1).toLong).minusNanos(1)
+        participations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatusType.Win && p.participationDate.isAfter(limitDate)) >= limit.value
+
+      case GameLimitUnit.Day if limit.`type` == GameLimitType.Participation =>
+        val limitDate = now.atZone(ZoneId.of(game.timezone)).truncatedTo(ChronoUnit.DAYS).minusDays(limit.unit_value.getOrElse(1).toLong).minusNanos(1).toInstant
         participations.count(p => p.game_id == game.id && p.participationDate.isAfter(limitDate)) >= limit.value
+
+      case GameLimitUnit.Day if limit.`type` == GameLimitType.Win =>
+        val limitDate = now.atZone(ZoneId.of(game.timezone)).truncatedTo(ChronoUnit.DAYS).minusDays(limit.unit_value.getOrElse(1).toLong).minusNanos(1).toInstant
+        participations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatusType.Win && p.participationDate.isAfter(limitDate)) >= limit.value
     }
   }
 }
