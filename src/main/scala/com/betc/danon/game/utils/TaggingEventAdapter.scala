@@ -6,8 +6,8 @@ import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
 
 class TaggingEventAdapter extends WriteEventAdapter {
   override def toJournal(event: Any): Any = event match {
-    case event: GameParticipationEvent => Tagged(event, Set(event.customerId, event.countryCode))
-    case event: CustomerParticipationEvent => Tagged(event, Set(event.gameId.toString, event.countryCode))
+    case event: GameParticipationEvent => Tagged(event, Set(s"CUSTOMER-${event.customerId.toUpperCase}", s"COUNTRY-${event.countryCode.toUpperCase}"))
+    case event: CustomerParticipationEvent => Tagged(event, Set(s"GAME-${event.gameId.toString}", s"COUNTRY-${event.countryCode.toUpperCase}"))
     case _ => event
   }
 

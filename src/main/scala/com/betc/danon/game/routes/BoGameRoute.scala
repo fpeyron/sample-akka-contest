@@ -12,6 +12,7 @@ import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
 import com.betc.danon.game.Config
 import com.betc.danon.game.actors.BoGameActor._
+import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipationEvent
 import com.betc.danon.game.models.GameDto._
 import com.betc.danon.game.models.GameEntity.GamePrize
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
@@ -47,7 +48,7 @@ trait BoGameRoute
     corsHandler(AuthenticateSupport.asAuthenticated { implicit uc: UserContext =>
       game_findBy ~ game_get ~ game_create ~ game_update ~ game_delete ~ game_activate ~ game_archive ~
         game_getPrizes ~ game_addPrize ~ game_deletePrize ~ game_updatePrize ~
-        game_downloadInstantwins
+        game_downloadInstantwins ~ game_downloadParticipations
     })
   }
 
@@ -353,15 +354,52 @@ trait BoGameRoute
     get {
       onSuccess(gameActor ? GameGetInstantwinQuery(uc, id)) {
         case source: Source[_, _] => complete {
-          val mapStream = Source.single("activate_date\tattribution_date\tgameprize_id\tprize_id\tprize_type\tprize_label\tprize_vendor_code\tprize_face_value\n")
-            .concat(source.map(_.asInstanceOf[InstantwinExtended]).map(t => s"${t.activate_date}\t${t.gameprize_id}\t${t.gameprize_id}\t${t.prize.id}\t${t.prize.`type`.toString}\t${t.prize.label}\t${t.prize.vendor_code.getOrElse("")}\t${t.prize.face_value.getOrElse("")}\n"))
-
-
-            .map(ByteString.apply)
+          val mapStream = Source.single("activate_date\tattribution_date\tgameprize_id\tprize_id\tprize_type\tprize_label\tpoints\tprize_vendor_code\tprize_face_value\n")
+            .concat(source.map(_.asInstanceOf[InstantwinExtended]).map(t =>
+              s"${t.activate_date}\t${t.gameprize_id}\t${t.gameprize_id}\t${t.prize.id}\t${t.prize.`type`.toString}\t${t.prize.label}\t${t.prize.points.getOrElse("")}\t${t.prize.vendor_code.getOrElse("")}\t${t.prize.face_value.getOrElse("")}\n"
+                .stripMargin)).map(ByteString.apply)
           HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
         }
       }
     }
   }
 
+  /**
+    * -------------------------------
+    * Participations
+    * -------------------------------
+    */
+
+
+  /**
+    * game.downloadParticipations
+    *
+    * @return File
+    */
+  @Path("/{id}/participations")
+  @ApiOperation(value = "Download participations for game", notes = "", nickname = "game.downloadParticipations", httpMethod = "GET")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return file game", response = classOf[File]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "id", value = "id of game", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "customer_id", value = "id of customer", required = false, dataType = "string", paramType = "query")
+  ))
+  def game_downloadParticipations(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "participations") { id =>
+
+    get {
+      parameter('customer_id.?) { customerIdOptional =>
+        onSuccess(gameActor ? GameGetParticipationsQuery(uc, id, customerIdOptional)) {
+          case source: Source[_, _] => complete {
+            val mapStream = Source.single("timestamp\tcustomerId\tean\tmetadatas\tprize_type\tprize_label\tpoints\tprize_vendor_code\tprize_face_value\n")
+              .concat(source.map(_.asInstanceOf[CustomerParticipationEvent]).map(t =>
+                s"${t.timestamp}\t${t.customerId}\t${t.ean.getOrElse("")}\t${Some(t.metadata).find(_.nonEmpty).map(_.mkString(",")).getOrElse("")}\t ${t.instantwin.map(_.prize.`type`.toString).getOrElse("")}\t${t.instantwin.map(_.prize.label).getOrElse("")}\t${t.instantwin.map(_.prize.points.getOrElse("")).getOrElse("")}\t${t.instantwin.map(_.prize.vendor_code.getOrElse("")).getOrElse("")}\t${t.instantwin.map(_.prize.face_value.getOrElse("")).getOrElse("")}\n"
+                  .stripMargin)).map(ByteString.apply)
+            HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
+          }
+        }
+      }
+    }
+  }
 }

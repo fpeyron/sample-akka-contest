@@ -9,12 +9,14 @@ import akka.stream.scaladsl.Source
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.BoGameActor._
+import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipationEvent
 import com.betc.danon.game.models.GameDto._
 import com.betc.danon.game.models.GameEntity._
 import com.betc.danon.game.models.InstantwinDomain.Instantwin
 import com.betc.danon.game.repositories.GameExtension
 import com.betc.danon.game.utils.AuthenticateSupport.UserContext
 import com.betc.danon.game.utils.HttpSupport.{GameIdNotFoundException, GamePrizeIdNotFoundException, InvalidInputException, NotAuthorizedException}
+import com.betc.danon.game.utils.JournalReader
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -24,21 +26,24 @@ object BoGameActor {
 
   val Name = "games-singleton"
 
-  def props(implicit repository: Repository, materializer: ActorMaterializer, clusterSingletonProxy: ActorRef) = Props(new BoGameActor)
+  def props(implicit repository: Repository, materializer: ActorMaterializer, clusterSingletonProxy: ActorRef, journalReader: JournalReader) = Props(new BoGameActor)
 
   // Query
   sealed trait Query
-
-  // Command
-  sealed trait Cmd
 
   case class GameListQuery(uc: UserContext, types: Option[String], status: Option[String]) extends Query
 
   case class GameGetQuery(uc: UserContext, id: UUID) extends Query
 
+  case class GameListPrizesQuery(uc: UserContext, id: UUID) extends Query
+
   case class GameGetInstantwinQuery(uc: UserContext, id: UUID) extends Query
 
-  case class GameListPrizesQuery(uc: UserContext, id: UUID) extends Query
+  case class GameGetParticipationsQuery(uc: UserContext, id: UUID, customerIdOptional: Option[String] = None) extends Query
+
+
+  // Command
+  sealed trait Cmd
 
   case class GameCreateCmd(uc: UserContext, gameCreateRequest: GameCreateRequest) extends Cmd
 
@@ -59,7 +64,7 @@ object BoGameActor {
 }
 
 
-class BoGameActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer, implicit val clusterSingletonProxy: ActorRef) extends Actor with ActorLogging {
+class BoGameActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer, implicit val clusterSingletonProxy: ActorRef, implicit val journalReader: JournalReader) extends Actor with ActorLogging {
 
   import akka.pattern.pipe
   import context.dispatcher
@@ -500,6 +505,28 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
           throw GameIdNotFoundException(id = id)
         }
         repository.instantwin.fetchWithPrizeBy(game.get.id)
+      }.pipeTo(sender)
+
+    }
+    catch {
+      case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
+      case e: Exception => sender() ! scala.util.Failure(e); throw e
+    }
+
+
+    case GameGetParticipationsQuery(uc, id, customerId) => try {
+
+      repository.game.getById(id).map { game =>
+        // check existing game
+        if (!game.exists(_.country_code == uc.country_code)) {
+          throw GameIdNotFoundException(id = id)
+        }
+        journalReader.currentEventsByTag(s"GAME-${id.toString}")
+          .map(_.event)
+          .collect {
+            case event: CustomerParticipationEvent => event
+          }
+            .filter(e => customerId.forall(_.toUpperCase == e.customerId))
       }.pipeTo(sender)
 
     }

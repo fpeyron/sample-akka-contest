@@ -101,5 +101,5 @@ case class Query()(
   implicit val ec: ExecutionContext,
   val materializer: ActorMaterializer,
   val repository: Repository,
-  val journalReader: JournalReader)
-  extends CustomerQuery
+  val journalReader: JournalReader
+) extends CustomerQuery

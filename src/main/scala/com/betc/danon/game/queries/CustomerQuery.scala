@@ -37,7 +37,7 @@ trait CustomerQuery {
             }
             .filter(event => gameIds.contains(event._1))
             .runFold(Map.empty[UUID, (Int, Int)]) { (current, event) =>
-              current.filterNot(_._1 == event._1) + (event._1 -> current.get(event._1).map(c => (c._1 + event._2, c._2 + event._2)).getOrElse((event._2, event._3)))
+              current.filterNot(_._1 == event._1) + (event._1 -> current.get(event._1).map(c => (c._1 + event._2, c._2 + event._3)).getOrElse((event._2, event._3)))
             }
         }
       } yield (games, participations)
