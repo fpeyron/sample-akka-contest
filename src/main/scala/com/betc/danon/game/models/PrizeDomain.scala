@@ -43,7 +43,7 @@ object PrizeDao {
 
   // Service
   case class PrizeCreateRequest(
-                                 @ApiModelProperty(position = 1, value = "type", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
+                                 @ApiModelProperty(position = 1, value = "type", required = true, example = "POINTS", allowableValues = "POINTS,GIFTSHOP,GIFT")
                                  `type`: Option[String],
                                  @ApiModelProperty(position = 2, value = "title", example = "My new Prize")
                                  title: Option[String],
@@ -64,7 +64,7 @@ object PrizeDao {
   case class PrizeResponse(
                             @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
                             id: UUID,
-                            @ApiModelProperty(position = 2, value = "type", dataType = "string", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
+                            @ApiModelProperty(position = 2, value = "type", dataType = "string", required = true, example = "POINTS", allowableValues = "POINTS,GIFTSHOP,GIFT")
                             `type`: PrizeType.Value,
                             @ApiModelProperty(position = 3, value = "title", example = "My new Prize")
                             title: Option[String] = None,
