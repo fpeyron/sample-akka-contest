@@ -226,7 +226,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
     .getOrElse(context.actorOf(GameWorkerActor.props(id), GameWorkerActor.name(id)))
 
 
-  private def hasParticipationDependencies(game: Game): Boolean = ! Some(game.parents).filter(_.nonEmpty).forall(_.exists(parent => participations.exists(_.game_id == parent)))
+  private def hasParticipationDependencies(game: Game): Boolean = !Some(game.parents).filter(_.nonEmpty).forall(_.exists(parent => participations.exists(_.game_id == parent)))
 
 
   private def getParticipationLimitsInFail(game: Game): Seq[GameLimit] = game.limits.filter { limit =>
