@@ -15,7 +15,7 @@ import com.betc.danon.game.models.GameEntity._
 import com.betc.danon.game.models.InstantwinDomain.Instantwin
 import com.betc.danon.game.repositories.GameExtension
 import com.betc.danon.game.utils.AuthenticateSupport.UserContext
-import com.betc.danon.game.utils.HttpSupport.{GameIdNotFoundException, GamePrizeIdNotFoundException, InvalidInputException, NotAuthorizedException}
+import com.betc.danon.game.utils.HttpSupport._
 import com.betc.danon.game.utils.JournalReader
 
 import scala.concurrent.Await
@@ -64,7 +64,7 @@ object BoGameActor {
 }
 
 
-class BoGameActor(implicit val repository: Repository, implicit val materializer: ActorMaterializer, implicit val clusterSingletonProxy: ActorRef, implicit val journalReader: JournalReader) extends Actor with ActorLogging {
+class BoGameActor(implicit val repository: Repository, val materializer: ActorMaterializer, val clusterSingletonProxy: ActorRef, val journalReader: JournalReader) extends Actor with ActorLogging {
 
   import akka.pattern.pipe
   import context.dispatcher
@@ -101,7 +101,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       }.pipeTo(sender)
 
     } catch {
-      case e: GameIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
@@ -167,7 +167,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       clusterSingletonProxy ! GameManagerActor.GameCreateEvent(game = game)
 
     } catch {
-      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
@@ -243,8 +243,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = gameToUpdate)
 
     } catch {
-      case e: GameIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
-      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
@@ -277,8 +276,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
 
     }
     catch {
-      case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
-      case e: NotAuthorizedException => sender() ! scala.util.Failure(e)
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! scala.util.Failure(e); throw e
     }
 
@@ -305,8 +303,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
 
     }
     catch {
-      case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
-      case e: NotAuthorizedException => sender() ! scala.util.Failure(e)
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! scala.util.Failure(e); throw e
     }
 
@@ -333,8 +330,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
 
     }
     catch {
-      case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
-      case e: NotAuthorizedException => sender() ! scala.util.Failure(e)
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! scala.util.Failure(e); throw e
     }
 
@@ -351,7 +347,7 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       }.pipeTo(sender)
 
     } catch {
-      case e: GameIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
@@ -398,9 +394,12 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       // to generate instantwins (asynchronous)
       createInstantwins(id, gamePrize)
 
+      // Push event
+      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get)
+
 
     } catch {
-      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
@@ -449,9 +448,11 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       deleteInstantWins(game.get.id, gamePrize.map(_.id))
       createInstantwins(game.get.id, gamePrizeUpdated)
 
+      // Push event
+      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get)
 
     } catch {
-      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
@@ -491,8 +492,12 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
       // return to sender
       sender() ! None
 
+      // Push event
+      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get)
+
+
     } catch {
-      case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
@@ -526,12 +531,12 @@ class BoGameActor(implicit val repository: Repository, implicit val materializer
           .collect {
             case event: CustomerParticipationEvent => event
           }
-            .filter(e => customerId.forall(_.toUpperCase == e.customerId))
+          .filter(e => customerId.forall(_.toUpperCase == e.customerId))
       }.pipeTo(sender)
 
     }
     catch {
-      case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! scala.util.Failure(e); throw e
     }
 
