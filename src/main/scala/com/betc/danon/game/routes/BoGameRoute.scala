@@ -392,9 +392,9 @@ trait BoGameRoute
       parameter('customer_id.?) { customerIdOptional =>
         onSuccess(gameActor ? GameGetParticipationsQuery(uc, id, customerIdOptional)) {
           case source: Source[_, _] => complete {
-            val mapStream = Source.single("timestamp\tcustomerId\tean\tmetadatas\tprize_type\tprize_label\tpoints\tprize_vendor_code\tprize_face_value\n")
+            val mapStream = Source.single("timestamp\tcustomerId\tean\tmeta\tprize_type\tprize_label\tpoints\tprize_vendor_code\tprize_face_value\n")
               .concat(source.map(_.asInstanceOf[CustomerParticipationEvent]).map(t =>
-                s"${t.timestamp}\t${t.customerId}\t${t.ean.getOrElse("")}\t${Some(t.metadata).find(_.nonEmpty).map(_.mkString(",")).getOrElse("")}\t ${t.instantwin.map(_.prize.`type`.toString).getOrElse("")}\t${t.instantwin.map(_.prize.label).getOrElse("")}\t${t.instantwin.map(_.prize.points.getOrElse("")).getOrElse("")}\t${t.instantwin.map(_.prize.vendor_code.getOrElse("")).getOrElse("")}\t${t.instantwin.map(_.prize.face_value.getOrElse("")).getOrElse("")}\n"
+                s"${t.timestamp}\t${t.customerId}\t${t.ean.getOrElse("")}\t${Some(t.meta).find(_.nonEmpty).map(_.mkString(",")).getOrElse("")}\t ${t.instantwin.map(_.prize.`type`.toString).getOrElse("")}\t${t.instantwin.map(_.prize.label).getOrElse("")}\t${t.instantwin.map(_.prize.points.getOrElse("")).getOrElse("")}\t${t.instantwin.map(_.prize.vendor_code.getOrElse("")).getOrElse("")}\t${t.instantwin.map(_.prize.face_value.getOrElse("")).getOrElse("")}\n"
                   .stripMargin)).map(ByteString.apply)
             HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
           }

@@ -41,7 +41,7 @@ object GameWorkerActor {
                                  customerId: String,
                                  transaction_code: Option[String],
                                  ean: Option[String],
-                                 metadata: Map[String, String]
+                                 meta: Map[String, String]
                                ) extends GameCmd
 
   case class GamePlayCmd(
@@ -49,7 +49,7 @@ object GameWorkerActor {
                           customerId: String,
                           transaction_code: Option[String],
                           ean: Option[String],
-                          metadata: Map[String, String]
+                          meta: Map[String, String]
                         ) extends GameCmd
 
 
@@ -62,7 +62,7 @@ object GameWorkerActor {
                                      instantwin: Option[InstantwinExtended] = None,
                                      transaction_code: Option[String] = None,
                                      ean: Option[String] = None,
-                                     metadata: Map[String, String] = Map.empty
+                                     meta: Map[String, String] = Map.empty
                                    ) extends GameEvent
 
 
@@ -96,7 +96,7 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
         customerId = cmd.customerId,
         transaction_code = cmd.transaction_code,
         ean = cmd.ean,
-        metadata = cmd.metadata,
+        meta = cmd.meta,
         game = game.get
       )
     } catch {
@@ -117,7 +117,7 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
         instantwin = getInstantWin(now),
         transaction_code = cmd.transaction_code,
         ean = cmd.ean,
-        metadata = cmd.metadata
+        meta = cmd.meta
       )
 
       // Return response

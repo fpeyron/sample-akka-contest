@@ -27,8 +27,8 @@ object ParticipationDto {
                                          transaction_code: Option[String],
                                          @ApiModelProperty(position = 3, value = "ean", required = false, example = "10")
                                          ean: Option[String],
-                                         @ApiModelProperty(position = 4, value = "metadata", required = false)
-                                         metadata: Option[Map[String, String]] = None
+                                         @ApiModelProperty(position = 4, value = "meta", required = false)
+                                         meta: Option[Map[String, String]] = None
                                        )
 
   implicit object ParticipationStatusType extends Enumeration {

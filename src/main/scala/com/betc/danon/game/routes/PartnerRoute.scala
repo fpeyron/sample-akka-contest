@@ -65,7 +65,7 @@ trait PartnerRoute
             game_code = request.game_code,
             customer_id.toUpperCase,
             transaction_code = request.transaction_code,
-            metadata = request.metadata.getOrElse(Map.empty),
+            meta = request.meta.getOrElse(Map.empty),
             ean = request.ean
           )) {
           case response: CustomerParticipateResponse => complete(StatusCodes.OK, response)

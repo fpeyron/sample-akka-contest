@@ -54,7 +54,7 @@ object CustomerWorkerActor {
                                      customerId: String,
                                      transaction_code: Option[String],
                                      ean: Option[String],
-                                     metadata: Map[String, String],
+                                     meta: Map[String, String],
                                      game: Game
                                    ) extends CustomerCmd
 
@@ -71,9 +71,9 @@ object CustomerWorkerActor {
                                          instantwin: Option[InstantwinExtended] = None,
                                          transaction_code: Option[String] = None,
                                          ean: Option[String] = None,
-                                         metadata: Map[String, String] = Map.empty
+                                         meta: Map[String, String] = Map.empty
                                        ) extends CustomerEvent {
-    def this(r: GameParticipationEvent) = this(timestamp = r.timestamp, participationId = r.participationId, gameId = r.gameId, countryCode = r.countryCode, customerId = r.customerId, instantwin = r.instantwin, transaction_code = r.transaction_code, ean = r.ean, metadata = r.metadata)
+    def this(r: GameParticipationEvent) = this(timestamp = r.timestamp, participationId = r.participationId, gameId = r.gameId, countryCode = r.countryCode, customerId = r.customerId, instantwin = r.instantwin, transaction_code = r.transaction_code, ean = r.ean, meta = r.meta)
   }
 
   case class CustomerParticipationState(game_id: UUID, participationDate: Instant, participationStatus: ParticipationStatusType.Value)
@@ -184,7 +184,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
           customerId = cmd.customerId,
           transaction_code = cmd.transaction_code,
           ean = cmd.ean,
-          metadata = cmd.metadata
+          meta = cmd.meta
         )
       }
       else {
@@ -194,7 +194,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
           customerId = cmd.customerId,
           transaction_code = cmd.transaction_code,
           ean = cmd.ean,
-          metadata = cmd.metadata
+          meta = cmd.meta
         ), Duration.Inf)
       }) match {
 
