@@ -141,6 +141,7 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
 
+
     case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = GameStopCmd)
 
     case GameStopCmd ⇒ context.stop(self)

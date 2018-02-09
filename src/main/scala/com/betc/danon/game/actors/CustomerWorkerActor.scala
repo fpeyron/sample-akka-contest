@@ -14,7 +14,7 @@ import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.CustomerWorkerActor._
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
 import com.betc.danon.game.models.Event
-import com.betc.danon.game.models.GameEntity.{Game, GameLimit, GameLimitType, GameLimitUnit, GameStatusType}
+import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GameStatusType}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateResponse, ParticipationStatusType}
 import com.betc.danon.game.models.PrizeDao.PrizeResponse
@@ -207,6 +207,11 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
       val participationLimitsInFail = getParticipationLimitsInFail(game = cmd.game)
       if (participationLimitsInFail.exists(_.`type` == GameLimitType.Participation)) {
         throw ParticipationLimitException(code = cmd.game.code)
+      }
+
+      // check Ean
+      if(cmd.game.input_type == GameInputType.Pincode && ! cmd.ean.exists(e => cmd.game.input_eans.contains(e))) {
+        throw ParticipationEanException(code = cmd.game.code)
       }
 
       // Return Lost if some GameLimit is reached
