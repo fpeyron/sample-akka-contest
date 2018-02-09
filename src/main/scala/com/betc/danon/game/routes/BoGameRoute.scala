@@ -356,8 +356,8 @@ trait BoGameRoute
         case source: Source[_, _] => complete {
           val mapStream = Source.single("activate_date\tprize_id\tprize_type\tprize_label\tprize_title\tprize_points\tprize_vendor_code\tprize_face_value\n")
             .concat(source.map(_.asInstanceOf[InstantwinExtended]).map(t =>
-              s"${t.activate_date}\t${t.prize.id}\t${t.prize.`type`.toString}\t${t.prize.label}\t${t.prize.title.getOrElse("")}\t${t.prize.points.getOrElse("")}\t" +
-                s"${t.prize.vendor_code.getOrElse("")}\t${t.prize.face_value.getOrElse("")}\n"
+              s"${t.activateDate}\t${t.prize.id}\t${t.prize.`type`.toString}\t${t.prize.label}\t${t.prize.title.getOrElse("")}\t${t.prize.points.getOrElse("")}\t" +
+                s"${t.prize.vendorCode.getOrElse("")}\t${t.prize.faceValue.getOrElse("")}\n"
                   .stripMargin)).map(ByteString.apply)
           HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
         }
@@ -397,8 +397,8 @@ trait BoGameRoute
               .concat(source.map(_.asInstanceOf[CustomerParticipationEvent]).map(t =>
                 s"${t.timestamp}\t${t.participationId.toString}\t${t.instantwin.map(_ => "WIN").getOrElse("LOST")}\t${t.customerId}\t${t.ean.getOrElse("")}\t" +
                   s"${Some(t.meta).find(_.nonEmpty).map(_.map(m => s"${m._1}:${m._2}").mkString(",")).getOrElse("")}\t${t.instantwin.map(_.prize.`type`.toString).getOrElse("")}\t" +
-                  s"${t.instantwin.map(_.game_id).getOrElse("")}\t${t.instantwin.map(_.prize.label).getOrElse("")}\t${t.instantwin.flatMap(_.prize.title).getOrElse("")}\t" +
-                  s"${t.instantwin.flatMap(_.prize.points).getOrElse("")}\t${t.instantwin.flatMap(_.prize.vendor_code).getOrElse("")}\t${t.instantwin.flatMap(_.prize.face_value).getOrElse("")}\n"
+                  s"${t.instantwin.map(_.gameId).getOrElse("")}\t${t.instantwin.map(_.prize.label).getOrElse("")}\t${t.instantwin.flatMap(_.prize.title).getOrElse("")}\t" +
+                  s"${t.instantwin.flatMap(_.prize.points).getOrElse("")}\t${t.instantwin.flatMap(_.prize.vendorCode).getOrElse("")}\t${t.instantwin.flatMap(_.prize.faceValue).getOrElse("")}\n"
                     .stripMargin)).map(ByteString.apply)
             HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
           }

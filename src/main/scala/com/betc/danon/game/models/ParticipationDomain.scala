@@ -14,7 +14,7 @@ object ParticipationEntity
 object ParticipationDto {
 
   trait PartnerJsonSupport extends DefaultJsonSupport with PrizeJsonSupport {
-    implicit val customerParticipationStatusType: RootJsonFormat[ParticipationStatusType.Value] = enumFormat(ParticipationStatusType)
+    implicit val customerParticipationStatusType: RootJsonFormat[ParticipationStatus.Value] = enumFormat(ParticipationStatus)
     implicit val customerParticipateRequest: RootJsonFormat[CustomerParticipateRequest] = jsonFormat4(CustomerParticipateRequest)
     implicit val customerParticipateResponse: RootJsonFormat[CustomerParticipateResponse] = jsonFormat4(CustomerParticipateResponse)
     implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat10(CustomerGameResponse)
@@ -31,13 +31,13 @@ object ParticipationDto {
                                          meta: Option[Map[String, String]] = None
                                        )
 
-  implicit object ParticipationStatusType extends Enumeration {
-    val Lost: ParticipationStatusType.Value = Value("LOST")
-    val Win: ParticipationStatusType.Value = Value("WIN")
+  implicit object ParticipationStatus extends Enumeration {
+    val Lost: ParticipationStatus.Value = Value("LOST")
+    val Win: ParticipationStatus.Value = Value("WIN")
 
     val all = Seq(Lost, Win)
 
-    def withNameOptional(name: String): Option[ParticipationStatusType.Value] = try {
+    def withNameOptional(name: String): Option[ParticipationStatus.Value] = try {
       Some(this.withName(name))
     } catch {
       case _: Throwable => None
@@ -51,7 +51,7 @@ object ParticipationDto {
                                           @ApiModelProperty(position = 2, value = "date", required = true, example = "2018-01-01T00:00:00.000+02:00")
                                           date: Instant,
                                           @ApiModelProperty(position = 3, value = "status", required = true, example = "OTHER", allowableValues = "REJECTED,LOST,WIN")
-                                          status: ParticipationStatusType.Value,
+                                          status: ParticipationStatus.Value,
                                           @ApiModelProperty(position = 4, value = "prize", required = false)
                                           prize: Option[PrizeResponse] = None
                                         )
@@ -75,9 +75,9 @@ object ParticipationDto {
                                    @ApiModelProperty(position = 8, value = "input point", required = false, example = "10")
                                    input_point: Option[Int] = None,
                                    @ApiModelProperty(position = 9, value = "participations count", required = true, example = "10")
-                                   participationCount: Int,
+                                   participation_count: Int,
                                    @ApiModelProperty(position = 10, value = "win count", required = true, example = "10")
-                                   instantWinCount: Int
+                                   instant_win_count: Int
                                  )
 
 }

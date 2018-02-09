@@ -10,8 +10,8 @@ import akka.stream.scaladsl.Sink
 import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerCmd, CustomerGetParticipationQuery, CustomerParticipationState, CustomerQuery}
 import com.betc.danon.game.actors.GameManagerActor.{GameDeleteEvent, GameFindQuery, GameLinesEvent, GameUpdateEvent}
 import com.betc.danon.game.actors.GameWorkerActor.GameStopCmd
-import com.betc.danon.game.models.GameEntity.{Game, GameLimit, GameStatusType}
-import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, ParticipationStatusType}
+import com.betc.danon.game.models.GameEntity.{Game, GameLimit, GameStatus}
+import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, ParticipationStatus}
 import com.betc.danon.game.utils.HttpSupport._
 import com.betc.danon.game.utils.JournalReader
 import com.betc.danon.game.{Config, Repository}
@@ -81,7 +81,7 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
   override def preStart(): Unit = {
     games = Await.result(
       repository.game.fetchExtendedBy()
-        .filter(_.status == GameStatusType.Activated).runWith(Sink.collection), Duration.Inf)
+        .filter(_.status == GameStatus.Activated).runWith(Sink.collection), Duration.Inf)
       .groupBy(_.id)
       .map(t => t._2.head.copy(limits = t._2.map(_.limits.toList).foldLeft(List.empty[GameLimit])((acc, item) => acc ::: item)))
       .toSeq
@@ -90,8 +90,8 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
   override def receive: Receive = {
 
     case GameUpdateEvent(game) => try {
-      if (game.status == GameStatusType.Activated)
-        games = games.filterNot(_.id == game.id) :+ game.copy(prizes = Seq.empty, input_eans = Seq.empty, input_freecodes = Seq.empty)
+      if (game.status == GameStatus.Activated)
+        games = games.filterNot(_.id == game.id) :+ game.copy(prizes = Seq.empty, inputEans = Seq.empty, inputFreecodes = Seq.empty)
       else
         games = games.filterNot(_.id == game.id)
 
@@ -121,20 +121,20 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
     case cmd: GameWorkerActor.GameParticipateCmd => try {
 
       // get Game in state
-      val game: Option[Game] = games.find(r => r.country_code == cmd.country_code && r.code == cmd.game_code && r.status == GameStatusType.Activated)
+      val game: Option[Game] = games.find(r => r.countryCode == cmd.country_code && r.code == cmd.game_code && r.status == GameStatus.Activated)
 
       // check existing game
-      if (!game.exists(_.country_code == cmd.country_code)) {
+      if (!game.exists(_.countryCode == cmd.country_code)) {
         throw GameRefNotFoundException(code = cmd.game_code, country_code = cmd.country_code)
       }
 
       // check if game is active start_date
-      if (game.get.start_date.isAfter(Instant.now)) {
+      if (game.get.startDate.isAfter(Instant.now)) {
         throw ParticipationNotOpenedException(code = cmd.game_code)
       }
 
       // check if game is active start_date
-      if (game.get.end_date.isBefore(Instant.now)) {
+      if (game.get.endDate.isBefore(Instant.now)) {
         throw ParticipationCloseException(code = cmd.game_code)
       }
 
@@ -152,8 +152,8 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
       // get Game in state
       val result: Seq[Game] = games
         .filter(
-          r => r.country_code == query.country_code
-            && r.status == GameStatusType.Activated
+          r => r.countryCode == query.country_code
+            && r.status == GameStatus.Activated
             && Some(query.tags).filterNot(_.isEmpty).forall(_.map(t => r.tags.contains(t)).forall(b => b))
             && Some(query.games).filterNot(_.isEmpty).forall(_.contains(r.code))
         )
@@ -171,13 +171,13 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
         `type` = game.`type`,
         code = game.code,
         title = game.title,
-        start_date = game.start_date,
-        end_date = game.end_date,
-        input_type = game.input_type,
-        input_point = game.input_point,
+        start_date = game.startDate,
+        end_date = game.endDate,
+        input_type = game.inputType,
+        input_point = game.inputPoint,
         parents = Some(game.parents.flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty),
-        participationCount = customerParticipations.count(_.game_id == game.id),
-        instantWinCount = customerParticipations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatusType.Win)
+        participation_count = customerParticipations.count(_.game_id == game.id),
+        instant_win_count = customerParticipations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatus.Win)
       ))
     }
     catch {

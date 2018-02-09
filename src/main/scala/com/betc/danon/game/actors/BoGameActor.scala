@@ -74,12 +74,12 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
     case GameListQuery(uc, types, status) => try {
 
       val restrictedTypes = types.map(_.split(",").flatMap(GameType.withNameOptional).toSeq)
-      val restrictedStatus = status.map(_.split(",").flatMap(GameStatusType.withNameOptional).toSeq)
+      val restrictedStatus = status.map(_.split(",").flatMap(GameStatus.withNameOptional).toSeq)
 
       val sourceList: Source[GameForListDto, NotUsed] = repository.game.fetchBy(
         country_code = Some(uc.country_code),
         types = restrictedTypes.getOrElse(Seq.empty[GameType.Value]),
-        status = restrictedStatus.getOrElse(Seq.empty[GameStatusType.Value])
+        status = restrictedStatus.getOrElse(Seq.empty[GameStatus.Value])
       )
         .map(new GameForListDto(_))
 
@@ -93,7 +93,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
       repository.game.getById(id, GameExtension.all).map { game =>
         // check existing game
-        if (!game.exists(_.country_code == uc.country_code)) {
+        if (!game.exists(_.countryCode == uc.country_code)) {
           throw GameIdNotFoundException(id = id)
         } else {
           game.map(new GameResponse(_)).get
@@ -119,16 +119,16 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       val game = Game(
         id = newId,
         `type` = request.`type`.map(GameType.withName) getOrElse GameType.Instant,
-        status = GameStatusType.Draft,
+        status = GameStatus.Draft,
         code = request.code.getOrElse(newId.toString),
-        country_code = uc.country_code,
+        countryCode = uc.country_code,
         title = request.title,
-        start_date = request.start_date.getOrElse(Instant.now),
-        end_date = request.end_date.getOrElse(Instant.now),
+        startDate = request.start_date.getOrElse(Instant.now),
+        endDate = request.end_date.getOrElse(Instant.now),
         timezone = request.timezone.map(ZoneId.of(_).toString).getOrElse("UTC"),
         parents = request.parents.getOrElse(Seq.empty),
-        input_type = request.input_type.map(GameInputType.withName).getOrElse(GameInputType.Other),
-        input_point = request.input_point,
+        inputType = request.input_type.map(GameInputType.withName).getOrElse(GameInputType.Other),
+        inputPoint = request.input_point,
         limits = request.limits.getOrElse(Seq.empty)
           .map(f => GameLimit(
             `type` = f.`type`.map(GameLimitType.withName).getOrElse(GameLimitType.Participation),
@@ -136,20 +136,20 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
             unit_value = f.unit_value,
             value = f.value.getOrElse(1)
           )),
-        input_eans = request.input_eans.getOrElse(Seq.empty).distinct,
-        input_freecodes = request.input_freecodes.getOrElse(Seq.empty).distinct,
+        inputEans = request.input_eans.getOrElse(Seq.empty).distinct,
+        inputFreecodes = request.input_freecodes.getOrElse(Seq.empty).distinct,
         tags = request.tags.getOrElse(Seq.empty).map(_.toUpperCase).distinct
       )
 
       // Check existing code
       if (Await.result(repository.game.findByCode(game.code), Duration.Inf)
-        .exists(r => r.country_code == game.country_code && r.status != GameStatusType.Archived)) {
+        .exists(r => r.countryCode == game.countryCode && r.status != GameStatus.Archived)) {
         throw InvalidInputException(detail = Map("code" -> "GAME_ALREADY_EXISTS : already exists with same code and status ACTIVE"))
       }
 
       // Check existing parent
       if (game.parents.nonEmpty) {
-        val parentIds = Await.result(repository.game.findByIds(game.parents), Duration.Inf).filter(_.country_code == uc.country_code).map(_.id)
+        val parentIds = Await.result(repository.game.findByIds(game.parents), Duration.Inf).filter(_.countryCode == uc.country_code).map(_.id)
         val errors = game.parents.flatMap(p => if (!parentIds.contains(p)) Some("parents", s"GAME_NOT_FOUND : parent should already exists : $p") else None)
         if (errors.nonEmpty) {
           var index = -1
@@ -178,12 +178,12 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       val game = Await.result(repository.game.getById(id, GameExtension.all), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.country_code == uc.country_code)) {
+      if (!game.exists(_.countryCode == uc.country_code)) {
         throw GameIdNotFoundException(id = id)
       }
 
       // check status
-      if (game.get.status != GameStatusType.Draft) {
+      if (game.get.status != GameStatus.Draft) {
         throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
       }
 
@@ -196,13 +196,13 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       // Check existing code
       if (request.code.exists(_ != game.get.code) &&
         Await.result(repository.game.findByCode(request.code.get), Duration.Inf)
-          .exists(r => r.country_code == game.get.country_code && r.status != GameStatusType.Archived)) {
+          .exists(r => r.countryCode == game.get.countryCode && r.status != GameStatus.Archived)) {
         throw InvalidInputException(detail = Map("code" -> "ALREADY_EXISTS : already exists with same code and status ACTIVE"))
       }
 
       // Check existing parent
       if (request.parents.exists(_.nonEmpty)) {
-        val parentIds = Await.result(repository.game.findByIds(request.parents.get), Duration.Inf).filter(_.country_code == uc.country_code).map(_.id)
+        val parentIds = Await.result(repository.game.findByIds(request.parents.get), Duration.Inf).filter(_.countryCode == uc.country_code).map(_.id)
         val errors = request.parents.get.flatMap(p => if (!parentIds.contains(p)) Some(("parent_id", "ENTITY_NOT_FOUND : should already exists")) else None)
         if (errors.nonEmpty) {
           var index = -1
@@ -215,14 +215,14 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
         `type` = game.get.`type`,
         status = game.get.status,
         code = request.code.getOrElse(game.get.code),
-        country_code = game.get.country_code,
+        countryCode = game.get.countryCode,
         title = request.title.map(Some(_)).getOrElse(game.get.title),
-        start_date = request.start_date.getOrElse(game.get.start_date),
-        end_date = request.end_date.getOrElse(game.get.end_date),
+        startDate = request.start_date.getOrElse(game.get.startDate),
+        endDate = request.end_date.getOrElse(game.get.endDate),
         timezone = request.timezone.getOrElse("UTC"),
         parents = request.parents.getOrElse(game.get.parents),
-        input_type = request.input_type.map(GameInputType.withName).getOrElse(GameInputType.Other),
-        input_point = request.input_point.orElse(game.get.input_point),
+        inputType = request.input_type.map(GameInputType.withName).getOrElse(GameInputType.Other),
+        inputPoint = request.input_point.orElse(game.get.inputPoint),
         limits = request.limits.map(
           _.map(f => GameLimit(
             `type` = f.`type`.map(GameLimitType.withName).getOrElse(GameLimitType.Participation),
@@ -230,8 +230,8 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
             unit_value = f.unit_value,
             value = f.value.getOrElse(1)
           ))).getOrElse(game.get.limits),
-        input_eans = request.input_eans.getOrElse(game.get.input_eans).distinct,
-        input_freecodes = request.input_freecodes.getOrElse(game.get.input_freecodes).distinct,
+        inputEans = request.input_eans.getOrElse(game.get.inputEans).distinct,
+        inputFreecodes = request.input_freecodes.getOrElse(game.get.inputFreecodes).distinct,
         tags = request.tags.getOrElse(game.get.tags).map(_.toUpperCase).distinct
       )
       Await.result(repository.game.update(gameToUpdate), Duration.Inf)
@@ -254,10 +254,10 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       val game = Await.result(repository.game.getById(id), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.country_code == uc.country_code)) throw GameIdNotFoundException(id = id)
+      if (!game.exists(_.countryCode == uc.country_code)) throw GameIdNotFoundException(id = id)
 
       // check status
-      if (game.get.status != GameStatusType.Draft) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
+      if (game.get.status != GameStatus.Draft) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
 
       // Check dependency
       if (game.get.parents.nonEmpty) throw NotAuthorizedException(id = id, message = "HAS_DEPENDENCIES")
@@ -287,19 +287,19 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       val game = Await.result(repository.game.getById(id), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.country_code == uc.country_code)) throw GameIdNotFoundException(id = id)
+      if (!game.exists(_.countryCode == uc.country_code)) throw GameIdNotFoundException(id = id)
 
       // check status
-      if (game.get.status != GameStatusType.Draft) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
+      if (game.get.status != GameStatus.Draft) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
 
       // Persist
-      Await.result(repository.game.updateStatus(id, GameStatusType.Activated), Duration.Inf)
+      Await.result(repository.game.updateStatus(id, GameStatus.Activated), Duration.Inf)
 
       // Return response
       sender ! None
 
       // Push event
-      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Activated))
+      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get.copy(status = GameStatus.Activated))
 
     }
     catch {
@@ -314,19 +314,19 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       val game = Await.result(repository.game.getById(id), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.country_code == uc.country_code)) throw GameIdNotFoundException(id = id)
+      if (!game.exists(_.countryCode == uc.country_code)) throw GameIdNotFoundException(id = id)
 
       // check status
-      if (game.get.status == GameStatusType.Archived) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
+      if (game.get.status == GameStatus.Archived) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
 
       // Change status
-      Await.result(repository.game.updateStatus(id, GameStatusType.Archived), Duration.Inf)
+      Await.result(repository.game.updateStatus(id, GameStatus.Archived), Duration.Inf)
 
       // Return response
       sender ! None
 
       // Push event
-      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get.copy(status = GameStatusType.Archived))
+      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get.copy(status = GameStatus.Archived))
 
     }
     catch {
@@ -339,7 +339,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
       repository.game.getById(id, GameExtension.all).map { game =>
         // check existing game
-        if (!game.exists(_.country_code == uc.country_code)) {
+        if (!game.exists(_.countryCode == uc.country_code)) {
           throw GameIdNotFoundException(id = id)
         } else {
           game.get.prizes
@@ -358,12 +358,12 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       val game = Await.result(repository.game.getById(id, GameExtension.all), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.country_code == uc.country_code)) {
+      if (!game.exists(_.countryCode == uc.country_code)) {
         throw GameIdNotFoundException(id = id)
       }
 
       // check status
-      if (game.get.status == GameStatusType.Archived) {
+      if (game.get.status == GameStatus.Archived) {
         throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
       }
 
@@ -382,8 +382,8 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       val gamePrize = GamePrize(
         id = newId,
         prize_id = request.prize_id.get,
-        start_date = request.start_date.getOrElse(game.get.start_date),
-        end_date = request.end_date.getOrElse(game.get.end_date),
+        start_date = request.start_date.getOrElse(game.get.startDate),
+        end_date = request.end_date.getOrElse(game.get.endDate),
         quantity = request.quantity.getOrElse(1)
       )
       Await.result(repository.game.addPrize(id, gamePrize), Duration.Inf)
@@ -411,7 +411,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       val gamePrize: Option[GamePrize] = game.flatMap(_.prizes.find(_.id == prizeId))
 
       // check existing game
-      if (!game.exists(_.country_code == uc.country_code)) {
+      if (!game.exists(_.countryCode == uc.country_code)) {
         throw GameIdNotFoundException(id = id)
       }
 
@@ -421,7 +421,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       }
 
       // check status
-      if (game.get.status == GameStatusType.Archived) {
+      if (game.get.status == GameStatus.Archived) {
         throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
       }
 
@@ -464,7 +464,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       val gamePrize: Option[GamePrize] = game.flatMap(_.prizes.find(_.id == prize_id))
 
       // check existing game
-      if (!game.exists(_.country_code == uc.country_code)) {
+      if (!game.exists(_.countryCode == uc.country_code)) {
         throw GameIdNotFoundException(id = id)
       }
 
@@ -474,7 +474,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       }
 
       // check status
-      if (game.get.status == GameStatusType.Archived) {
+      if (game.get.status == GameStatus.Archived) {
         throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
       }
 
@@ -506,7 +506,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
       repository.game.getById(id).map { game =>
         // check existing game
-        if (!game.exists(_.country_code == uc.country_code)) {
+        if (!game.exists(_.countryCode == uc.country_code)) {
           throw GameIdNotFoundException(id = id)
         }
         repository.instantwin.fetchWithPrizeBy(game.get.id)
@@ -523,7 +523,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
       repository.game.getById(id).map { game =>
         // check existing game
-        if (!game.exists(_.country_code == uc.country_code)) {
+        if (!game.exists(_.countryCode == uc.country_code)) {
           throw GameIdNotFoundException(id = id)
         }
         journalReader.currentEventsByTag(s"GAME-${id.toString}")
@@ -657,19 +657,19 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       if (request.start_date.isDefined && request.start_date.get.isBefore(Instant.now))
         ("start_date", s"INVALID_VALUE : should be is the future") else null
     ) ++ Option(
-      if (request.start_date.isDefined && request.start_date.get.isBefore(game.start_date))
+      if (request.start_date.isDefined && request.start_date.get.isBefore(game.startDate))
         ("start_date", s"INVALID_VALUE : should be after start_date of the game") else null
     ) ++ Option(
-      if (request.start_date.isDefined && request.start_date.get.isAfter(game.end_date))
+      if (request.start_date.isDefined && request.start_date.get.isAfter(game.endDate))
         ("start_date", s"INVALID_VALUE : should be before end_date of the game") else null
     ) ++ Option(
       if (request.end_date.isDefined && request.start_date.isDefined && request.end_date.get.isBefore(request.start_date.get))
         ("end_date", s"INVALID_VALUE : should be after start_date") else null
     ) ++ Option(
-      if (request.end_date.isDefined && request.end_date.get.isBefore(game.start_date))
+      if (request.end_date.isDefined && request.end_date.get.isBefore(game.startDate))
         ("end_date", s"INVALID_VALUE : should be after start_date of the game") else null
     ) ++ Option(
-      if (request.end_date.isDefined && request.end_date.get.isAfter(game.end_date))
+      if (request.end_date.isDefined && request.end_date.get.isAfter(game.endDate))
         ("end_date", s"INVALID_VALUE : should be before end_date of the game") else null
     )
   }
@@ -692,10 +692,10 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
         .map { date =>
           Instantwin(
             id = UUID.randomUUID(),
-            game_id = id,
-            gameprize_id = gameprize.id,
-            prize_id = gameprize.prize_id,
-            activate_date = date
+            gameId = id,
+            gamePrizeId = gameprize.id,
+            prizeId = gameprize.prize_id,
+            activateDate = date
           )
         }
     ), Duration.Inf)

@@ -62,7 +62,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
       repository.prize.getById(id).map { prize =>
 
         // check existing prize
-        if (!prize.exists(_.country_code == uc.country_code)) {
+        if (!prize.exists(_.countryCode == uc.country_code)) {
           throw PrizeIdNotFoundException(id = id)
         } else {
           prize.map(new PrizeResponse(_)).get
@@ -87,14 +87,14 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
       val newId = UUID.randomUUID
       val prize = Prize(
         id = newId,
-        country_code = uc.country_code,
+        countryCode = uc.country_code,
         `type` = request.`type`.map(PrizeType.withName) getOrElse PrizeType.Gift,
         title = request.title,
         label = request.label.getOrElse("Unknown"),
         description = request.description,
         picture = request.picture,
-        vendor_code = request.vendor_code,
-        face_value = request.face_value,
+        vendorCode = request.vendor_code,
+        faceValue = request.face_value,
         points = request.points
       )
 
@@ -113,7 +113,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
 
       // check existing contest
       val entity: Prize = Await.result(repository.prize.getById(id).map {
-        case Some(u) if u.country_code == uc.country_code => u
+        case Some(u) if u.countryCode == uc.country_code => u
         case None => throw PrizeIdNotFoundException(id = id)
       }, Duration.Inf)
 
@@ -128,14 +128,14 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
       // Persist upgrade
       val entityUpdated = Prize(
         id = entity.id,
-        country_code = entity.country_code,
+        countryCode = entity.countryCode,
         `type` = entity.`type`,
         title = request.title.map(Some(_)).getOrElse(entity.title),
         label = request.label.getOrElse(entity.label),
         description = request.description.map(Some(_)).getOrElse(entity.description),
         picture = request.picture.orElse(entity.picture),
-        vendor_code = request.vendor_code.map(Some(_)).getOrElse(entity.vendor_code),
-        face_value = request.face_value.map(Some(_)).getOrElse(entity.face_value),
+        vendorCode = request.vendor_code.map(Some(_)).getOrElse(entity.vendorCode),
+        faceValue = request.face_value.map(Some(_)).getOrElse(entity.faceValue),
         points = request.points.map(Some(_)).getOrElse(entity.points)
       )
 
@@ -154,7 +154,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
 
       // check existing contest
       Await.result(repository.prize.getById(id).map {
-        case Some(u) if u.country_code == uc.country_code => u
+        case Some(u) if u.countryCode == uc.country_code => u
         case None => throw PrizeIdNotFoundException(id = id)
       }, Duration.Inf)
 

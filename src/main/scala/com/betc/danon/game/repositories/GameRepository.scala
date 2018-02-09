@@ -6,7 +6,7 @@ import java.util.UUID
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
+import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatus, GameType}
 import com.betc.danon.game.utils.ActorUtil
 import com.betc.danon.game.utils.CustomMySqlProfile.api._
 import slick.ast.BaseTypedType
@@ -31,8 +31,8 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       DBIO.seq(
         gameTableQuery += game,
         gameLimitTableQuery ++= game.limits.map(l => (game.id, l)),
-        gameEanTableQuery ++= game.input_eans.map(l => (game.id, l)),
-        gameFreecodeTableQuery ++= game.input_freecodes.map(l => (game.id, l))
+        gameEanTableQuery ++= game.inputEans.map(l => (game.id, l)),
+        gameFreecodeTableQuery ++= game.inputFreecodes.map(l => (game.id, l))
       ).transactionally.asTry
     }
 
@@ -43,9 +43,9 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
         gameLimitTableQuery.filter(_.game_id === game.id).delete,
         gameLimitTableQuery ++= game.limits.map(l => (game.id, l)),
         gameEanTableQuery.filter(_.game_id === game.id).delete,
-        gameEanTableQuery ++= game.input_eans.map(l => (game.id, l)),
+        gameEanTableQuery ++= game.inputEans.map(l => (game.id, l)),
         gameFreecodeTableQuery.filter(_.game_id === game.id).delete,
-        gameFreecodeTableQuery ++= game.input_freecodes.map(l => (game.id, l))
+        gameFreecodeTableQuery ++= game.inputFreecodes.map(l => (game.id, l))
       ).transactionally.asTry
     }
 
@@ -61,7 +61,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     }
 
 
-    def updateStatus(game_id: UUID, status: GameStatusType.Value): Future[Try[Int]] = database.run {
+    def updateStatus(game_id: UUID, status: GameStatus.Value): Future[Try[Int]] = database.run {
       (for {c <- gameTableQuery if c.id === game_id} yield c.status).update(status.toString).asTry
     }
 
@@ -98,7 +98,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
         gamePrizes <- if (game.isDefined && extensions.contains(GameExtension.prizes)) gamePrizeTableQuery.filter(_.game_id === game_id).result.map(_.map(_._2)) else DBIO.successful(Seq.empty)
       } yield (game, gameLimit, gameEans, gameFreeCodes, gamePrizes)
 
-      database.run(query).map(r => r._1.map(_.copy(limits = r._2, input_eans = r._3, input_freecodes = r._4, prizes = r._5)))
+      database.run(query).map(r => r._1.map(_.copy(limits = r._2, inputEans = r._3, inputFreecodes = r._4, prizes = r._5)))
     }
 
 
@@ -117,7 +117,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
 
     def fetchExtendedBy(
                          country_code: Option[String] = None,
-                         status: Iterable[GameStatusType.Value] = Iterable.empty,
+                         status: Iterable[GameStatus.Value] = Iterable.empty,
                          types: Iterable[GameType.Value] = Iterable.empty,
                          code: Option[String] = None
                        ): Source[Game, NotUsed] = Source.fromPublisher {
@@ -145,7 +145,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
 
     def fetchBy(
                  country_code: Option[String] = None,
-                 status: Iterable[GameStatusType.Value] = Iterable.empty,
+                 status: Iterable[GameStatus.Value] = Iterable.empty,
                  types: Iterable[GameType.Value] = Iterable.empty,
                  code: Option[String] = None
                ): Source[Game, NotUsed] = Source.fromPublisher {
@@ -269,9 +269,9 @@ private[repositories] trait GameTable {
       s => GameType.withName(s)
     )
 
-    implicit val gameStatusTypeColumnType: JdbcType[GameStatusType.Value] with BaseTypedType[GameStatusType.Value] = MappedColumnType.base[GameStatusType.Value, String](
+    implicit val gameStatusTypeColumnType: JdbcType[GameStatus.Value] with BaseTypedType[GameStatus.Value] = MappedColumnType.base[GameStatus.Value, String](
       e => e.toString,
-      s => GameStatusType.withName(s)
+      s => GameStatus.withName(s)
     )
 
     implicit val gameInputTypeColumnType: JdbcType[GameInputType.Value] with BaseTypedType[GameInputType.Value] = MappedColumnType.base[GameInputType.Value, String](
@@ -311,16 +311,16 @@ private[repositories] trait GameTable {
       Game(
         id = t._1,
         `type` = GameType.withName(t._2),
-        status = GameStatusType.withName(t._3),
+        status = GameStatus.withName(t._3),
         code = t._4,
         parents = t._5.map(_.split(",").flatMap(ActorUtil.string2UUID).toSeq).getOrElse(Seq.empty),
-        country_code = t._6,
+        countryCode = t._6,
         title = t._7,
-        start_date = t._8,
+        startDate = t._8,
         timezone = t._9,
-        end_date = t._10,
-        input_type = t._11,
-        input_point = t._12,
+        endDate = t._10,
+        inputType = t._11,
+        inputPoint = t._12,
         tags = t._13.map(_.split(",").toSeq).getOrElse(Seq.empty)
       )
 
@@ -330,13 +330,13 @@ private[repositories] trait GameTable {
       g.status.toString,
       g.code,
       Some(g.parents).find(_.nonEmpty).map(_.mkString(",")),
-      g.country_code,
+      g.countryCode,
       g.title,
-      g.start_date,
+      g.startDate,
       g.timezone,
-      g.end_date,
-      g.input_type,
-      g.input_point,
+      g.endDate,
+      g.inputType,
+      g.inputPoint,
       Some(g.tags).find(_.nonEmpty).map(_.mkString(","))
     )
   }

@@ -3,7 +3,7 @@ package com.betc.danon.game.models
 import java.time.Instant
 import java.util.UUID
 
-import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
+import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatus, GameType}
 import com.betc.danon.game.utils.DefaultJsonSupport
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
@@ -13,18 +13,18 @@ object GameEntity {
   case class Game(
                    id: UUID,
                    `type`: GameType.Value,
-                   status: GameStatusType.Value,
+                   status: GameStatus.Value,
                    parents: Seq[UUID] = Seq.empty,
                    code: String,
-                   country_code: String,
+                   countryCode: String,
                    title: Option[String] = None,
-                   start_date: Instant,
+                   startDate: Instant,
                    timezone: String,
-                   end_date: Instant,
-                   input_type: GameInputType.Value,
-                   input_point: Option[Int] = None,
-                   input_eans: Seq[String] = Seq.empty,
-                   input_freecodes: Seq[String] = Seq.empty,
+                   endDate: Instant,
+                   inputType: GameInputType.Value,
+                   inputPoint: Option[Int] = None,
+                   inputEans: Seq[String] = Seq.empty,
+                   inputFreecodes: Seq[String] = Seq.empty,
                    limits: Seq[GameLimit] = Seq.empty,
                    prizes: Seq[GamePrize] = Seq.empty,
                    tags: Seq[String] = Seq.empty
@@ -69,14 +69,14 @@ object GameEntity {
 
   }
 
-  implicit object GameStatusType extends Enumeration {
-    val Draft: GameStatusType.Value = Value("DRAFT")
-    val Activated: GameStatusType.Value = Value("ACTIVATED")
-    val Archived: GameStatusType.Value = Value("ARCHIVED")
+  implicit object GameStatus extends Enumeration {
+    val Draft: GameStatus.Value = Value("DRAFT")
+    val Activated: GameStatus.Value = Value("ACTIVATED")
+    val Archived: GameStatus.Value = Value("ARCHIVED")
 
     val all = Seq(Draft, Activated, Archived)
 
-    def withNameOptional(name: String): Option[GameStatusType.Value] = try {
+    def withNameOptional(name: String): Option[GameStatus.Value] = try {
       Some(this.withName(name))
     } catch {
       case _: Throwable => None
@@ -119,7 +119,7 @@ object GameDto {
     implicit val gameType: RootJsonFormat[GameType.Value] = enumFormat(GameType)
     implicit val gameInputType: RootJsonFormat[GameInputType.Value] = enumFormat(GameInputType)
     implicit val gameLimitType: RootJsonFormat[GameLimitType.Value] = enumFormat(GameLimitType)
-    implicit val gameStatus: RootJsonFormat[GameStatusType.Value] = enumFormat(GameStatusType)
+    implicit val gameStatus: RootJsonFormat[GameStatus.Value] = enumFormat(GameStatus)
 
     implicit val gameLimitUnit: RootJsonFormat[GameLimitUnit.Value] = enumFormat(GameLimitUnit)
     implicit val gameLimitResponse: RootJsonFormat[GameLimit] = jsonFormat4(GameLimit)
@@ -202,7 +202,7 @@ object GameDto {
                            @ApiModelProperty(position = 2, value = "type", dataType = "string", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
                            `type`: GameType.Value,
                            @ApiModelProperty(position = 3, value = "status", dataType = "string", required = true, example = "DRAFT", allowableValues = "DRAFT,ACTIVATE,ARCHIVED")
-                           status: GameStatusType.Value,
+                           status: GameStatus.Value,
                            @ApiModelProperty(position = 4, value = "parent games", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
                            parents: Option[Seq[UUID]] = None,
                            @ApiModelProperty(position = 5, value = "code", required = true, example = "MY_CONTEST")
@@ -230,7 +230,7 @@ object GameDto {
                            @ApiModelProperty(position = 14, value = "tags")
                            tags: Option[Seq[String]] = None
                          ) {
-    def this(r: Game) = this(id = r.id, `type` = r.`type`, status = r.status, parents = Some(r.parents).find(_.nonEmpty), code = r.code, title = r.title, start_date = r.start_date, timezone = r.timezone, end_date = r.end_date, input_type = r.input_type, input_point = r.input_point, limits = Some(r.limits).find(_.nonEmpty), prizes = Some(r.prizes).find(_.nonEmpty), input_eans = Some(r.input_eans).find(_.nonEmpty), input_freecodes = Some(r.input_freecodes).find(_.nonEmpty), tags = Some(r.tags).find(_.nonEmpty))
+    def this(r: Game) = this(id = r.id, `type` = r.`type`, status = r.status, parents = Some(r.parents).find(_.nonEmpty), code = r.code, title = r.title, start_date = r.startDate, timezone = r.timezone, end_date = r.endDate, input_type = r.inputType, input_point = r.inputPoint, limits = Some(r.limits).find(_.nonEmpty), prizes = Some(r.prizes).find(_.nonEmpty), input_eans = Some(r.inputEans).find(_.nonEmpty), input_freecodes = Some(r.inputFreecodes).find(_.nonEmpty), tags = Some(r.tags).find(_.nonEmpty))
   }
 
   case class GameForListDto(
@@ -239,7 +239,7 @@ object GameDto {
                              @ApiModelProperty(position = 2, value = "type", dataType = "string", required = true, example = "INSTANT", allowableValues = "INSTANT,DRAW")
                              `type`: GameType.Value,
                              @ApiModelProperty(position = 3, value = "status", dataType = "string", required = true, example = "DRAFT", allowableValues = "DRAFT,ACTIVATE,ARCHIVED")
-                             status: GameStatusType.Value,
+                             status: GameStatus.Value,
                              @ApiModelProperty(position = 4, value = "parent game", example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
                              parents: Option[Seq[UUID]] = None,
                              @ApiModelProperty(position = 5, value = "code", required = true, example = "MY_CONTEST")
@@ -259,7 +259,7 @@ object GameDto {
                              @ApiModelProperty(position = 12, value = "tags")
                              tags: Option[Seq[String]] = None
                            ) {
-    def this(game: Game) = this(id = game.id, `type` = game.`type`, status = game.status, parents = Some(game.parents).find(_.nonEmpty), code = game.code, title = game.title, start_date = game.start_date, timezone = game.timezone, end_date = game.end_date, input_type = game.input_type, input_point = game.input_point, tags = Some(game.tags).find(_.nonEmpty))
+    def this(game: Game) = this(id = game.id, `type` = game.`type`, status = game.status, parents = Some(game.parents).find(_.nonEmpty), code = game.code, title = game.title, start_date = game.startDate, timezone = game.timezone, end_date = game.endDate, input_type = game.inputType, input_point = game.inputPoint, tags = Some(game.tags).find(_.nonEmpty))
   }
 
   /**

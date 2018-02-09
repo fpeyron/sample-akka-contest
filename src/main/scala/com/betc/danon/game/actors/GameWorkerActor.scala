@@ -151,11 +151,11 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
 
 
   def getInstantWin(instant: Instant): Option[InstantwinExtended] = {
-    val instantWin = nextInstantWins.find(_.activate_date.isBefore(instant))
+    val instantWin = nextInstantWins.find(_.activateDate.isBefore(instant))
 
     log.debug(s"lastInstantWin: \t${lastInstantWin.map(_.id)}")
     log.debug(s"instantWin: \t${instantWin.map(_.id)}")
-    log.debug(s"nextInstantWins: \t${nextInstantWins.map(t => t.id + " : " + t.activate_date).take(2).mkString("\t")}")
+    log.debug(s"nextInstantWins: \t${nextInstantWins.map(t => t.id + " : " + t.activateDate).take(2).mkString("\t")}")
 
     if (instantWin.isDefined) {
       lastInstantWin = instantWin
@@ -173,7 +173,7 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
   private def refreshInstantWins(): Unit = {
     nextInstantWins = Await.result(
       repository.instantwin.fetchWithPrizeBy(gameId)
-        .filter(r => lastInstantWin.forall(l => (r.id.compareTo(l.id) > 0 && r.activate_date == l.activate_date) || r.activate_date.isAfter(l.activate_date)))
+        .filter(r => lastInstantWin.forall(l => (r.id.compareTo(l.id) > 0 && r.activateDate == l.activateDate) || r.activateDate.isAfter(l.activateDate)))
         .take(10).runWith(Sink.collection)
       , Duration.Inf)
     if (nextInstantWins.isEmpty)

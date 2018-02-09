@@ -118,9 +118,9 @@ private[repositories] trait InstantwinTable {
 
     def activate_date = column[Timestamp]("activate_date")
 
-    def create(d: (UUID, UUID, UUID, UUID, Timestamp)) = Instantwin(id = d._1, game_id = d._2, gameprize_id = d._3, prize_id = d._4, activate_date = Instant.ofEpochMilli(d._5.getTime))
+    def create(d: (UUID, UUID, UUID, UUID, Timestamp)) = Instantwin(id = d._1, gameId = d._2, gamePrizeId = d._3, prizeId = d._4, activateDate = Instant.ofEpochMilli(d._5.getTime))
 
-    def extract(p: Instantwin) = Option(p.id, p.game_id, p.gameprize_id, p.prize_id, Timestamp.from(p.activate_date))
+    def extract(p: Instantwin) = Option(p.id, p.gameId, p.gamePrizeId, p.prizeId, Timestamp.from(p.activateDate))
   }
 
 }

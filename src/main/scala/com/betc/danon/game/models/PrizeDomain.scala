@@ -11,14 +11,14 @@ object PrizeDomain {
 
   case class Prize(
                     id: UUID,
-                    country_code: String,
+                    countryCode: String,
                     `type`: PrizeType.Value,
                     title: Option[String] = None,
                     label: String,
                     description: Option[String] = None,
                     picture: Option[String] = None,
-                    vendor_code: Option[String] = None,
-                    face_value: Option[Int] = None,
+                    vendorCode: Option[String] = None,
+                    faceValue: Option[Int] = None,
                     points: Option[Int] = None
                   )
 
@@ -81,7 +81,7 @@ object PrizeDao {
                             @ApiModelProperty(position = 9, value = "points", example = "200")
                             points: Option[Int]
                           ) {
-    def this(prize: Prize) = this(prize.id, prize.`type`, prize.title, prize.label, prize.description, prize.picture, prize.vendor_code, prize.face_value, points = prize.points)
+    def this(prize: Prize) = this(prize.id, prize.`type`, prize.title, prize.label, prize.description, prize.picture, prize.vendorCode, prize.faceValue, points = prize.points)
   }
 
 }

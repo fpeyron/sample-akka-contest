@@ -6,7 +6,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipationEvent
-import com.betc.danon.game.models.GameEntity.GameStatusType
+import com.betc.danon.game.models.GameEntity.GameStatus
 import com.betc.danon.game.models.ParticipationDto.CustomerGameResponse
 import com.betc.danon.game.utils.JournalReader
 
@@ -27,7 +27,7 @@ trait CustomerQuery {
 
       val result = for {
 
-        games <- repository.game.findByTagsAndCodes(tags, codes).filter(g => g.country_code == countryCode.toUpperCase && g.status == GameStatusType.Activated).runWith(Sink.seq)
+        games <- repository.game.findByTagsAndCodes(tags, codes).filter(g => g.countryCode == countryCode.toUpperCase && g.status == GameStatus.Activated).runWith(Sink.seq)
 
         participations <- {
           val gameIds = games.map(_.id)
@@ -49,13 +49,13 @@ trait CustomerQuery {
             `type` = game.`type`,
             code = game.code,
             title = game.title,
-            start_date = game.start_date,
-            end_date = game.end_date,
-            input_type = game.input_type,
-            input_point = game.input_point,
+            start_date = game.startDate,
+            end_date = game.endDate,
+            input_type = game.inputType,
+            input_point = game.inputPoint,
             parents = Some(game.parents.flatMap(p => result._1.find(_.id == p)).map(_.code)).find(_.nonEmpty),
-            participationCount = result._2.get(game.id).map(_._1).getOrElse(0),
-            instantWinCount = result._2.get(game.id).map(_._2).getOrElse(0)
+            participation_count = result._2.get(game.id).map(_._1).getOrElse(0),
+            instant_win_count = result._2.get(game.id).map(_._2).getOrElse(0)
           ))
       }
     }

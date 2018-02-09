@@ -5,7 +5,7 @@ import java.util.UUID
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatusType, GameType}
+import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatus, GameType}
 import com.betc.danon.game.models.PrizeDomain.{Prize, PrizeType}
 import com.betc.danon.game.utils.CustomMySqlProfile.api.Database
 import com.typesafe.config.ConfigFactory
@@ -52,14 +52,14 @@ object TestSlick extends App {
 
   for {
     (i, uuid) <- ids
-    _ <- repository.prize.create(Prize(id = UUID.randomUUID(), country_code = "FR", `type` = PrizeType.Point, label = s"$i-myLabel"))
+    _ <- repository.prize.create(Prize(id = UUID.randomUUID(), countryCode = "FR", `type` = PrizeType.Point, label = s"$i-myLabel"))
     _ <- repository.game.create(Game(
       id = uuid,
       `type` = GameType.Instant,
-      status = GameStatusType.Activated,
+      status = GameStatus.Activated,
       code = s"instant-$i",
-      country_code = "CA",
-      start_date = Instant.now, timezone = "+02:00", end_date = Instant.now.plusSeconds(1000000l), input_type = GameInputType.Other,
+      countryCode = "CA",
+      startDate = Instant.now, timezone = "+02:00", endDate = Instant.now.plusSeconds(1000000l), inputType = GameInputType.Other,
       limits = Seq(GameLimit(`type` = GameLimitType.Participation, unit = GameLimitUnit.Day, unit_value = Some(1), value = 10),
         GameLimit(`type` = GameLimitType.Win, unit = GameLimitUnit.Game, unit_value = None, value = 10))
     ))

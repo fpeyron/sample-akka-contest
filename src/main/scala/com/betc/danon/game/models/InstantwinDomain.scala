@@ -9,20 +9,20 @@ object InstantwinDomain {
 
   case class Instantwin(
                          id: UUID,
-                         game_id: UUID,
-                         gameprize_id: UUID,
-                         prize_id: UUID,
-                         activate_date: Instant
+                         gameId: UUID,
+                         gamePrizeId: UUID,
+                         prizeId: UUID,
+                         activateDate: Instant
                        )
 
   case class InstantwinExtended(
                                  id: UUID,
-                                 game_id: UUID,
-                                 gameprize_id: UUID,
-                                 activate_date: Instant,
+                                 gameId: UUID,
+                                 gamePrizeId: UUID,
+                                 activateDate: Instant,
                                  prize: Prize
                                ) {
-    def this(instantwin: Instantwin, prize: Prize) = this(id = instantwin.id, game_id = instantwin.game_id, gameprize_id = instantwin.gameprize_id, activate_date = instantwin.activate_date, prize = prize)
+    def this(instantwin: Instantwin, prize: Prize) = this(id = instantwin.id, gameId = instantwin.gameId, gamePrizeId = instantwin.gamePrizeId, activateDate = instantwin.activateDate, prize = prize)
   }
 
 }

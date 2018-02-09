@@ -112,10 +112,10 @@ private[repositories] trait PrizeTable {
     def points = column[Option[Int]]("points")
 
     def create(d: (UUID, String, PrizeType.Value, String, Option[String], Option[String], Option[String], Option[String], Option[Int], Option[Int])) =
-      Prize(id = d._1, country_code = d._2, `type` = d._3, label = d._4, title = d._5, description = d._6, picture = d._7, vendor_code = d._8, face_value = d._9, points = d._10)
+      Prize(id = d._1, countryCode = d._2, `type` = d._3, label = d._4, title = d._5, description = d._6, picture = d._7, vendorCode = d._8, faceValue = d._9, points = d._10)
 
     def extract(p: Prize) =
-      Option(p.id, p.country_code, p.`type`, p.label, p.title, p.description, p.picture, p.vendor_code, p.face_value, p.points)
+      Option(p.id, p.countryCode, p.`type`, p.label, p.title, p.description, p.picture, p.vendorCode, p.faceValue, p.points)
   }
 
 }

@@ -14,9 +14,9 @@ import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.CustomerWorkerActor._
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
 import com.betc.danon.game.models.Event
-import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GameStatusType}
+import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GameStatus}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
-import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateResponse, ParticipationStatusType}
+import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateResponse, ParticipationStatus}
 import com.betc.danon.game.models.PrizeDao.PrizeResponse
 import com.betc.danon.game.utils.HttpSupport._
 import com.betc.danon.game.utils.JournalReader
@@ -78,7 +78,7 @@ object CustomerWorkerActor {
     def this(r: GameParticipationEvent) = this(timestamp = r.timestamp, participationId = r.participationId, gameId = r.gameId, countryCode = r.countryCode, customerId = r.customerId, instantwin = r.instantwin, transaction_code = r.transaction_code, ean = r.ean, meta = r.meta)
   }
 
-  case class CustomerParticipationState(game_id: UUID, participationDate: Instant, participationStatus: ParticipationStatusType.Value)
+  case class CustomerParticipationState(game_id: UUID, participationDate: Instant, participationStatus: ParticipationStatus.Value)
 
 }
 
@@ -92,7 +92,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
   override def receiveRecover: Receive = {
 
     case event: CustomerParticipationEvent =>
-      participations = participations :+ CustomerParticipationState(game_id = event.gameId, participationDate = event.timestamp, participationStatus = event.instantwin.map(_ => ParticipationStatusType.Win).getOrElse(ParticipationStatusType.Lost))
+      participations = participations :+ CustomerParticipationState(game_id = event.gameId, participationDate = event.timestamp, participationStatus = event.instantwin.map(_ => ParticipationStatus.Win).getOrElse(ParticipationStatus.Lost))
 
     case RecoveryCompleted =>
   }
@@ -109,7 +109,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
       val result = for {
 
         gameIds <- repository.game.findByTagsAndCodes(tags, codes)
-          .filter(g => g.country_code == countryCode.toUpperCase && g.status == GameStatusType.Activated)
+          .filter(g => g.countryCode == countryCode.toUpperCase && g.status == GameStatus.Activated)
           .map(_.id)
           .runWith(Sink.seq)
 
@@ -123,7 +123,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
             .map(event => CustomerParticipateResponse(
               id = event.participationId,
               date = event.timestamp,
-              status = event.instantwin.map(_ => ParticipationStatusType.Win).getOrElse(ParticipationStatusType.Lost),
+              status = event.instantwin.map(_ => ParticipationStatus.Win).getOrElse(ParticipationStatus.Lost),
               prize = event.instantwin.map(i => new PrizeResponse(i.prize))
             ))
             .runWith(Sink.seq)
@@ -141,7 +141,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
     case CustomerGetGamesQuery(countryCode, _, codes, tags) => try {
       val result = for {
 
-        games <- repository.game.findByTagsAndCodes(tags, codes).filter(g => g.country_code == countryCode.toUpperCase && g.status == GameStatusType.Activated).runWith(Sink.seq)
+        games <- repository.game.findByTagsAndCodes(tags, codes).filter(g => g.countryCode == countryCode.toUpperCase && g.status == GameStatus.Activated).runWith(Sink.seq)
 
         participations <- {
           val gameIds = games.map(_.id)
@@ -163,13 +163,13 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
             `type` = game.`type`,
             code = game.code,
             title = game.title,
-            start_date = game.start_date,
-            end_date = game.end_date,
-            input_type = game.input_type,
-            input_point = game.input_point,
+            start_date = game.startDate,
+            end_date = game.endDate,
+            input_type = game.inputType,
+            input_point = game.inputPoint,
             parents = Some(game.parents.flatMap(p => result._1.find(_.id == p)).map(_.code)).find(_.nonEmpty),
-            participationCount = result._2.get(game.id).map(_._1).getOrElse(0),
-            instantWinCount = result._2.get(game.id).map(_._2).getOrElse(0)
+            participation_count = result._2.get(game.id).map(_._1).getOrElse(0),
+            instant_win_count = result._2.get(game.id).map(_._2).getOrElse(0)
           ))
       }.pipeTo(sender)
 
@@ -184,17 +184,17 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
       log.info(s"$customerId : participate to ${cmd.game.id}")
 
       // check Status
-      if (cmd.game.status != GameStatusType.Activated) {
+      if (cmd.game.status != GameStatus.Activated) {
         throw ParticipationNotOpenedException(code = cmd.game.code)
       }
 
       // check if game is active start_date
-      if (cmd.game.start_date.isAfter(Instant.now)) {
+      if (cmd.game.startDate.isAfter(Instant.now)) {
         throw ParticipationNotOpenedException(code = cmd.game.code)
       }
 
       // check if game is active end_date
-      if (cmd.game.end_date.isBefore(Instant.now)) {
+      if (cmd.game.endDate.isBefore(Instant.now)) {
         throw ParticipationCloseException(code = cmd.game.code)
       }
 
@@ -210,7 +210,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
       }
 
       // check Ean
-      if(cmd.game.input_type == GameInputType.Pincode && ! cmd.ean.exists(e => cmd.game.input_eans.contains(e))) {
+      if(cmd.game.inputType == GameInputType.Pincode && ! cmd.ean.exists(e => cmd.game.inputEans.contains(e))) {
         throw ParticipationEanException(code = cmd.game.code)
       }
 
@@ -245,12 +245,12 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
             sender() ! CustomerParticipateResponse(
               id = event.participationId,
               date = event.timestamp,
-              status = event.instantwin.map(_ => ParticipationStatusType.Win).getOrElse(ParticipationStatusType.Lost),
+              status = event.instantwin.map(_ => ParticipationStatus.Win).getOrElse(ParticipationStatus.Lost),
               prize = event.instantwin.map(p => new PrizeResponse(p.prize))
             )
           }
           // Refresh state list
-          participations = participations :+ CustomerParticipationState(game_id = event.gameId, participationDate = event.timestamp, participationStatus = event.instantwin.map(_ => ParticipationStatusType.Win).getOrElse(ParticipationStatusType.Lost))
+          participations = participations :+ CustomerParticipationState(game_id = event.gameId, participationDate = event.timestamp, participationStatus = event.instantwin.map(_ => ParticipationStatus.Win).getOrElse(ParticipationStatus.Lost))
 
         case _ => sender() ! _
       }
@@ -277,14 +277,14 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
       case GameLimitUnit.Game if limit.`type` == GameLimitType.Participation =>
         participations.count(p => p.game_id == game.id) >= limit.value
       case GameLimitUnit.Game if limit.`type` == GameLimitType.Win =>
-        participations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatusType.Win) >= limit.value
+        participations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatus.Win) >= limit.value
 
       case GameLimitUnit.Second if limit.`type` == GameLimitType.Participation =>
         val limitDate = now.minusSeconds(limit.unit_value.getOrElse(1).toLong).minusNanos(1)
         participations.count(p => p.game_id == game.id && p.participationDate.isAfter(limitDate)) >= limit.value
       case GameLimitUnit.Second if limit.`type` == GameLimitType.Win =>
         val limitDate = now.minusSeconds(limit.unit_value.getOrElse(1).toLong).minusNanos(1)
-        participations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatusType.Win && p.participationDate.isAfter(limitDate)) >= limit.value
+        participations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatus.Win && p.participationDate.isAfter(limitDate)) >= limit.value
 
       case GameLimitUnit.Day if limit.`type` == GameLimitType.Participation =>
         val limitDate = now.atZone(ZoneId.of(game.timezone)).truncatedTo(ChronoUnit.DAYS).minusDays(limit.unit_value.getOrElse(1).toLong).minusNanos(1).toInstant
@@ -292,7 +292,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
       case GameLimitUnit.Day if limit.`type` == GameLimitType.Win =>
         val limitDate = now.atZone(ZoneId.of(game.timezone)).truncatedTo(ChronoUnit.DAYS).minusDays(limit.unit_value.getOrElse(1).toLong).minusNanos(1).toInstant
-        participations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatusType.Win && p.participationDate.isAfter(limitDate)) >= limit.value
+        participations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatus.Win && p.participationDate.isAfter(limitDate)) >= limit.value
     }
   }
 }
