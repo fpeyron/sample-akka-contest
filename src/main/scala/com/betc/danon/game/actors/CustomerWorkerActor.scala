@@ -39,7 +39,7 @@ object CustomerWorkerActor {
 
   case class CustomerGetParticipationQuery(customerId: String, gameIds: Seq[UUID]) extends CustomerQuery
 
-  case class CustomerGetGamesQuery(countryCode: String, customerId: String, codes: Seq[String], tags: Seq[String]) extends CustomerQuery
+  case class CustomerGetGamesQuery(countryCode: String, customerId: String, tags: Seq[String], codes: Seq[String]) extends CustomerQuery
 
 
   // Cmd
@@ -49,8 +49,10 @@ object CustomerWorkerActor {
 
   case class CustomerReloadCmd(customerId: String) extends CustomerCmd
 
+  case class CustomerGetParticipationsCmd(countryCode: String, customerId: String, tags: Seq[String], codes: Seq[String]) extends CustomerCmd
+
   case class CustomerParticipateCmd(
-                                     country_code: String,
+                                     countryCode: String,
                                      customerId: String,
                                      transaction_code: Option[String],
                                      ean: Option[String],
@@ -100,6 +102,40 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
     case CustomerGetParticipationQuery(_, gameIds) =>
       sender() ! participations.filter(p => gameIds.contains(p.game_id))
+
+
+    case CustomerGetParticipationsCmd(countryCode, _, tags, codes) => try {
+
+      val result = for {
+
+        gameIds <- repository.game.findByTagsAndCodes(tags, codes)
+          .filter(g => g.country_code == countryCode.toUpperCase && g.status == GameStatusType.Activated)
+          .map(_.id)
+          .runWith(Sink.seq)
+
+        participations <- {
+          journalReader.currentEventsByPersistenceId(s"CUSTOMER-${customerId.toUpperCase}")
+            .map(_.event)
+            .collect {
+              case event: CustomerParticipationEvent => event
+            }
+            .filter(event => gameIds.contains(event.gameId))
+            .map(event => CustomerParticipateResponse(
+              id = event.participationId,
+              date = event.timestamp,
+              status = event.instantwin.map(_ => ParticipationStatusType.Win).getOrElse(ParticipationStatusType.Lost),
+              prize = event.instantwin.map(i => new PrizeResponse(i.prize))
+            ))
+            .runWith(Sink.seq)
+        }
+      } yield participations
+
+      result.pipeTo(sender)
+
+    } catch {
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+    }
 
 
     case CustomerGetGamesQuery(countryCode, _, codes, tags) => try {
@@ -179,7 +215,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
           timestamp = Instant.now,
           participationId = UUID.randomUUID(),
           gameId = cmd.game.id,
-          countryCode = cmd.country_code,
+          countryCode = cmd.countryCode,
           customerId = cmd.customerId,
           transaction_code = cmd.transaction_code,
           ean = cmd.ean,
@@ -189,7 +225,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
       else {
         implicit val timeout: Timeout = Timeout(1.minutes)
         Await.result(getOrCreateGameWorkerActor(cmd.game.id) ? GameWorkerActor.GamePlayCmd(
-          country_code = cmd.country_code,
+          country_code = cmd.countryCode,
           customerId = cmd.customerId,
           transaction_code = cmd.transaction_code,
           ean = cmd.ean,
@@ -217,6 +253,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
     }
+
   }
 
   override def persistenceId: String = s"CUSTOMER-${customerId.toUpperCase}"

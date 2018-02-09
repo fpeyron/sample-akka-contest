@@ -7,6 +7,7 @@ import akka.actor.ActorRef
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
+import com.betc.danon.game.actors.CustomerWorkerActor
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipateCmd
 import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateRequest, CustomerParticipateResponse, PartnerJsonSupport}
 import com.betc.danon.game.utils.HttpSupport.ErrorResponse
@@ -37,7 +38,7 @@ trait PartnerRoute
   implicit val query: Query
 
   def partnerRoute: Route = pathPrefix("partner") {
-    corsHandler(partner_customer_participate ~ partner_customer_findGames)
+    corsHandler(partner_customer_participate ~ partner_customer_getGames ~ partner_customer_getParticipations)
   }
 
 
@@ -77,10 +78,10 @@ trait PartnerRoute
 
   /**
     *
-    * @return customer.findGames
+    * @return customer.getGames
     */
   @Path("{country_code}/customers/{customer_id}/games")
-  @ApiOperation(value = "find games with customer context", notes = "", nickname = "partner.customer.findGames", httpMethod = "GET")
+  @ApiOperation(value = "get games with customer context", notes = "", nickname = "partner.customer.getGames", httpMethod = "GET")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Return result list of Games", responseContainer = "list", response = classOf[CustomerGameResponse]),
     new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
@@ -88,9 +89,10 @@ trait PartnerRoute
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "country_code", value = "country code", required = true, dataType = "string", paramType = "path"),
     new ApiImplicitParam(name = "customer_id", value = "customer ID", required = true, dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "tags", value = "tags", required = false, dataType = "string", paramType = "query")
+    new ApiImplicitParam(name = "tags", value = "tags", required = false, dataType = "string", paramType = "query"),
+    new ApiImplicitParam(name = "codes", value = "codes", required = false, dataType = "string", paramType = "query")
   ))
-  def partner_customer_findGames: Route = path(Segment / "customers" / Segment / "games") { (country_code, customer_id) =>
+  def partner_customer_getGames: Route = path(Segment / "customers" / Segment / "games") { (country_code, customer_id) =>
     /*get {
       parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
         onSuccess(clusterSingletonProxy ? GameFindQuery(
@@ -112,6 +114,39 @@ trait PartnerRoute
           codes = codesOptional.map(_.split(",").toSeq).getOrElse(Seq.empty)
         )) {
           response => complete(StatusCodes.OK, response)
+        }
+      }
+    }
+  }
+
+
+  /**
+    *
+    * @return customer.getParticipations
+    */
+  @Path("{country_code}/customers/{customer_id}/participations")
+  @ApiOperation(value = "get participations with customer context", notes = "", nickname = "partner.customer.getParticipations", httpMethod = "GET")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return result list of Games", responseContainer = "list", response = classOf[CustomerParticipateResponse]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "country_code", value = "country code", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "customer_id", value = "customer ID", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "tags", value = "tags", required = false, dataType = "string", paramType = "query"),
+    new ApiImplicitParam(name = "codes", value = "codes", required = false, dataType = "string", paramType = "query")
+  ))
+  def partner_customer_getParticipations: Route = path(Segment / "customers" / Segment / "participations") { (country_code, customer_id) =>
+    get {
+      parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
+        onSuccess(clusterSingletonProxy ?
+          CustomerWorkerActor.CustomerGetParticipationsCmd(
+            countryCode = country_code.toUpperCase,
+            customerId = customer_id.toUpperCase,
+            tags = tagsOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
+            codes = codesOptional.map(_.split(",").toSeq).getOrElse(Seq.empty)
+          )) {
+          case response: Seq[Any] => complete(StatusCodes.OK, response.asInstanceOf[Seq[CustomerParticipateResponse]])
         }
       }
     }

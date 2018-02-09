@@ -92,7 +92,7 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
     case cmd: GameParticipateCmd => try {
 
       clusterSingletonProxy forward CustomerParticipateCmd(
-        country_code = cmd.country_code,
+        countryCode = cmd.country_code,
         customerId = cmd.customerId,
         transaction_code = cmd.transaction_code,
         ean = cmd.ean,
