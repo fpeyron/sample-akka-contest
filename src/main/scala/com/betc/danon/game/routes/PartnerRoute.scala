@@ -108,7 +108,8 @@ trait PartnerRoute
         onSuccess(query.customer.getGames(
           countryCode = country_code.toUpperCase,
           customerId = customer_id.toUpperCase,
-          tag = tagsOptional.map(_.toUpperCase.split(",").toSeq).getOrElse(Seq.empty)
+          tags = tagsOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
+          codes = codesOptional.map(_.split(",").toSeq).getOrElse(Seq.empty)
         )) {
           response => complete(StatusCodes.OK, response)
         }

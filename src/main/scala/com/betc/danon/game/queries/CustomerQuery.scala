@@ -22,11 +22,11 @@ trait CustomerQuery {
 
   object customer {
 
-    def getGames(countryCode: String, customerId: String, tag: Seq[String]): Future[Seq[CustomerGameResponse]] = {
+    def getGames(countryCode: String, customerId: String, tags: Seq[String], codes: Seq[String]): Future[Seq[CustomerGameResponse]] = {
 
       val result = for {
 
-        games <- repository.game.findByTags(tag.head)
+        games <- repository.game.findByTagsAndCodes(tags, codes)
 
         participations <- {
           val gameIds = games.map(_.id)

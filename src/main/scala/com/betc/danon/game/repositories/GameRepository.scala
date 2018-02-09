@@ -66,10 +66,6 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     }
 
 
-    def getLimits(game_id: UUID): Future[Seq[GameLimit]] = {
-      database.run(gameLimitTableQuery.filter(_.game_id === game_id).to[Seq].result.map(_.map(_._2)))
-    }
-
     def findByIds(ids: Seq[UUID]): Future[Seq[Game]] = {
       database.run(gameTableQuery.filter(_.id inSet ids).to[Seq].result)
     }
@@ -110,8 +106,11 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       gameTableQuery.filter(_.code === code).to[List].result
     }
 
-    def findByTags(tag: String): Future[Seq[Game]] = database.run {
-      gameTableQuery.filter(_.tags === tag).to[List].result
+    def findByTagsAndCodes(tags: Seq[String], codes: Seq[String]): Future[Seq[Game]] = database.run {
+      gameTableQuery
+        .filter(game => tags.map(tag => game.tags.getOrElse("") like s"%$tag%").reduceLeftOption(_ && _).getOrElse(true: Rep[Boolean]))
+        .filter(game => if (codes.nonEmpty) game.code.inSetBind(codes) else true: Rep[Boolean])
+        .to[List].result
     }
 
     def fetchExtendedBy(
