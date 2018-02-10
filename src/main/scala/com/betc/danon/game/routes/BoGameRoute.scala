@@ -357,7 +357,7 @@ trait BoGameRoute
         case (game: Game, source: Source[_, _]) => complete {
           val mapStream = Source.single("activate_date\tprize_id\tprize_type\tprize_label\tprize_title\tprize_points\tprize_vendor_code\tprize_face_value\n")
             .concat(source.map(_.asInstanceOf[InstantwinExtended]).map(t =>
-              s"${t.activateDate.atZone(ZoneId.of(game.timezone).)}\t${t.prize.id}\t${t.prize.`type`.toString}\t${t.prize.label}\t${t.prize.title.getOrElse("")}\t${t.prize.points.getOrElse("")}\t" +
+              s"${t.activateDate.atZone(ZoneId.of(game.timezone))}\t${t.prize.id}\t${t.prize.`type`.toString}\t${t.prize.label}\t${t.prize.title.getOrElse("")}\t${t.prize.points.getOrElse("")}\t" +
                 s"${t.prize.vendorCode.getOrElse("")}\t${t.prize.faceValue.getOrElse("")}\n"
                   .stripMargin)).map(ByteString.apply)
           HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
