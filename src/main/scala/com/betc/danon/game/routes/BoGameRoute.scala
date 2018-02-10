@@ -1,6 +1,7 @@
 package com.betc.danon.game.routes
 
 import java.io.File
+import java.time.ZoneId
 import javax.ws.rs.Path
 
 import akka.NotUsed
@@ -14,7 +15,7 @@ import com.betc.danon.game.Config
 import com.betc.danon.game.actors.BoGameActor._
 import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipationEvent
 import com.betc.danon.game.models.GameDto._
-import com.betc.danon.game.models.GameEntity.GamePrize
+import com.betc.danon.game.models.GameEntity.{Game, GamePrize}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.utils.AuthenticateSupport.UserContext
 import com.betc.danon.game.utils.HttpSupport.ErrorResponse
@@ -353,10 +354,10 @@ trait BoGameRoute
   def game_downloadInstantwins(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "instantwins") { id =>
     get {
       onSuccess(gameActor ? GameGetInstantwinQuery(uc, id)) {
-        case source: Source[_, _] => complete {
+        case (game: Game, source: Source[_, _]) => complete {
           val mapStream = Source.single("activate_date\tprize_id\tprize_type\tprize_label\tprize_title\tprize_points\tprize_vendor_code\tprize_face_value\n")
             .concat(source.map(_.asInstanceOf[InstantwinExtended]).map(t =>
-              s"${t.activateDate}\t${t.prize.id}\t${t.prize.`type`.toString}\t${t.prize.label}\t${t.prize.title.getOrElse("")}\t${t.prize.points.getOrElse("")}\t" +
+              s"${t.activateDate.atZone(ZoneId.of(game.timezone).)}\t${t.prize.id}\t${t.prize.`type`.toString}\t${t.prize.label}\t${t.prize.title.getOrElse("")}\t${t.prize.points.getOrElse("")}\t" +
                 s"${t.prize.vendorCode.getOrElse("")}\t${t.prize.faceValue.getOrElse("")}\n"
                   .stripMargin)).map(ByteString.apply)
           HttpEntity(contentType = ContentTypes.`text/csv(UTF-8)`, data = mapStream)
@@ -392,10 +393,10 @@ trait BoGameRoute
     get {
       parameter('customer_id.?) { customerIdOptional =>
         onSuccess(gameActor ? GameGetParticipationsQuery(uc, id, customerIdOptional)) {
-          case source: Source[_, _] => complete {
+          case (game: Game, source: Source[_, _]) => complete {
             val mapStream = Source.single("participation_date\tparticipation_id\tparticipation_status\tcustomer_id\tean\tmeta\tprize_id\tprize_type\tprize_label\tprize_title\tprize_points\tprize_vendor_code\tprize_face_value\n")
               .concat(source.map(_.asInstanceOf[CustomerParticipationEvent]).map(t =>
-                s"${t.timestamp}\t${t.participationId.toString}\t${t.instantwin.map(_ => "WIN").getOrElse("LOST")}\t${t.customerId}\t${t.ean.getOrElse("")}\t" +
+                s"${t.timestamp.atZone(ZoneId.of(game.timezone))}\t${t.participationId.toString}\t${t.instantwin.map(_ => "WIN").getOrElse("LOST")}\t${t.customerId}\t${t.ean.getOrElse("")}\t" +
                   s"${Some(t.meta).find(_.nonEmpty).map(_.map(m => s"${m._1}:${m._2}").mkString(",")).getOrElse("")}\t${t.instantwin.map(_.prize.`type`.toString).getOrElse("")}\t" +
                   s"${t.instantwin.map(_.gameId).getOrElse("")}\t${t.instantwin.map(_.prize.label).getOrElse("")}\t${t.instantwin.flatMap(_.prize.title).getOrElse("")}\t" +
                   s"${t.instantwin.flatMap(_.prize.points).getOrElse("")}\t${t.instantwin.flatMap(_.prize.vendorCode).getOrElse("")}\t${t.instantwin.flatMap(_.prize.faceValue).getOrElse("")}\n"

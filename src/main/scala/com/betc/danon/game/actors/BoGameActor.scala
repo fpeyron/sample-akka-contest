@@ -509,7 +509,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
         if (!game.exists(_.countryCode == uc.country_code)) {
           throw GameIdNotFoundException(id = id)
         }
-        repository.instantwin.fetchWithPrizeBy(game.get.id)
+        (game.get, repository.instantwin.fetchWithPrizeBy(game.get.id))
       }.pipeTo(sender)
 
     }
@@ -526,12 +526,12 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
         if (!game.exists(_.countryCode == uc.country_code)) {
           throw GameIdNotFoundException(id = id)
         }
-        journalReader.currentEventsByTag(s"GAME-${id.toString}")
+        (game.get, journalReader.currentEventsByTag(s"GAME-${id.toString}")
           .map(_.event)
           .collect {
             case event: CustomerParticipationEvent => event
           }
-          .filter(e => customerId.forall(_.toUpperCase == e.customerId))
+          .filter(e => customerId.forall(_.toUpperCase == e.customerId)))
       }.pipeTo(sender)
 
     }
