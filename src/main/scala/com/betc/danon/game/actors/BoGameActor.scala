@@ -111,7 +111,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       // check existing game
       val request_error = checkGameInputForCreation(request)
       if (request_error.nonEmpty) {
-        throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
+        throw InvalidInputException(fields = request_error.map(v => v._1 -> v._2).toMap)
       }
 
       // Generate Record
@@ -144,7 +144,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       // Check existing code
       if (Await.result(repository.game.findByCode(game.code), Duration.Inf)
         .exists(r => r.countryCode == game.countryCode && r.status != GameStatus.Archived)) {
-        throw InvalidInputException(detail = Map("code" -> "GAME_ALREADY_EXISTS : already exists with same code and status ACTIVE"))
+        throw InvalidInputException(fields = Map("code" -> "GAME_ALREADY_EXISTS : already exists with same code and status ACTIVE"))
       }
 
       // Check existing parent
@@ -153,7 +153,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
         val errors = game.parents.flatMap(p => if (!parentIds.contains(p)) Some("parents", s"GAME_NOT_FOUND : parent should already exists : $p") else None)
         if (errors.nonEmpty) {
           var index = -1
-          throw InvalidInputException(detail = errors.map { r => index += 1; s"${r._1}.$index" -> r._2 }.toMap)
+          throw InvalidInputException(fields = errors.map { r => index += 1; s"${r._1}.$index" -> r._2 }.toMap)
         }
       }
 
@@ -190,14 +190,14 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       // Check input payload
       val request_error = checkGameInputForUpdate(request)
       if (request_error.nonEmpty) {
-        throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
+        throw InvalidInputException(fields = request_error.map(v => v._1 -> v._2).toMap)
       }
 
       // Check existing code
       if (request.code.exists(_ != game.get.code) &&
         Await.result(repository.game.findByCode(request.code.get), Duration.Inf)
           .exists(r => r.countryCode == game.get.countryCode && r.status != GameStatus.Archived)) {
-        throw InvalidInputException(detail = Map("code" -> "ALREADY_EXISTS : already exists with same code and status ACTIVE"))
+        throw InvalidInputException(fields = Map("code" -> "ALREADY_EXISTS : already exists with same code and status ACTIVE"))
       }
 
       // Check existing parent
@@ -206,7 +206,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
         val errors = request.parents.get.flatMap(p => if (!parentIds.contains(p)) Some(("parent_id", "ENTITY_NOT_FOUND : should already exists")) else None)
         if (errors.nonEmpty) {
           var index = -1
-          throw InvalidInputException(detail = errors.map { r => index += 1; s"${r._1}.$index" -> r._2 }.toMap)
+          throw InvalidInputException(fields = errors.map { r => index += 1; s"${r._1}.$index" -> r._2 }.toMap)
         }
       }
       // Persist
@@ -370,11 +370,11 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       // Check input payload
       val request_error = checkGamePrizeInputForCreation(game.get, request)
       if (request_error.nonEmpty) {
-        throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
+        throw InvalidInputException(fields = request_error.map(v => v._1 -> v._2).toMap)
       }
 
       if (request.prize_id.isDefined && Await.result(repository.prize.getById(request.prize_id.get), Duration.Inf).isEmpty) {
-        throw InvalidInputException(detail = Map("prize_id" -> s"INVALID_VALUE : prize is unknown with id : $request.prize_id"))
+        throw InvalidInputException(fields = Map("prize_id" -> s"INVALID_VALUE : prize is unknown with id : $request.prize_id"))
       }
 
       // Persist
@@ -428,7 +428,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       // Check input payload
       val request_error = checkGamePrizeInputForCreation(game.get, request)
       if (request_error.nonEmpty) {
-        throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
+        throw InvalidInputException(fields = request_error.map(v => v._1 -> v._2).toMap)
       }
 
       // Persist

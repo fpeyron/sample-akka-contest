@@ -14,29 +14,29 @@ object HttpSupport {
   case class ErrorResponse(code: Int = 500, `type`: String, message: Option[String] = None, detail: Option[Map[String, String]] = None)
 
   // Exception
-  class FunctionalException(val statusCode: StatusCode, val `type`: Option[String] = None, val message: String) extends RuntimeException
+  class FunctionalException(val statusCode: StatusCode, val `type`: String, val message: String, val detail: Option[Map[String, String]] = None) extends RuntimeException
 
-  case class InvalidInputException(message: Option[String] = None, detail: Map[String, String]) extends RuntimeException
+  case class InvalidInputException(fields: Map[String, String]) extends FunctionalException(statusCode = StatusCodes.BadRequest, `type` = "InvalidInputException", message = "Invalid input body", detail = Some(fields))
 
-  case class GameIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("GameNotFoundException"), message = s"game not found with id : $id")
+  case class GameIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = "GameNotFoundException", message = s"game not found with id : $id")
 
-  case class GamePrizeIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("GamePrizeNotFoundException"), message = s"gamePrize not found for this game with id : $id")
+  case class GamePrizeIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = "GamePrizeNotFoundException", message = s"gamePrize not found for this game with id : $id")
 
-  case class GameRefNotFoundException(country_code: String, code: String) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("GameNotFoundException"), message = s"game not found with code : $code")
+  case class GameRefNotFoundException(country_code: String, code: String) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = "GameNotFoundException", message = s"game not found with code : $code")
 
-  case class PrizeIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = Some("PrizeNotFoundException"), message = s"prizes not found with id : $id")
+  case class PrizeIdNotFoundException(id: UUID) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = "PrizeNotFoundException", message = s"prizes not found with id : $id")
 
-  case class NotAuthorizedException(id: UUID, override val message: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, message = message)
+  case class NotAuthorizedException(id: UUID, override val message: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "NotAuthorizedException", message = message)
 
-  case class ParticipationNotOpenedException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationNotOpenedException"), message = s"game with code : $code is not open")
+  case class ParticipationNotOpenedException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationNotOpenedException", message = s"game with code : $code is not open")
 
-  case class ParticipationCloseException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationClosedException"), message = s"game with code : $code is finished")
+  case class ParticipationCloseException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationClosedException", message = s"game with code : $code is finished")
 
-  case class ParticipationDependenciesException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationDependenciesException"), message = s"Participations dependencies fail for game with code : $code")
+  case class ParticipationDependenciesException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationDependenciesException", message = s"Participations dependencies fail for game with code : $code")
 
-  case class ParticipationLimitException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationLimitException"), message = s"Limit participations is reached from game with code : $code")
+  case class ParticipationLimitException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationLimitException", message = s"Limit participations is reached from game with code : $code")
 
-  case class ParticipationEanException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = Some("ParticipationEanException"), message = s"Ean is not accepted for game with code : $code")
+  case class ParticipationEanException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationEanException", message = s"Ean is not accepted for game with code : $code")
 
 }
 
@@ -48,16 +48,13 @@ trait HttpSupport extends Directives with DefaultJsonSupport {
   implicit def exceptionHandler: ExceptionHandler = ExceptionHandler {
 
     case e: FunctionalException =>
-      complete(e.statusCode, ErrorResponse(code = e.statusCode.intValue(), `type` = e.getClass.getSimpleName, message = Some(e.message)))
+      complete(e.statusCode, ErrorResponse(code = e.statusCode.intValue(), `type` = e.getClass.getSimpleName, message = Some(e.message), detail = e.detail))
 
     case _: ArithmeticException =>
       extractUri { uri =>
         println(s"Request to $uri could not be handled normally")
-        complete(HttpResponse(StatusCodes.InternalServerError, entity = "1Bad numbers, bad result!!!"))
+        complete(HttpResponse(StatusCodes.InternalServerError, entity = "Bad numbers, bad result!!!"))
       }
-
-    case e: InvalidInputException =>
-      complete(StatusCodes.BadRequest, ErrorResponse(code = StatusCodes.BadRequest.intValue, `type` = e.getClass.getSimpleName, message = e.message, detail = Some(e.detail)))
 
     case e: Exception =>
       complete(StatusCodes.InternalServerError, ErrorResponse(code = StatusCodes.InternalServerError.intValue, `type` = e.getClass.getSimpleName, message = Some(e.getMessage)))

@@ -80,7 +80,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
       // Validation input
       val request_error = checkPrizeInputForCreation(request)
       if (request_error.nonEmpty) {
-        throw InvalidInputException(detail = request_error.map(v => v._1 -> v._2).toMap)
+        throw InvalidInputException(fields = request_error.map(v => v._1 -> v._2).toMap)
       }
 
       // Persist
