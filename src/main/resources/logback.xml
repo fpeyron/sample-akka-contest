@@ -4,9 +4,8 @@
         <encoder>
             <!--
             <pattern>*** \(%logger{30}\)%green(%X{debugId}) %msg%n</pattern>
-            <pattern>%d{ISO8601} [%-5level] %logger{115} - %msg%n%rEx</pattern>
             -->
-            <pattern>%d{HH:mm:ss,SSS} [%-5level] %-50logger{50} - %msg%n%rEx</pattern>
+            <pattern>%d{HH:mm:ss.SSS} [%-5level] %-50logger{50} - %msg%n%rEx</pattern>
         </encoder>
     </appender>
     <root level="${log.root:-info}">
