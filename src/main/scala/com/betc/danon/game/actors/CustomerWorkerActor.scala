@@ -13,11 +13,11 @@ import akka.util.Timeout
 import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.CustomerWorkerActor._
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
-import com.betc.danon.game.models.Event
 import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GameStatus}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateResponse, ParticipationStatus}
 import com.betc.danon.game.models.PrizeDao.PrizeResponse
+import com.betc.danon.game.models.{Event, GameEntity}
 import com.betc.danon.game.utils.HttpSupport._
 import com.betc.danon.game.utils.JournalReader
 
@@ -134,7 +134,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -174,12 +174,11 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
           ))
       }.pipeTo(sender)
       */
-      repository
-        .game
+      repository.game
         .findByTagsAndCodes(tags, codes).filter(g => g.countryCode == countryCode.toUpperCase && g.status == GameStatus.Activated)
         .runWith(Sink.seq)
         .map { games =>
-          games
+          GameEntity.sortByParent(games.toList)
             .map(game => CustomerGameResponse(
               `type` = game.`type`,
               code = game.code,
@@ -203,7 +202,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
     case cmd: CustomerParticipateCmd => try {
 
-      log.info(s"$customerId : participate to ${cmd.game.id}")
+      log.debug(s"$customerId : participate to ${cmd.game.id}")
 
       // check Status
       if (cmd.game.status != GameStatus.Activated) {
