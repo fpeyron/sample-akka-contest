@@ -116,7 +116,8 @@ CREATE TABLE `REF_GAME_LIMIT` (
   `type` varchar(20) NOT NULL,
   `unit` varchar(20) NOT NULL,
   `unit_value` int(11) DEFAULT NULL,
-  `value` int(11) NOT NULL
+  `value` int(11) NOT NULL,
+  KEY `idx_game_id` (`game_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -134,7 +135,8 @@ CREATE TABLE `REF_GAME_PRIZE` (
   `start_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `end_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `quantity` int(11) NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_game_id` (`game_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -151,7 +153,8 @@ CREATE TABLE `REF_INSTANTWIN` (
   `gameprize_id` varchar(36) NOT NULL,
   `prize_id` varchar(36) NOT NULL,
   `activate_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_game_id` (`game_id`,`activate_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -175,4 +178,15 @@ CREATE TABLE `REF_PRIZE` (
   `points` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2018-02-12 15:11:38

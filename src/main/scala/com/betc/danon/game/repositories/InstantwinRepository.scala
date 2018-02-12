@@ -121,6 +121,8 @@ private[repositories] trait InstantwinTable {
     def create(d: (UUID, UUID, UUID, UUID, Timestamp)) = Instantwin(id = d._1, gameId = d._2, gamePrizeId = d._3, prizeId = d._4, activateDate = Instant.ofEpochMilli(d._5.getTime))
 
     def extract(p: Instantwin) = Option(p.id, p.gameId, p.gamePrizeId, p.prizeId, Timestamp.from(p.activateDate))
+
+    def idx_game_id = index("idx_game_id", (game_id, activate_date), unique = false)
   }
 
 }

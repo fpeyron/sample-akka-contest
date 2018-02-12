@@ -382,6 +382,8 @@ private[repositories] trait GameLimitTable {
     def create(t: (UUID, GameLimitType.Value, GameLimitUnit.Value, Option[Int], Int)): (UUID, GameLimit) = (t._1, GameLimit(`type` = t._2, unit = t._3, unit_value = t._4, value = t._5))
 
     def extract(t: (UUID, GameLimit)) = Some((t._1, t._2.`type`, t._2.unit, t._2.unit_value, t._2.value))
+
+    def idx_game_id = index("idx_game_id", (game_id), unique = false)
   }
 
 }
@@ -427,6 +429,8 @@ private[repositories] trait GamePrizeTable {
     def create(t: (UUID, UUID, UUID, Instant, Instant, Int)): (UUID, GamePrize) = (t._1, GamePrize(id = t._2, prize_id = t._3, start_date = t._4, end_date = t._5, quantity = t._6))
 
     def extract(t: (UUID, GamePrize)) = Some((t._1, t._2.id, t._2.prize_id, t._2.start_date, t._2.end_date, t._2.quantity))
+
+    def idx_game_id = index("idx_game_id", (game_id), unique = false)
   }
 
 }
@@ -466,6 +470,7 @@ private[repositories] trait GameFreeCodeTable {
   }
 
 }
+
 
 object GameExtension extends Enumeration {
   val limits: GameExtension.Value = Value("limits")
