@@ -144,13 +144,14 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
 
     case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = GameStopCmd)
 
+
     case GameStopCmd ⇒ context.stop(self)
   }
 
   override def persistenceId: String = s"GAME-$gameId"
 
 
-  def getInstantWin(instant: Instant): Option[InstantwinExtended] = {
+  private def getInstantWin(instant: Instant): Option[InstantwinExtended] = {
     val instantWin = nextInstantWins.find(_.activateDate.isBefore(instant))
 
     log.debug(s"lastInstantWin: \t${lastInstantWin.map(_.id)}")
@@ -180,7 +181,7 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
       gameIsFinished = true
   }
 
-  def getOrCreateCustomerWorkerActor(id: String): ActorRef = context.child(CustomerWorkerActor.name(id))
+  private def getOrCreateCustomerWorkerActor(id: String): ActorRef = context.child(CustomerWorkerActor.name(id))
     .getOrElse(context.actorOf(CustomerWorkerActor.props(id), CustomerWorkerActor.name(id)))
 
 }

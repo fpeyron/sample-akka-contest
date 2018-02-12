@@ -4,7 +4,8 @@ import java.time.temporal.ChronoUnit
 import java.time.{Instant, ZoneId}
 import java.util.UUID
 
-import akka.actor.{ActorLogging, ActorRef, Props}
+import akka.actor.{ActorLogging, ActorRef, Props, ReceiveTimeout}
+import akka.cluster.sharding.ShardRegion.Passivate
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, RecoveryCompleted}
 import akka.stream.ActorMaterializer
@@ -12,7 +13,7 @@ import akka.stream.scaladsl.Sink
 import akka.util.Timeout
 import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.CustomerWorkerActor._
-import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
+import com.betc.danon.game.actors.GameWorkerActor.{GameParticipationEvent, GameStopCmd}
 import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GameStatus}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateResponse, ParticipationStatus}
@@ -46,6 +47,8 @@ object CustomerWorkerActor {
   sealed trait CustomerCmd {
     def customerId: String
   }
+
+  case object CustomerStopCmd
 
   case class CustomerReloadCmd(customerId: String) extends CustomerCmd
 
@@ -87,7 +90,10 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
   import akka.pattern.pipe
   import context.dispatcher
 
+  context.setReceiveTimeout(15.minutes)
+
   var participations: Seq[CustomerParticipationState] = Seq.empty[CustomerParticipationState]
+
 
   override def receiveRecover: Receive = {
 
@@ -96,7 +102,6 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
     case RecoveryCompleted =>
   }
-
 
   override def receiveCommand: Receive = {
 
@@ -280,6 +285,10 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
       case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
+
+    case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = CustomerStopCmd)
+
+    case GameStopCmd ⇒ context.stop(self)
   }
 
   override def persistenceId: String = s"CUSTOMER-${customerId.toUpperCase}"
@@ -288,9 +297,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
   private def getOrCreateGameWorkerActor(id: UUID): ActorRef = context.child(GameWorkerActor.name(id))
     .getOrElse(context.actorOf(GameWorkerActor.props(id), GameWorkerActor.name(id)))
 
-
   private def hasParticipationDependencies(game: Game): Boolean = !Some(game.parents).filter(_.nonEmpty).forall(_.exists(parent => participations.exists(_.game_id == parent)))
-
 
   private def getParticipationLimitsInFail(game: Game): Seq[GameLimit] = game.limits.filter { limit =>
     val now = Instant.now
