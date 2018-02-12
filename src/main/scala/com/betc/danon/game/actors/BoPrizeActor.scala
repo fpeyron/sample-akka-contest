@@ -53,7 +53,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
       sender ! repository.prize.fetchBy(country_code = Some(uc.country_code), game_id = game_id.flatMap(ActorUtil.string2UUID)).map(new PrizeResponse(_))
 
     } catch {
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -71,7 +71,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
 
     } catch {
       case e: PrizeIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -105,7 +105,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
       sender ! new PrizeResponse(prize)
     } catch {
       case e: InvalidInputException => sender ! akka.actor.Status.Failure(e)
-      case e: Exception => sender ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -146,7 +146,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
     } catch {
       case e: PrizeIdNotFoundException => sender() ! akka.actor.Status.Failure(e)
       case e: InvalidInputException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -165,7 +165,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
     catch {
       case e: PrizeIdNotFoundException => sender() ! scala.util.Failure(e)
       case e: NotAuthorizedException => sender() ! scala.util.Failure(e)
-      case e: Exception => sender() ! scala.util.Failure(e); throw e
+      case e: Exception => sender() ! scala.util.Failure(e); log.error(e.getMessage, e)
     }
 
   }

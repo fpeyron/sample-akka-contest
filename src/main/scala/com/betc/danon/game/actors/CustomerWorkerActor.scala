@@ -196,7 +196,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -277,7 +277,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
       }
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
   }

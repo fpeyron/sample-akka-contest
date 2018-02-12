@@ -100,7 +100,7 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
         game = game.get
       )
     } catch {
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -138,7 +138,7 @@ class GameWorkerActor(gameId: UUID)(implicit val repository: Repository, val mat
       }
 
     } catch {
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 

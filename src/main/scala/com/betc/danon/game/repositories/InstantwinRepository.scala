@@ -27,7 +27,7 @@ trait InstantwinRepository extends InstantwinTable with PrizeTable {
   object instantwin {
 
     //noinspection FieldFromDelayedInit
-    val logger: LoggingAdapter = Logging(system.eventStream, getClass)
+    val log: LoggingAdapter = Logging(system.eventStream, getClass)
 
     /**
       * Instantwin
@@ -47,7 +47,7 @@ trait InstantwinRepository extends InstantwinTable with PrizeTable {
       .runWith(Sink.foreach[Seq[Instantwin]] { i: Seq[Instantwin] =>
         database.run((instantwinTableQuery ++= i).asTry.map {
           case Success(_) =>
-          case Failure(e) => logger.error(s"SQL Error, ${e.getMessage}"); throw e
+          case Failure(e) => log.error(s"SQL Error, ${e.getMessage}"); log.error(e.getMessage, e)
         })
       })
 

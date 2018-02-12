@@ -98,7 +98,7 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
       getGameWorkerActor(game.id).foreach(_ ! GameStopCmd)
     }
     catch {
-      case e: Exception => throw e
+      case e: Exception => log.error(e.getMessage, e)
     }
 
 
@@ -106,7 +106,7 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
       games = games.filterNot(_.id == id)
     }
     catch {
-      case e: Exception => throw e
+      case e: Exception => log.error(e.getMessage, e)
     }
 
 
@@ -114,7 +114,7 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
       getGameWorkerActor(event.id).foreach(_ forward event)
     }
     catch {
-      case e: Exception => throw e
+      case e: Exception => log.error(e.getMessage, e)
     }
 
 
@@ -143,7 +143,7 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
     }
     catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -181,7 +181,7 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
       ))
     }
     catch {
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -189,14 +189,14 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
       getOrCreateCustomerWorkerActor(cmd.customerId) forward cmd
     }
     catch {
-      case e: Exception => throw e
+      case e: Exception => log.error(e.getMessage, e)
     }
 
     case query: CustomerQuery => try {
       getOrCreateCustomerWorkerActor(query.customerId) forward query
     }
     catch {
-      case e: Exception => throw e
+      case e: Exception => log.error(e.getMessage, e)
     }
 
   }

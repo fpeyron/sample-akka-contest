@@ -85,7 +85,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
       sender ! sourceList
     } catch {
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -102,7 +102,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -138,7 +138,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
           )),
         inputEans = request.input_eans.getOrElse(Seq.empty).distinct,
         inputFreecodes = request.input_freecodes.getOrElse(Seq.empty).distinct,
-        tags = request.tags.getOrElse(Seq.empty).map(_.toUpperCase).distinct
+        tags = request.tags.getOrElse(Seq.empty).distinct
       )
 
       // Check existing code
@@ -168,7 +168,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -232,7 +232,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
           ))).getOrElse(game.get.limits),
         inputEans = request.input_eans.getOrElse(game.get.inputEans).distinct,
         inputFreecodes = request.input_freecodes.getOrElse(game.get.inputFreecodes).distinct,
-        tags = request.tags.getOrElse(game.get.tags).map(_.toUpperCase).distinct
+        tags = request.tags.getOrElse(game.get.tags).distinct
       )
       Await.result(repository.game.update(gameToUpdate), Duration.Inf)
 
@@ -244,7 +244,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -277,7 +277,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
     }
     catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! scala.util.Failure(e); throw e
+      case e: Exception => sender() ! scala.util.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -304,7 +304,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
     }
     catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! scala.util.Failure(e); throw e
+      case e: Exception => sender() ! scala.util.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -331,7 +331,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
     }
     catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! scala.util.Failure(e); throw e
+      case e: Exception => sender() ! scala.util.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -348,7 +348,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -400,7 +400,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -453,7 +453,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -498,7 +498,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); throw e
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -515,7 +515,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
     }
     catch {
       case e: GameIdNotFoundException => sender() ! scala.util.Failure(e)
-      case e: Exception => sender() ! scala.util.Failure(e); throw e
+      case e: Exception => sender() ! scala.util.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -537,7 +537,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
     }
     catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! scala.util.Failure(e); throw e
+      case e: Exception => sender() ! scala.util.Failure(e); log.error(e.getMessage, e)
     }
 
   }
