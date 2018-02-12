@@ -5,6 +5,7 @@ import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerS
 import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
+import akka.http.scaladsl.server.directives.DebuggingDirectives
 import akka.stream.ActorMaterializer
 import com.betc.danon.game.actors.{BoGameActor, BoPrizeActor, ClusterListenerActor, GameManagerActor}
 import com.betc.danon.game.queries.CustomerQuery
@@ -70,7 +71,7 @@ object Main extends App with RouteConcatenation with HttpSupport {
 
   // start http services
   val mainRoute = MainRoute(gameActor, prizeActor, clusterSingletonProxy)
-  val bindingFuture = Http().bindAndHandle(mainRoute.routes, Config.Api.hostname, Config.Api.port)
+  val bindingFuture = Http().bindAndHandle(DebuggingDirectives.logRequestResult("API route", Logging.DebugLevel)(mainRoute.routes), Config.Api.hostname, Config.Api.port)
 
   // logger
   val logger = Logging(system, getClass)
