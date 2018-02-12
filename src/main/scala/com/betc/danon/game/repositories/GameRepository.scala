@@ -339,6 +339,8 @@ private[repositories] trait GameTable {
       g.inputPoint,
       Some(g.tags).find(_.nonEmpty).map(_.mkString(","))
     )
+
+    def idx_code = index("idx_code", (code), unique = false)
   }
 
 }

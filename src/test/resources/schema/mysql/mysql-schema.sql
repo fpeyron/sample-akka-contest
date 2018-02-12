@@ -72,7 +72,8 @@ CREATE TABLE `REF_GAME` (
   `input_type` varchar(20) NOT NULL,
   `input_point` int(11) DEFAULT NULL,
   `tags` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
