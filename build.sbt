@@ -36,13 +36,18 @@ libraryDependencies += "com.lightbend.akka"           %% "akka-management-cluste
 libraryDependencies += "de.heikoseeberger"            %% "constructr"                     % ConstructrAkka
 libraryDependencies += "com.github.everpeace"         %% "constructr-coordination-redis"  % "0.0.4"
 // --- Akka Persistent / Mysql
-libraryDependencies += "com.github.dnvriend"           %% "akka-persistence-jdbc"         % "3.2.0"
-//libraryDependencies += "com.h2database"                % "h2"                             % "1.4.193"
-libraryDependencies += "mysql"                         % "mysql-connector-java"           % "6.0.6"
+libraryDependencies += "com.github.dnvriend"          %% "akka-persistence-jdbc"          % "3.2.0"
+//libraryDependencies += "com.h2database"               % "h2"                              % "1.4.193"
+libraryDependencies += "mysql"                        % "mysql-connector-java"            % "6.0.6"
 // ---Serializer for akka
-libraryDependencies += "com.github.romix.akka"         %% "akka-kryo-serialization"       % "0.5.2"
+libraryDependencies += "com.github.romix.akka"        %% "akka-kryo-serialization"        % "0.5.2"
 
-libraryDependencies += "ch.qos.logback"                % "logback-classic"                % "1.2.+"
+libraryDependencies += "ch.qos.logback"               % "logback-classic"                 % "1.2.+"
+
+// ---Test
+libraryDependencies += "com.typesafe.akka"            %% "akka-testkit"                   % akkaVersion % Test
+libraryDependencies += "com.typesafe.akka"            %% "akka-stream-testkit"            % akkaVersion % Test
+
 
 
 // Force dependencies to remove WARN in log during compilation
