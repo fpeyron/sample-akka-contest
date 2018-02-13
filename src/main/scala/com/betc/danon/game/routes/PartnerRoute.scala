@@ -194,32 +194,6 @@ trait PartnerRoute
     new ApiImplicitParam(name = "codes", value = "codes", required = false, dataType = "string", paramType = "query")
   ))
   def partner_customer_getGames: Route = path(Segment / "customers" / Segment / "games") { (country_code, customer_id) =>
-    /*get {
-      parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
-        onSuccess(clusterSingletonProxy ? GameFindQuery(
-          country_code = country_code.toUpperCase,
-          games = codesOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
-          tags = tagsOptional.map(_.toUpperCase.split(",").toSeq).getOrElse(Seq.empty),
-          customer_id = customer_id.toUpperCase())
-        ) {
-          case response: Seq[Any] => complete(StatusCodes.OK, response.asInstanceOf[Seq[CustomerGameResponse]])
-        }
-      }
-    }*/
-    /*
-     get {
-       parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
-         onSuccess(query.customer.getGames(
-           countryCode = country_code.toUpperCase,
-           customerId = customer_id.toUpperCase,
-           tags = tagsOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
-           codes = codesOptional.map(_.split(",").toSeq).getOrElse(Seq.empty)
-         )) {
-           response => complete(StatusCodes.OK, response)
-         }
-       }
-     }
-     */
     get {
       parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
         onSuccess(clusterSingletonProxy ? CustomerGetGamesQuery(

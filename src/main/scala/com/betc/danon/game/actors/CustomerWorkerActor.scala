@@ -35,9 +35,7 @@ object CustomerWorkerActor {
 
 
   // Query
-  sealed trait CustomerQuery {
-    def customerId: String
-  }
+  sealed trait CustomerQuery { def customerId: String}
 
   case class CustomerGetParticipationQuery(customerId: String, gameIds: Seq[UUID]) extends CustomerQuery
 
@@ -45,9 +43,7 @@ object CustomerWorkerActor {
 
 
   // Cmd
-  sealed trait CustomerCmd {
-    def customerId: String
-  }
+  sealed trait CustomerCmd { def customerId: String}
 
   case object CustomerStopCmd
 
@@ -219,41 +215,6 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
 
     case CustomerGetGamesQuery(countryCode, _, tags, codes) => try {
-      /*
-      val result = for {
-
-        games <- repository.game.findByTagsAndCodes(tags, codes).filter(g => g.countryCode == countryCode.toUpperCase && g.status == GameStatus.Activated).runWith(Sink.seq)
-
-        participations <- {
-          val gameIds = games.map(_.id)
-          journalReader.currentEventsByPersistenceId(s"CUSTOMER-${customerId.toUpperCase}")
-            .map(_.event)
-            .collect {
-              case event: CustomerParticipationEvent => (event.gameId, 1, event.instantwin.map(_ => 1).getOrElse(0))
-            }
-            .filter(event => gameIds.contains(event._1))
-            .runFold(Map.empty[UUID, (Int, Int)]) { (current, event) =>
-              current.filterNot(_._1 == event._1) + (event._1 -> current.get(event._1).map(c => (c._1 + event._2, c._2 + event._3)).getOrElse((event._2, event._3)))
-            }
-        }
-      } yield (games, participations)
-
-      result.map { result =>
-        result._1
-          .map(game => CustomerGameResponse(
-            `type` = game.`type`,
-            code = game.code,
-            title = game.title,
-            start_date = game.startDate,
-            end_date = game.endDate,
-            input_type = game.inputType,
-            input_point = game.inputPoint,
-            parents = Some(game.parents.flatMap(p => result._1.find(_.id == p)).map(_.code)).find(_.nonEmpty),
-            participation_count = result._2.get(game.id).map(_._1).getOrElse(0),
-            instant_win_count = result._2.get(game.id).map(_._2).getOrElse(0)
-          ))
-      }.pipeTo(sender)
-      */
       repository.game
         .findByTagsAndCodes(tags, codes).filter(g => g.countryCode == countryCode.toUpperCase && g.status == GameStatus.Activated)
         .runWith(Sink.seq)

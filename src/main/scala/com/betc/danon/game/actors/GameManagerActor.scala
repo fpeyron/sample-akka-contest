@@ -4,17 +4,15 @@ import java.time.Instant
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
-import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerCmd, CustomerGetParticipationQuery, CustomerParticipationState, CustomerQuery}
-import com.betc.danon.game.actors.GameManagerActor.{GameDeleteEvent, GameFindQuery, GameLinesEvent, GameUpdateEvent}
+import com.betc.danon.game.Repository
+import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerCmd, CustomerQuery}
+import com.betc.danon.game.actors.GameManagerActor.{GameDeleteEvent, GameLinesEvent, GameUpdateEvent}
 import com.betc.danon.game.actors.GameWorkerActor.GameStopCmd
-import com.betc.danon.game.models.GameEntity.{Game, GameLimit, GameStatus}
-import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, ParticipationStatus}
+import com.betc.danon.game.models.GameEntity.{Game, GameStatus}
 import com.betc.danon.game.utils.HttpSupport._
 import com.betc.danon.game.utils.JournalReader
-import com.betc.danon.game.{Config, Repository}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -24,9 +22,6 @@ object GameManagerActor {
   final val name = "games"
 
   def props(implicit repository: Repository, materializer: ActorMaterializer, journalReader: JournalReader) = Props(new GameManagerActor)
-
-  // Command
-  sealed trait Cmd
 
   // Event
   sealed trait Event
@@ -39,39 +34,6 @@ object GameManagerActor {
 
   case class GameDeleteEvent(id: UUID) extends Event
 
-  // Query
-  sealed trait Query
-
-  case class GameFindQuery(country_code: String, games: Seq[String], tags: Seq[String], customer_id: String) extends Query
-
-
-  def msort(xs: List[Game]): List[Game] = {
-
-    def less(a: Game, b: Game): Boolean = {
-      if (b.parents.contains(a.id)) true
-      else if (a.parents.contains(b.id)) false
-      //else if (a.parent_id.isEmpty && b.parent_id.isEmpty) a.id.compareTo(b.id) > 0
-      //else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get != b.parent_id.get) a.parent_id.get.compareTo(b.parent_id.get) > 0
-      //else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get == b.parent_id.get) b.id.compareTo(a.id) > 0
-      //else b.parent_id.getOrElse(b.id).compareTo(a.parent_id.getOrElse(a.id)) > 0
-      else a.code.compareTo(b.code) < 0
-    }
-
-    def merge(xs: List[Game], ys: List[Game]): List[Game] = (xs, ys) match {
-      case (Nil, _) => ys
-      case (_, Nil) => xs
-      case (x :: xs1, y :: ys1) =>
-        if (less(x, y)) x :: merge(xs1, ys)
-        else y :: merge(xs, ys1)
-    }
-
-    val n = xs.length / 2
-    if (n == 0) xs
-    else {
-      val (ys, zs) = xs splitAt n
-      merge(msort(ys), msort(zs))
-    }
-  }
 }
 
 class GameManagerActor(implicit val repository: Repository, val materializer: ActorMaterializer, val journalReader: JournalReader) extends Actor with ActorLogging {
@@ -80,11 +42,7 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
 
   override def preStart(): Unit = {
     games = Await.result(
-      repository.game.fetchExtendedBy()
-        .filter(_.status == GameStatus.Activated).runWith(Sink.collection), Duration.Inf)
-      .groupBy(_.id)
-      .map(t => t._2.head.copy(limits = t._2.map(_.limits.toList).foldLeft(List.empty[GameLimit])((acc, item) => acc ::: item)))
-      .toSeq
+      repository.game.fetchExtendedBy().filter(_.status == GameStatus.Activated).runWith(Sink.seq), Duration.Inf)
   }
 
   override def receive: Receive = {
@@ -123,11 +81,6 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
       // get Game in state
       val game: Option[Game] = games.find(r => r.countryCode == cmd.country_code && r.code == cmd.game_code && r.status == GameStatus.Activated)
 
-      // check existing game
-      if (!game.exists(_.countryCode == cmd.country_code)) {
-        throw GameRefNotFoundException(code = cmd.game_code, country_code = cmd.country_code)
-      }
-
       // check if game is active start_date
       if (game.get.startDate.isAfter(Instant.now)) {
         throw ParticipationNotOpenedException(code = cmd.game_code)
@@ -147,59 +100,9 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
     }
 
 
-    case query: GameFindQuery => try {
+    case cmd: CustomerCmd => getOrCreateCustomerWorkerActor(cmd.customerId) forward cmd
 
-      // get Game in state
-      val result: Seq[Game] = games
-        .filter(
-          r => r.countryCode == query.country_code
-            && r.status == GameStatus.Activated
-            && Some(query.tags).filterNot(_.isEmpty).forall(_.map(t => r.tags.contains(t)).forall(b => b))
-            && Some(query.games).filterNot(_.isEmpty).forall(_.contains(r.code))
-        )
-
-      implicit val timeout: akka.util.Timeout = Config.Api.timeout
-      val customerParticipations: Seq[CustomerParticipationState] = Await.result(
-        getOrCreateCustomerWorkerActor(query.customer_id.toString) ? CustomerGetParticipationQuery(customerId = query.customer_id, gameIds = result.map(_.id)
-        ), Duration.Inf) match {
-        case response: Seq[Any] if response.isEmpty || response.headOption.exists(_.isInstanceOf[CustomerParticipationState]) =>
-          response.asInstanceOf[Seq[CustomerParticipationState]]
-        case _ => Seq.empty[CustomerParticipationState]
-      }
-
-      sender() ! GameManagerActor.msort(result.toList).map(game => CustomerGameResponse(
-        `type` = game.`type`,
-        code = game.code,
-        title = game.title,
-        start_date = game.startDate,
-        end_date = game.endDate,
-        input_type = game.inputType,
-        input_point = game.inputPoint,
-        parents = Some(game.parents.flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty),
-        participation_count = customerParticipations.count(_.gameId == game.id),
-        instant_win_count = customerParticipations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.win),
-        instant_toconfirm_count = 0
-      ))
-    }
-    catch {
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
-    }
-
-
-    case cmd: CustomerCmd => try {
-      getOrCreateCustomerWorkerActor(cmd.customerId) forward cmd
-    }
-    catch {
-      case e: Exception => log.error(e.getMessage, e)
-    }
-
-    case query: CustomerQuery => try {
-      getOrCreateCustomerWorkerActor(query.customerId) forward query
-    }
-    catch {
-      case e: Exception => log.error(e.getMessage, e)
-    }
-
+    case query: CustomerQuery => getOrCreateCustomerWorkerActor(query.customerId) forward query
   }
 
   def getGameWorkerActor(id: UUID): Option[ActorRef] = context.child(GameWorkerActor.name(id))
