@@ -5,7 +5,7 @@ import java.util.UUID
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import com.betc.danon.game.Repository
-import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipationEvent
+import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipated
 import com.betc.danon.game.models.GameEntity.GameStatus
 import com.betc.danon.game.models.ParticipationDto.CustomerGameResponse
 import com.betc.danon.game.utils.JournalReader
@@ -34,7 +34,7 @@ trait CustomerQuery {
           journalReader.currentEventsByPersistenceId(s"CUSTOMER-${customerId.toUpperCase}")
             .map(_.event)
             .collect {
-              case event: CustomerParticipationEvent => (event.gameId, 1, event.instantwin.map(_ => 1).getOrElse(0))
+              case event: CustomerParticipated => (event.gameId, 1, event.instantwin.map(_ => 1).getOrElse(0))
             }
             .filter(event => gameIds.contains(event._1))
             .runFold(Map.empty[UUID, (Int, Int)]) { (current, event) =>
@@ -55,7 +55,8 @@ trait CustomerQuery {
             input_point = game.inputPoint,
             parents = Some(game.parents.flatMap(p => result._1.find(_.id == p)).map(_.code)).find(_.nonEmpty),
             participation_count = result._2.get(game.id).map(_._1).getOrElse(0),
-            instant_win_count = result._2.get(game.id).map(_._2).getOrElse(0)
+            instant_win_count = result._2.get(game.id).map(_._2).getOrElse(0),
+            instant_toconfirm_count = 0
           ))
       }
     }

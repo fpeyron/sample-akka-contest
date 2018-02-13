@@ -8,9 +8,9 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
 import com.betc.danon.game.actors.CustomerWorkerActor
-import com.betc.danon.game.actors.CustomerWorkerActor.CustomerGetGamesQuery
+import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerConfirmParticipationCmd, CustomerGetGamesQuery, CustomerInvalidateParticipationCmd, CustomerValidateParticipationCmd}
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipateCmd
-import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateRequest, CustomerParticipateResponse, PartnerJsonSupport}
+import com.betc.danon.game.models.ParticipationDto.{CustomerConfirmParticipationRequest, CustomerGameResponse, CustomerParticipateRequest, CustomerParticipateResponse, PartnerJsonSupport}
 import com.betc.danon.game.utils.HttpSupport.ErrorResponse
 import com.betc.danon.game.utils.{CorsSupport, DefaultJsonSupport}
 import com.betc.danon.game.{Config, Query}
@@ -39,7 +39,8 @@ trait PartnerRoute
   implicit val query: Query
 
   def partnerRoute: Route = pathPrefix("partner") {
-    corsHandler(partner_customer_participate ~ partner_customer_getGames ~ partner_customer_getParticipations)
+    corsHandler(partner_customer_participate ~ partner_customer_getGames ~ partner_customer_getParticipations ~
+      partner_customer_confirmParticipation ~ partner_customer_validateParticipation ~ partner_customer_invalidateParticipation)
   }
 
 
@@ -79,6 +80,105 @@ trait PartnerRoute
 
   /**
     *
+    * @return customer.confirmParticipation
+    */
+  @Path("{country_code}/customers/{customer_id}/participations/{participation_id}/action-confirm")
+  @ApiOperation(value = "Confirm a participation", notes = "", nickname = "partner.customer.confirmParticipation", httpMethod = "PUT")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return result of confirmation participation"),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "country_code", value = "country code", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "customer_id", value = "customer ID", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "participation_id", value = "participation ID", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "body", value = "Metadata free", required = true, dataTypeClass = classOf[CustomerConfirmParticipationRequest], paramType = "body")
+  ))
+  def partner_customer_confirmParticipation: Route = path(Segment / "customers" / Segment / "participations" / Segment / "action-confirm") { (country_code, customer_id, participation_id) =>
+    put {
+      entity(as[CustomerConfirmParticipationRequest]) { request =>
+        onSuccess(clusterSingletonProxy ?
+          CustomerConfirmParticipationCmd(
+            countryCode = country_code.toUpperCase,
+            customerId = customer_id.toUpperCase,
+            participationId = participation_id,
+            meta = request.meta.getOrElse(Map.empty)
+          )) {
+          case None => complete(StatusCodes.OK, None)
+        }
+      }
+    }
+  }
+
+
+  /**
+    *
+    * @return customer.validateParticipation
+    */
+  @Path("{country_code}/customers/{customer_id}/participations/{participation_id}/action-validate")
+  @ApiOperation(value = "Validate a participation", notes = "", nickname = "partner.customer.validateParticipation", httpMethod = "PUT")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return result of confirmation participation"),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "country_code", value = "country code", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "customer_id", value = "customer ID", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "participation_id", value = "participation ID", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "body", value = "Metadata free", required = true, dataTypeClass = classOf[CustomerConfirmParticipationRequest], paramType = "body")
+  ))
+  def partner_customer_validateParticipation: Route = path(Segment / "customers" / Segment / "participations" / Segment / "action-validate") { (country_code, customer_id, participation_id) =>
+    put {
+      entity(as[CustomerConfirmParticipationRequest]) { request =>
+        onSuccess(clusterSingletonProxy ?
+          CustomerValidateParticipationCmd(
+            countryCode = country_code.toUpperCase,
+            customerId = customer_id.toUpperCase,
+            participationId = participation_id,
+            meta = request.meta.getOrElse(Map.empty)
+          )) {
+          case None => complete(StatusCodes.OK, None)
+        }
+      }
+    }
+  }
+
+
+  /**
+    *
+    * @return customer.invalidateParticipation
+    */
+  @Path("{country_code}/customers/{customer_id}/participations/{participation_id}/action-invalidate")
+  @ApiOperation(value = "Validate a participation", notes = "", nickname = "partner.customer.invalidateParticipation", httpMethod = "PUT")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return result of unvalidated participation"),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "country_code", value = "country code", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "customer_id", value = "customer ID", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "participation_id", value = "participation ID", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "body", value = "Metadata free", required = true, dataTypeClass = classOf[CustomerConfirmParticipationRequest], paramType = "body")
+  ))
+  def partner_customer_invalidateParticipation: Route = path(Segment / "customers" / Segment / "participations" / Segment / "action-invalidate") { (country_code, customer_id, participation_id) =>
+    put {
+      entity(as[CustomerConfirmParticipationRequest]) { request =>
+        onSuccess(clusterSingletonProxy ?
+          CustomerInvalidateParticipationCmd(
+            countryCode = country_code.toUpperCase,
+            customerId = customer_id.toUpperCase,
+            participationId = participation_id,
+            meta = request.meta.getOrElse(Map.empty)
+          )) {
+          case None => complete(StatusCodes.OK, None)
+        }
+      }
+    }
+  }
+
+
+  /**
+    *
     * @return customer.getGames
     */
   @Path("{country_code}/customers/{customer_id}/games")
@@ -106,23 +206,23 @@ trait PartnerRoute
         }
       }
     }*/
-   /*
+    /*
+     get {
+       parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
+         onSuccess(query.customer.getGames(
+           countryCode = country_code.toUpperCase,
+           customerId = customer_id.toUpperCase,
+           tags = tagsOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
+           codes = codesOptional.map(_.split(",").toSeq).getOrElse(Seq.empty)
+         )) {
+           response => complete(StatusCodes.OK, response)
+         }
+       }
+     }
+     */
     get {
       parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
-        onSuccess(query.customer.getGames(
-          countryCode = country_code.toUpperCase,
-          customerId = customer_id.toUpperCase,
-          tags = tagsOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
-          codes = codesOptional.map(_.split(",").toSeq).getOrElse(Seq.empty)
-        )) {
-          response => complete(StatusCodes.OK, response)
-        }
-      }
-    }
-    */
-    get {
-      parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
-        onSuccess( clusterSingletonProxy ? CustomerGetGamesQuery(
+        onSuccess(clusterSingletonProxy ? CustomerGetGamesQuery(
           countryCode = country_code.toUpperCase,
           customerId = customer_id.toUpperCase,
           tags = tagsOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),

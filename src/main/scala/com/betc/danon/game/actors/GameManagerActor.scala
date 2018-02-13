@@ -176,8 +176,9 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
         input_type = game.inputType,
         input_point = game.inputPoint,
         parents = Some(game.parents.flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty),
-        participation_count = customerParticipations.count(_.game_id == game.id),
-        instant_win_count = customerParticipations.count(p => p.game_id == game.id && p.participationStatus == ParticipationStatus.Win)
+        participation_count = customerParticipations.count(_.gameId == game.id),
+        instant_win_count = customerParticipations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.win),
+        instant_toconfirm_count = 0
       ))
     }
     catch {

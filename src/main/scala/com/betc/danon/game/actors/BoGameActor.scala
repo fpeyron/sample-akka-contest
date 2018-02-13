@@ -9,7 +9,7 @@ import akka.stream.scaladsl.Source
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.BoGameActor._
-import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipationEvent
+import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipated
 import com.betc.danon.game.models.GameDto._
 import com.betc.danon.game.models.GameEntity._
 import com.betc.danon.game.models.InstantwinDomain.Instantwin
@@ -529,7 +529,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
         (game.get, journalReader.currentEventsByTag(s"GAME-${id.toString}")
           .map(_.event)
           .collect {
-            case event: CustomerParticipationEvent => event
+            case event: CustomerParticipated => event
           }
           .filter(e => customerId.forall(_.toUpperCase == e.customerId)))
       }.pipeTo(sender)

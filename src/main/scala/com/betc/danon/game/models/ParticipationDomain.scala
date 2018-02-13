@@ -17,7 +17,8 @@ object ParticipationDto {
     implicit val customerParticipationStatusType: RootJsonFormat[ParticipationStatus.Value] = enumFormat(ParticipationStatus)
     implicit val customerParticipateRequest: RootJsonFormat[CustomerParticipateRequest] = jsonFormat4(CustomerParticipateRequest)
     implicit val customerParticipateResponse: RootJsonFormat[CustomerParticipateResponse] = jsonFormat4(CustomerParticipateResponse)
-    implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat10(CustomerGameResponse)
+    implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat11(CustomerGameResponse)
+    implicit val customerConfirmParticipationRequest: RootJsonFormat[CustomerConfirmParticipationRequest] = jsonFormat1(CustomerConfirmParticipationRequest)
   }
 
   case class CustomerParticipateRequest(
@@ -32,10 +33,11 @@ object ParticipationDto {
                                        )
 
   implicit object ParticipationStatus extends Enumeration {
-    val Lost: ParticipationStatus.Value = Value("LOST")
-    val Win: ParticipationStatus.Value = Value("WIN")
-
-    val all = Seq(Lost, Win)
+    val lost: ParticipationStatus.Value = Value("LOST")
+    val toConfirm: ParticipationStatus.Value = Value("TOCONFIRM")
+    val pending: ParticipationStatus.Value = Value("PENDING")
+    val win: ParticipationStatus.Value = Value("WIN")
+    val all = Seq(lost, pending, toConfirm, win)
 
     def withNameOptional(name: String): Option[ParticipationStatus.Value] = try {
       Some(this.withName(name))
@@ -77,7 +79,14 @@ object ParticipationDto {
                                    @ApiModelProperty(position = 9, value = "participations count", required = true, example = "10")
                                    participation_count: Int,
                                    @ApiModelProperty(position = 10, value = "win count", required = true, example = "10")
-                                   instant_win_count: Int
+                                   instant_win_count: Int,
+                                   @ApiModelProperty(position = 11, value = "toconfirm count", required = true, example = "1")
+                                   instant_toconfirm_count: Int
                                  )
+
+  case class CustomerConfirmParticipationRequest(
+                                                  @ApiModelProperty(position = 1, value = "meta", required = false)
+                                                  meta: Option[Map[String, String]] = None
+                                                )
 
 }

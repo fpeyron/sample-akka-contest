@@ -13,7 +13,7 @@ import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
 import com.betc.danon.game.Config
 import com.betc.danon.game.actors.BoGameActor._
-import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipationEvent
+import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipated
 import com.betc.danon.game.models.GameDto._
 import com.betc.danon.game.models.GameEntity.{Game, GamePrize}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
@@ -395,7 +395,7 @@ trait BoGameRoute
         onSuccess(gameActor ? GameGetParticipationsQuery(uc, id, customerIdOptional)) {
           case (game: Game, source: Source[_, _]) => complete {
             val mapStream = Source.single("participation_date\tparticipation_id\tparticipation_status\tcustomer_id\tean\tmeta\tprize_id\tprize_type\tprize_label\tprize_title\tprize_points\tprize_vendor_code\tprize_face_value\n")
-              .concat(source.map(_.asInstanceOf[CustomerParticipationEvent]).map(t =>
+              .concat(source.map(_.asInstanceOf[CustomerParticipated]).map(t =>
                 s"${t.timestamp.atZone(ZoneId.of(game.timezone))}\t${t.participationId.toString}\t${t.instantwin.map(_ => "WIN").getOrElse("LOST")}\t${t.customerId}\t${t.ean.getOrElse("")}\t" +
                   s"${Some(t.meta).find(_.nonEmpty).map(_.map(m => s"${m._1}:${m._2}").mkString(",")).getOrElse("")}\t${t.instantwin.map(_.prize.`type`.toString).getOrElse("")}\t" +
                   s"${t.instantwin.map(_.gameId).getOrElse("")}\t${t.instantwin.map(_.prize.label).getOrElse("")}\t${t.instantwin.flatMap(_.prize.title).getOrElse("")}\t" +
