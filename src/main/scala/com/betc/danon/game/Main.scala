@@ -45,13 +45,6 @@ object Main extends App with RouteConcatenation with HttpSupport {
   implicit val query: Query = Query()
 
   // Start Actor Proxy
-  implicit val clusterSingletonProxy: ActorRef = system.actorOf(
-    props = ClusterSingletonProxy.props(
-      singletonManagerPath = clusterSingleton.path.toStringWithoutAddress,
-      settings = ClusterSingletonProxySettings(system).withRole(None)
-    ),
-    name = s"${GameManagerActor.name}Proxy"
-  )
   val customerClusterProxy: ActorRef = ClusterSharding(system).startProxy(
     typeName = CustomerWorkerActor.typeName,
     extractEntityId = CustomerWorkerActor.extractEntityId,
@@ -80,6 +73,9 @@ object Main extends App with RouteConcatenation with HttpSupport {
     extractEntityId = GameWorkerActor.extractEntityId,
     extractShardId = GameWorkerActor.extractShardId
   )
+  val clusterListenerActor = system.actorOf(ClusterListenerActor.props, ClusterListenerActor.name)
+
+  // Start Singleton
   val clusterSingleton: ActorRef = system.actorOf(
     ClusterSingletonManager.props(
       singletonProps = GameManagerActor.props(gameClusterProxy),
@@ -88,9 +84,17 @@ object Main extends App with RouteConcatenation with HttpSupport {
     ),
     name = GameManagerActor.name
   )
+  implicit val clusterSingletonProxy: ActorRef = system.actorOf(
+    props = ClusterSingletonProxy.props(
+      singletonManagerPath = clusterSingleton.path.toStringWithoutAddress,
+      settings = ClusterSingletonProxySettings(system).withRole(None)
+    ),
+    name = s"${GameManagerActor.name}Proxy"
+  )
+
   val boGameActor: ActorRef = system.actorOf(BoGameActor.props, BoGameActor.Name)
   val boPrizeActor: ActorRef = system.actorOf(BoPrizeActor.props, BoPrizeActor.name)
-  val clusterListenerActor = system.actorOf(ClusterListenerActor.props, ClusterListenerActor.name)
+
 
   // start http services
   implicit val routeContext: RouteContext = RouteContext(boGameActor = boGameActor, boPrizeActor = boPrizeActor, clusterSingletonProxy = clusterSingletonProxy, customerCluster = customerCluster)
