@@ -3,20 +3,17 @@ package com.betc.danon.game.routes
 import javax.ws.rs.Path
 import javax.ws.rs.core.MediaType
 
-import akka.actor.ActorRef
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
 import com.betc.danon.game.actors.CustomerWorkerActor
-import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerConfirmParticipationCmd, CustomerGetGamesQuery, CustomerInvalidateParticipationCmd, CustomerValidateParticipationCmd}
-import com.betc.danon.game.actors.GameWorkerActor.GameParticipateCmd
+import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerConfirmParticipationCmd, CustomerGetGamesQry, CustomerInvalidateParticipationCmd, CustomerValidateParticipationCmd}
+import com.betc.danon.game.actors.GameManagerActor.ParticipateCmd
 import com.betc.danon.game.models.ParticipationDto.{CustomerConfirmParticipationRequest, CustomerGameResponse, CustomerParticipateRequest, CustomerParticipateResponse, PartnerJsonSupport}
 import com.betc.danon.game.utils.HttpSupport.ErrorResponse
 import com.betc.danon.game.utils.{CorsSupport, DefaultJsonSupport}
-import com.betc.danon.game.{Config, Query}
+import com.betc.danon.game.{Config, RouteContext}
 import io.swagger.annotations._
-
-import scala.concurrent.ExecutionContext
 
 /**
   *
@@ -33,10 +30,8 @@ trait PartnerRoute
 
   import akka.pattern.ask
 
-  implicit val ec: ExecutionContext
+  implicit val context: RouteContext
   implicit val timeout: Timeout = Config.Api.timeout
-  implicit val clusterSingletonProxy: ActorRef
-  implicit val query: Query
 
   def partnerRoute: Route = pathPrefix("partner") {
     corsHandler(partner_customer_participate ~ partner_customer_getGames ~ partner_customer_getParticipations ~
@@ -62,8 +57,8 @@ trait PartnerRoute
   def partner_customer_participate: Route = path(Segment / "customers" / Segment / "participations") { (country_code, customer_id) =>
     post {
       entity(as[CustomerParticipateRequest]) { request =>
-        onSuccess(clusterSingletonProxy ?
-          GameParticipateCmd(
+        onSuccess(context.clusterSingletonProxy ?
+          ParticipateCmd(
             country_code = country_code.toUpperCase,
             game_code = request.game_code,
             customer_id.toUpperCase,
@@ -97,7 +92,7 @@ trait PartnerRoute
   def partner_customer_confirmParticipation: Route = path(Segment / "customers" / Segment / "participations" / Segment / "action-confirm") { (country_code, customer_id, participation_id) =>
     put {
       entity(as[CustomerConfirmParticipationRequest]) { request =>
-        onSuccess(clusterSingletonProxy ?
+        onSuccess(context.customerCluster ?
           CustomerConfirmParticipationCmd(
             countryCode = country_code.toUpperCase,
             customerId = customer_id.toUpperCase,
@@ -130,7 +125,7 @@ trait PartnerRoute
   def partner_customer_validateParticipation: Route = path(Segment / "customers" / Segment / "participations" / Segment / "action-validate") { (country_code, customer_id, participation_id) =>
     put {
       entity(as[CustomerConfirmParticipationRequest]) { request =>
-        onSuccess(clusterSingletonProxy ?
+        onSuccess(context.customerCluster ?
           CustomerValidateParticipationCmd(
             countryCode = country_code.toUpperCase,
             customerId = customer_id.toUpperCase,
@@ -163,7 +158,7 @@ trait PartnerRoute
   def partner_customer_invalidateParticipation: Route = path(Segment / "customers" / Segment / "participations" / Segment / "action-invalidate") { (country_code, customer_id, participation_id) =>
     put {
       entity(as[CustomerConfirmParticipationRequest]) { request =>
-        onSuccess(clusterSingletonProxy ?
+        onSuccess(context.customerCluster ?
           CustomerInvalidateParticipationCmd(
             countryCode = country_code.toUpperCase,
             customerId = customer_id.toUpperCase,
@@ -196,7 +191,7 @@ trait PartnerRoute
   def partner_customer_getGames: Route = path(Segment / "customers" / Segment / "games") { (country_code, customer_id) =>
     get {
       parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
-        onSuccess(clusterSingletonProxy ? CustomerGetGamesQuery(
+        onSuccess(context.customerCluster ? CustomerGetGamesQry(
           countryCode = country_code.toUpperCase,
           customerId = customer_id.toUpperCase,
           tags = tagsOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
@@ -229,7 +224,7 @@ trait PartnerRoute
   def partner_customer_getParticipations: Route = path(Segment / "customers" / Segment / "participations") { (country_code, customer_id) =>
     get {
       parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
-        onSuccess(clusterSingletonProxy ?
+        onSuccess(context.customerCluster ?
           CustomerWorkerActor.CustomerGetParticipationsCmd(
             countryCode = country_code.toUpperCase,
             customerId = customer_id.toUpperCase,

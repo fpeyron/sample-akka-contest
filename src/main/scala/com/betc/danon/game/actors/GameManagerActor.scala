@@ -4,12 +4,12 @@ import java.time.Instant
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.cluster.sharding.ShardRegion.Passivate
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import com.betc.danon.game.Repository
-import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerCmd, CustomerQuery}
-import com.betc.danon.game.actors.GameManagerActor.{GameDeleteEvent, GameLinesEvent, GameUpdateEvent}
-import com.betc.danon.game.actors.GameWorkerActor.GameStopCmd
+import com.betc.danon.game.actors.GameManagerActor.{GameDeleteEvent, GameLinesEvent, GameUpdateEvent, ParticipateCmd}
+import com.betc.danon.game.actors.GameWorkerActor.{GameParticipateCmd, GameStopCmd}
 import com.betc.danon.game.models.GameEntity.{Game, GameStatus}
 import com.betc.danon.game.utils.HttpSupport._
 import com.betc.danon.game.utils.JournalReader
@@ -21,7 +21,17 @@ object GameManagerActor {
 
   final val name = "games"
 
-  def props(implicit repository: Repository, materializer: ActorMaterializer, journalReader: JournalReader) = Props(new GameManagerActor)
+  def props(gameActor: ActorRef)(implicit repository: Repository, materializer: ActorMaterializer, journalReader: JournalReader) = Props(new GameManagerActor(gameActor))
+
+  // Cmd
+  case class ParticipateCmd(
+                             country_code: String,
+                             game_code: String,
+                             customerId: String,
+                             transaction_code: Option[String],
+                             ean: Option[String],
+                             meta: Map[String, String]
+                           )
 
   // Event
   sealed trait Event
@@ -36,7 +46,7 @@ object GameManagerActor {
 
 }
 
-class GameManagerActor(implicit val repository: Repository, val materializer: ActorMaterializer, val journalReader: JournalReader) extends Actor with ActorLogging {
+class GameManagerActor(gameActor: ActorRef)(implicit val repository: Repository, val materializer: ActorMaterializer, val journalReader: JournalReader) extends Actor with ActorLogging {
 
   var games: Seq[Game] = Seq.empty[Game]
 
@@ -53,7 +63,7 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
       else
         games = games.filterNot(_.id == game.id)
 
-      getGameWorkerActor(game.id).foreach(_ ! GameStopCmd)
+      gameActor ! Passivate(stopMessage = GameStopCmd(gameId = game.id))
     }
     catch {
       case e: Exception => log.error(e.getMessage, e)
@@ -62,6 +72,7 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
 
     case GameDeleteEvent(id) => try {
       games = games.filterNot(_.id == id)
+      gameActor ! Passivate(stopMessage = GameStopCmd(gameId = id))
     }
     catch {
       case e: Exception => log.error(e.getMessage, e)
@@ -69,14 +80,14 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
 
 
     case event: GameLinesEvent => try {
-      getGameWorkerActor(event.id).foreach(_ forward event)
+      gameActor ! Passivate(stopMessage = GameStopCmd(gameId = event.id))
     }
     catch {
       case e: Exception => log.error(e.getMessage, e)
     }
 
 
-    case cmd: GameWorkerActor.GameParticipateCmd => try {
+    case cmd: ParticipateCmd => try {
 
       // get Game in state
       val game: Option[Game] = games.find(r => r.countryCode == cmd.country_code && r.code == cmd.game_code && r.status == GameStatus.Activated)
@@ -92,25 +103,20 @@ class GameManagerActor(implicit val repository: Repository, val materializer: Ac
       }
 
       // forward to dedicated actor
-      getOrCreateGameWorkerActor(game.get.id) forward cmd
+      gameActor forward GameParticipateCmd(
+        gameId = game.get.id,
+        country_code = cmd.country_code,
+        game_code = cmd.game_code,
+        customerId = cmd.customerId,
+        transaction_code = cmd.transaction_code,
+        ean = cmd.ean,
+        meta = cmd.meta
+      )
     }
     catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
-
-
-    case cmd: CustomerCmd => getOrCreateCustomerWorkerActor(cmd.customerId) forward cmd
-
-    case query: CustomerQuery => getOrCreateCustomerWorkerActor(query.customerId) forward query
   }
-
-  def getGameWorkerActor(id: UUID): Option[ActorRef] = context.child(GameWorkerActor.name(id))
-
-  def getOrCreateGameWorkerActor(id: UUID): ActorRef = context.child(GameWorkerActor.name(id))
-    .getOrElse(context.actorOf(GameWorkerActor.props(id), GameWorkerActor.name(id)))
-
-  def getOrCreateCustomerWorkerActor(id: String): ActorRef = context.child(CustomerWorkerActor.name(id))
-    .getOrElse(context.actorOf(CustomerWorkerActor.props(id), CustomerWorkerActor.name(id)))
 }
 

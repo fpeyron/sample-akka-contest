@@ -5,15 +5,15 @@ import java.time.{Instant, ZoneId}
 import java.util.UUID
 
 import akka.actor.{ActorLogging, ActorRef, Props, ReceiveTimeout}
+import akka.cluster.sharding.ShardRegion
 import akka.cluster.sharding.ShardRegion.Passivate
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, RecoveryCompleted}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import akka.util.Timeout
-import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.CustomerWorkerActor._
-import com.betc.danon.game.actors.GameWorkerActor.{GameParticipationEvent, GameStopCmd}
+import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
 import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GameStatus}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateResponse, ParticipationStatus}
@@ -22,6 +22,7 @@ import com.betc.danon.game.models.PrizeDomain.PrizeType
 import com.betc.danon.game.models.{Event, GameEntity}
 import com.betc.danon.game.utils.HttpSupport._
 import com.betc.danon.game.utils.{ActorUtil, JournalReader}
+import com.betc.danon.game.{Config, Repository}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -29,23 +30,37 @@ import scala.concurrent.duration._
 
 object CustomerWorkerActor {
 
-  def props(id: String)(implicit repository: Repository, materializer: ActorMaterializer, journalReader: JournalReader) = Props(new CustomerWorkerActor(id))
+  def props(gameActor: ActorRef)(implicit repository: Repository, materializer: ActorMaterializer, journalReader: JournalReader) = Props(new CustomerWorkerActor(gameActor))
 
-  def name(id: String) = s"customer-$id"
+  val typeName: String = "customer"
+
+  val extractEntityId: ShardRegion.ExtractEntityId = {
+    case msg: CustomerCmd => (s"${msg.customerId.toString}", msg)
+    case msg: CustomerQry => (s"${msg.customerId.toString}", msg)
+  }
+
+  val extractShardId: ShardRegion.ExtractShardId = {
+    case msg: CustomerQry => s"$typeName-${math.abs(msg.customerId.hashCode()) % Config.Cluster.shardCount}"
+    case msg: CustomerCmd => s"$typeName-${math.abs(msg.customerId.hashCode()) % Config.Cluster.shardCount}"
+  }
 
 
   // Query
-  sealed trait CustomerQuery { def customerId: String}
+  sealed trait CustomerQry {
+    def customerId: String
+  }
 
-  case class CustomerGetParticipationQuery(customerId: String, gameIds: Seq[UUID]) extends CustomerQuery
+  case class CustomerGetParticipationQry(customerId: String, gameIds: Seq[UUID]) extends CustomerQry
 
-  case class CustomerGetGamesQuery(countryCode: String, customerId: String, tags: Seq[String], codes: Seq[String]) extends CustomerQuery
+  case class CustomerGetGamesQry(countryCode: String, customerId: String, tags: Seq[String], codes: Seq[String]) extends CustomerQry
 
 
   // Cmd
-  sealed trait CustomerCmd { def customerId: String}
+  sealed trait CustomerCmd {
+    def customerId: String
+  }
 
-  case object CustomerStopCmd
+  case class CustomerStopCmd(customerId: String) extends CustomerCmd
 
   case class CustomerReloadCmd(customerId: String) extends CustomerCmd
 
@@ -130,14 +145,34 @@ object CustomerWorkerActor {
 
 }
 
-class CustomerWorkerActor(customerId: String)(implicit val repository: Repository, val materializer: ActorMaterializer, val journalReader: JournalReader) extends PersistentActor with ActorLogging {
+class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Repository, val materializer: ActorMaterializer, val journalReader: JournalReader) extends PersistentActor with ActorLogging {
 
   import akka.pattern.pipe
   import context.dispatcher
 
-  context.setReceiveTimeout(15.minutes)
+  context.setReceiveTimeout(1.minutes)
 
-  var participations: Seq[CustomerParticipationState] = Seq.empty[CustomerParticipationState]
+
+  //override def persistenceId: String =  self.path.name
+  override def persistenceId: String = s"$typeName-${self.path.name}"
+
+  val customerId: String = self.path.name
+
+
+  override def postRestart(reason: Throwable): Unit = {
+    super.postRestart(reason)
+    log.info(s">> RESTART ACTOR <${self.path.parent.name}-${self.path.name}> : ${reason.getMessage}")
+  }
+
+  override def preStart(): Unit = {
+    super.preStart
+    log.info(s">> START ACTOR <${self.path.parent.name}-${self.path.name}>")
+  }
+
+  override def postStop(): Unit = {
+    super.postStop
+    log.info(s">> STOP ACTOR <${self.path.parent.name}-${self.path.name}>")
+  }
 
 
   override def receiveRecover: Receive = {
@@ -175,8 +210,11 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
 
   override def receiveCommand: Receive = {
 
-    case CustomerGetParticipationQuery(_, gameIds) => try {
+    case CustomerGetParticipationQry(_, gameIds) => try {
       sender() ! participations.filter(p => gameIds.contains(p.gameId))
+    } catch {
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
 
@@ -190,7 +228,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
           .runWith(Sink.seq)
 
         participations <- {
-          journalReader.currentEventsByPersistenceId(s"CUSTOMER-${customerId.toUpperCase}")
+          journalReader.currentEventsByPersistenceId(persistenceId)
             .map(_.event)
             .collect {
               case event: CustomerParticipated => event
@@ -214,7 +252,7 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
     }
 
 
-    case CustomerGetGamesQuery(countryCode, _, tags, codes) => try {
+    case CustomerGetGamesQry(countryCode, _, tags, codes) => try {
       repository.game
         .findByTagsAndCodes(tags, codes).filter(g => g.countryCode == countryCode.toUpperCase && g.status == GameStatus.Activated)
         .runWith(Sink.seq)
@@ -292,7 +330,8 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
       }
       else {
         implicit val timeout: Timeout = Timeout(1.minutes)
-        Await.result(getOrCreateGameWorkerActor(cmd.game.id) ? GameWorkerActor.GamePlayCmd(
+        Await.result(gameActor ? GameWorkerActor.GamePlayCmd(
+          gameId = cmd.game.id,
           country_code = cmd.countryCode,
           customerId = cmd.customerId,
           transaction_code = cmd.transaction_code,
@@ -453,16 +492,15 @@ class CustomerWorkerActor(customerId: String)(implicit val repository: Repositor
     }
 
 
-    case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = CustomerStopCmd)
+    case _: ReceiveTimeout =>
+      context.parent ! Passivate(stopMessage = CustomerStopCmd(customerId))
 
-    case GameStopCmd ⇒ context.stop(self)
+    case _: CustomerStopCmd =>
+      context.stop(self)
   }
 
-  override def persistenceId: String = s"CUSTOMER-${customerId.toUpperCase}"
 
-
-  private def getOrCreateGameWorkerActor(id: UUID): ActorRef = context.child(GameWorkerActor.name(id))
-    .getOrElse(context.actorOf(GameWorkerActor.props(id), GameWorkerActor.name(id)))
+  var participations: Seq[CustomerParticipationState] = Seq.empty[CustomerParticipationState]
 
   private def hasParticipationDependencies(game: Game): Boolean = !Some(game.parents).filter(_.nonEmpty).forall(_.exists(parent => participations.exists(_.gameId == parent)))
 

@@ -5,13 +5,10 @@ import java.time.ZoneId
 import javax.ws.rs.Path
 
 import akka.NotUsed
-import akka.actor.ActorRef
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.{Directives, Route}
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
-import com.betc.danon.game.Config
 import com.betc.danon.game.actors.BoGameActor._
 import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipated
 import com.betc.danon.game.models.GameDto._
@@ -20,6 +17,7 @@ import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.utils.AuthenticateSupport.UserContext
 import com.betc.danon.game.utils.HttpSupport.ErrorResponse
 import com.betc.danon.game.utils.{AuthenticateSupport, CorsSupport, DefaultJsonSupport}
+import com.betc.danon.game.{Config, RouteContext}
 import io.swagger.annotations._
 
 import scala.concurrent.ExecutionContext
@@ -40,10 +38,9 @@ trait BoGameRoute
 
   import akka.pattern.ask
 
-  implicit val ec: ExecutionContext
-  implicit val materializer: ActorMaterializer
   private implicit val timeout: Timeout = Config.Api.timeout
-  implicit val gameActor: ActorRef
+  implicit val ec: ExecutionContext
+  implicit val context: RouteContext
 
   def gameRoute: Route = pathPrefix("bo" / "games") {
     corsHandler(AuthenticateSupport.asAuthenticated { implicit uc: UserContext =>
@@ -77,7 +74,7 @@ trait BoGameRoute
     get {
       parameters('type.?, 'status.?) { (typesOptional, statusOptional) =>
         complete {
-          (gameActor ? GameListQuery(uc = uc, types = typesOptional, status = statusOptional)).mapTo[Source[GameForListDto, NotUsed]]
+          (context.boGameActor ? GameListQuery(uc = uc, types = typesOptional, status = statusOptional)).mapTo[Source[GameForListDto, NotUsed]]
         }
       }
     }
@@ -100,7 +97,7 @@ trait BoGameRoute
   ))
   def game_get(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID) { id =>
     get {
-      onSuccess(gameActor ? GameGetQuery(uc, id)) {
+      onSuccess(context.boGameActor ? GameGetQuery(uc, id)) {
         case response: GameResponse => complete(StatusCodes.OK, response)
       }
     }
@@ -122,7 +119,7 @@ trait BoGameRoute
   def game_create(implicit @ApiParam(hidden = true) uc: UserContext): Route = pathEndOrSingleSlash {
     post {
       entity(as[GameCreateRequest]) { request =>
-        onSuccess(gameActor ? GameCreateCmd(uc, request)) {
+        onSuccess(context.boGameActor ? GameCreateCmd(uc, request)) {
           case response: GameResponse => complete(StatusCodes.OK, response)
         }
       }
@@ -148,7 +145,7 @@ trait BoGameRoute
   def game_update(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID) { id =>
     put {
       entity(as[GameUpdateRequest]) { request =>
-        onSuccess(gameActor ? GameUpdateCmd(uc, id, request)) {
+        onSuccess(context.boGameActor ? GameUpdateCmd(uc, id, request)) {
           case response: GameResponse => complete(StatusCodes.OK, response)
         }
       }
@@ -172,7 +169,7 @@ trait BoGameRoute
   ))
   def game_delete(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID) { id =>
     delete {
-      onSuccess(gameActor ? GameDeleteCmd(uc, id)) {
+      onSuccess(context.boGameActor ? GameDeleteCmd(uc, id)) {
         case None => complete(StatusCodes.OK, None)
       }
     }
@@ -195,7 +192,7 @@ trait BoGameRoute
   ))
   def game_activate(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "action-activate") { id =>
     put {
-      onSuccess(gameActor ? GameActivateCmd(uc, id)) {
+      onSuccess(context.boGameActor ? GameActivateCmd(uc, id)) {
         case None => complete(StatusCodes.OK, None)
       }
     }
@@ -218,7 +215,7 @@ trait BoGameRoute
   ))
   def game_archive(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "action-archive") { id =>
     put {
-      onSuccess(gameActor ? GameArchiveCmd(uc, id)) {
+      onSuccess(context.boGameActor ? GameArchiveCmd(uc, id)) {
         case None => complete(StatusCodes.OK, None)
       }
     }
@@ -249,7 +246,7 @@ trait BoGameRoute
   def game_getPrizes(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "prizes") { id =>
     get {
       complete {
-        (gameActor ? GameListPrizesQuery(uc, id)).mapTo[Seq[GamePrize]]
+        (context.boGameActor ? GameListPrizesQuery(uc, id)).mapTo[Seq[GamePrize]]
       }
     }
   }
@@ -272,7 +269,7 @@ trait BoGameRoute
   def game_addPrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "prizes") { id =>
     post {
       entity(as[GamePrizeCreateRequest]) { request =>
-        onSuccess(gameActor ? GameAddPrizeCmd(uc, id, request)) {
+        onSuccess(context.boGameActor ? GameAddPrizeCmd(uc, id, request)) {
           case response: GamePrize => complete(StatusCodes.OK, response)
         }
       }
@@ -298,7 +295,7 @@ trait BoGameRoute
   def game_updatePrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "prizes" / JavaUUID) { (id, prizeId) =>
     put {
       entity(as[GamePrizeCreateRequest]) { request =>
-        onSuccess(gameActor ? GameUpdatePrizeCmd(uc, id, prizeId, request)) {
+        onSuccess(context.boGameActor ? GameUpdatePrizeCmd(uc, id, prizeId, request)) {
           case response: GamePrize => complete(StatusCodes.OK, response)
         }
       }
@@ -323,7 +320,7 @@ trait BoGameRoute
   ))
   def game_deletePrize(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "prizes" / JavaUUID) { (id, prizeId) =>
     delete {
-      onSuccess(gameActor ? GameRemovePrizeCmd(uc, id, prizeId)) {
+      onSuccess(context.boGameActor ? GameRemovePrizeCmd(uc, id, prizeId)) {
         case None => complete(StatusCodes.OK, None)
       }
     }
@@ -353,7 +350,7 @@ trait BoGameRoute
   ))
   def game_downloadInstantwins(implicit @ApiParam(hidden = true) uc: UserContext): Route = path(JavaUUID / "instantwins") { id =>
     get {
-      onSuccess(gameActor ? GameGetInstantwinQuery(uc, id)) {
+      onSuccess(context.boGameActor ? GameGetInstantwinQuery(uc, id)) {
         case (game: Game, source: Source[_, _]) => complete {
           val mapStream = Source.single("activate_date\tprize_id\tprize_type\tprize_label\tprize_title\tprize_points\tprize_vendor_code\tprize_face_value\n")
             .concat(source.map(_.asInstanceOf[InstantwinExtended]).map(t =>
@@ -392,7 +389,7 @@ trait BoGameRoute
 
     get {
       parameter('customer_id.?) { customerIdOptional =>
-        onSuccess(gameActor ? GameGetParticipationsQuery(uc, id, customerIdOptional)) {
+        onSuccess(context.boGameActor ? GameGetParticipationsQuery(uc, id, customerIdOptional)) {
           case (game: Game, source: Source[_, _]) => complete {
             val mapStream = Source.single("participation_date\tparticipation_id\tparticipation_status\tcustomer_id\tean\tmeta\tprize_id\tprize_type\tprize_label\tprize_title\tprize_points\tprize_vendor_code\tprize_face_value\n")
               .concat(source.map(_.asInstanceOf[CustomerParticipated]).map(t =>
