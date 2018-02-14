@@ -16,8 +16,7 @@ import com.betc.danon.game.actors.CustomerWorkerActor._
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
 import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GameStatus}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
-import com.betc.danon.game.models.ParticipationDto.{CustomerGameAvailability, CustomerGameResponse, CustomerParticipateResponse, ParticipationStatus}
-import com.betc.danon.game.models.PrizeDao.PrizeResponse
+import com.betc.danon.game.models.ParticipationDto.{CustomerGameAvailability, CustomerGameResponse, CustomerParticipateResponse, CustomerPrizeResponse, ParticipationStatus}
 import com.betc.danon.game.models.PrizeDomain.PrizeType
 import com.betc.danon.game.models.{Event, GameEntity}
 import com.betc.danon.game.utils.HttpSupport._
@@ -237,7 +236,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
               id = event.participationId,
               date = event.timestamp,
               status = participations.find(_.participationId == event.participationId).map(_.participationStatus).getOrElse(ParticipationStatus.lost),
-              prize = event.instantwin.map(i => new PrizeResponse(i.prize))
+              prize = event.instantwin.map(i => new CustomerPrizeResponse(i.prize))
             ))
             .runWith(Sink.seq)
         }
@@ -351,7 +350,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
               id = event.participationId,
               date = event.timestamp,
               status = provideStatus(event.instantwin),
-              prize = event.instantwin.map(p => new PrizeResponse(p.prize))
+              prize = event.instantwin.map(p => new CustomerPrizeResponse(p.prize))
             )
           }
 

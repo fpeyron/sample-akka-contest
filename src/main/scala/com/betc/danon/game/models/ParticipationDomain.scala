@@ -5,6 +5,7 @@ import java.util.UUID
 
 import com.betc.danon.game.models.GameEntity.{GameInputType, GameType}
 import com.betc.danon.game.models.PrizeDao.{PrizeJsonSupport, PrizeResponse}
+import com.betc.danon.game.models.PrizeDomain.{Prize, PrizeType}
 import com.betc.danon.game.utils.DefaultJsonSupport
 import io.swagger.annotations.ApiModelProperty
 import spray.json.RootJsonFormat
@@ -16,6 +17,7 @@ object ParticipationDto {
   trait PartnerJsonSupport extends DefaultJsonSupport with PrizeJsonSupport {
     implicit val customerParticipationStatusType: RootJsonFormat[ParticipationStatus.Value] = enumFormat(ParticipationStatus)
     implicit val customerParticipateRequest: RootJsonFormat[CustomerParticipateRequest] = jsonFormat4(CustomerParticipateRequest)
+    implicit val customerPrizeResponse: RootJsonFormat[CustomerPrizeResponse] = jsonFormat8(CustomerPrizeResponse)
     implicit val customerParticipateResponse: RootJsonFormat[CustomerParticipateResponse] = jsonFormat4(CustomerParticipateResponse)
     implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat12(CustomerGameResponse)
     implicit val customerConfirmParticipationRequest: RootJsonFormat[CustomerConfirmParticipationRequest] = jsonFormat1(CustomerConfirmParticipationRequest)
@@ -55,8 +57,29 @@ object ParticipationDto {
                                           @ApiModelProperty(position = 3, value = "status", required = true, example = "OTHER", allowableValues = "REJECTED,LOST,WIN")
                                           status: ParticipationStatus.Value,
                                           @ApiModelProperty(position = 4, value = "prize", required = false)
-                                          prize: Option[PrizeResponse] = None
+                                          prize: Option[CustomerPrizeResponse] = None
                                         )
+
+  case class CustomerPrizeResponse(
+                                    @ApiModelProperty(position = 2, value = "type", dataType = "string", required = true, example = "POINTS", allowableValues = "POINTS,GIFTSHOP,GIFT")
+                                    `type`: PrizeType.Value,
+                                    @ApiModelProperty(position = 3, value = "title", example = "My new Prize")
+                                    title: Option[String] = None,
+                                    @ApiModelProperty(position = 4, value = "label", example = "My new label prize")
+                                    label: String,
+                                    @ApiModelProperty(position = 5, value = "description", example = "My new description prize")
+                                    description: Option[String] = None,
+                                    @ApiModelProperty(position = 5, value = "picture", example = "myPicture.jpg")
+                                    picture: Option[String] = None,
+                                    @ApiModelProperty(position = 7, value = "gift vendor code", example = "VENDOR")
+                                    vendor_code: Option[String] = None,
+                                    @ApiModelProperty(position = 8, value = "giftshop face value", example = "200")
+                                    face_value: Option[Int] = None,
+                                    @ApiModelProperty(position = 9, value = "points", example = "200")
+                                    points: Option[Int]
+                                  ) {
+    def this(prize: Prize) = this(`type` = prize.`type`, title = prize.title, label = prize.label, description = prize.description, picture = prize.picture, vendor_code = prize.vendorCode, face_value = prize.faceValue, points = prize.points)
+  }
 
 
   case class CustomerGameResponse(
