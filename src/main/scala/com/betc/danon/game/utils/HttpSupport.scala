@@ -4,6 +4,7 @@ import java.util.UUID
 
 import akka.http.scaladsl.model.{HttpResponse, StatusCode, StatusCodes}
 import akka.http.scaladsl.server._
+import com.betc.danon.game.models.GameEntity.GameLimit
 import com.betc.danon.game.models.ParticipationDto.ParticipationStatus
 import com.betc.danon.game.utils.HttpSupport._
 import spray.json._
@@ -33,11 +34,11 @@ object HttpSupport {
 
   case class ParticipationCloseException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationClosedException", message = s"game with code : $code is finished")
 
-  case class ParticipationDependenciesException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationDependenciesException", message = s"Participations dependencies fail for game with code : $code")
+  case class ParticipationDependenciesException(code: String, limits: Seq[UUID]) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationDependenciesException", message = s"Participations dependencies fail for game with code : $code")
 
-  case class ParticipationLimitException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationLimitException", message = s"Limit participations is reached from game with code : $code")
+  case class ParticipationLimitException(code: String, limits: Seq[GameLimit]) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationLimitException", message = s"Limit participations is reached from game with code : $code")
 
-  case class ParticipationEanException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationEanException", message = s"Ean is not accepted for game with code : $code")
+  case class ParticipationEanException(code: String, ean: Option[String]) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationEanException", message = s"Ean is not accepted for game with code : $code")
 
   case class ParticipationNotFoundException(customerId: String, participationId: String) extends FunctionalException(statusCode = StatusCodes.NotFound, `type` = "ParticipationNotFoundException", message = s"participation not found for customer $customerId : $participationId")
 

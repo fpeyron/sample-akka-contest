@@ -9,6 +9,7 @@ import akka.stream.scaladsl.Source
 import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatus, GameType}
 import com.betc.danon.game.utils.ActorUtil
 import com.betc.danon.game.utils.CustomMySqlProfile.api._
+import com.betc.danon.game.utils.StreamUtil.AccumulateWhileUnchanged
 import slick.ast.BaseTypedType
 import slick.jdbc.JdbcType
 import slick.sql.SqlProfile.ColumnOption.SqlType
@@ -111,9 +112,15 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
         gameTableQuery
           .filter(game => tags.map(tag => game.tags.getOrElse("") like s"%$tag%").reduceLeftOption(_ && _).getOrElse(true: Rep[Boolean]))
           .filter(game => if (codes.nonEmpty) game.code.inSetBind(codes) else true: Rep[Boolean])
-          .to[List].result
+          .joinLeft(gameLimitTableQuery).on(_.id === _.game_id)
+          .to[List]
+          .result
       }
+        .mapResult(r => r._1.copy(limits = r._2.map(_._2).toSeq))
     }
+      .via(new AccumulateWhileUnchanged(_.id))
+      .map(l => l.head.copy(limits = l.map(_.limits).reduceLeft(_ ++ _)))
+
 
     def fetchExtendedBy(
                          country_code: Option[String] = None,
@@ -132,16 +139,9 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
         query.result
       }.mapResult(r => r._1.copy(limits = r._2.map(_._2).toSeq))
     }
+      .via(new AccumulateWhileUnchanged(_.id))
+      .map(l => l.head.copy(limits = l.map(_.limits).reduceLeft(_ ++ _)))
 
-    /*
-            .map(_.groupBy(t => t._1)
-            .map(t => (
-              t._1,
-              t._2.flatMap(_._2).map(_._2)
-            ))
-            .map(t => t._1.copy(limits = t._2))
-          )
-          */
 
     def fetchBy(
                  country_code: Option[String] = None,
@@ -340,7 +340,7 @@ private[repositories] trait GameTable {
       Some(g.tags).find(_.nonEmpty).map(_.mkString(","))
     )
 
-    def idx_code = index("idx_code", (code), unique = false)
+    def idx_code = index("idx_code", code, unique = false)
   }
 
 }
@@ -385,7 +385,7 @@ private[repositories] trait GameLimitTable {
 
     def extract(t: (UUID, GameLimit)) = Some((t._1, t._2.`type`, t._2.unit, t._2.unit_value, t._2.value))
 
-    def idx_game_id = index("idx_game_id", (game_id), unique = false)
+    def idx_game_id = index("idx_game_id", game_id, unique = false)
   }
 
 }
@@ -432,7 +432,7 @@ private[repositories] trait GamePrizeTable {
 
     def extract(t: (UUID, GamePrize)) = Some((t._1, t._2.id, t._2.prize_id, t._2.start_date, t._2.end_date, t._2.quantity))
 
-    def idx_game_id = index("idx_game_id", (game_id), unique = false)
+    def idx_game_id = index("idx_game_id", game_id, unique = false)
   }
 
 }

@@ -150,8 +150,6 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
   import akka.pattern.pipe
   import context.dispatcher
 
-  context.setReceiveTimeout(1.minutes)
-
 
   //override def persistenceId: String =  self.path.name
   override def persistenceId: String = s"$typeName-${self.path.name}"
@@ -204,6 +202,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
 
     case RecoveryCompleted =>
+      context.setReceiveTimeout(1.minutes)
 
   }
 
@@ -271,7 +270,9 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
                 participation_count = participations.count(_.gameId == game.id),
                 instant_win_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.win),
                 instant_toconfirm_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.toConfirm),
-                availability = if (hasParticipationDependencies(game)) CustomerGameAvailability.unavailableDependency else CustomerGameAvailability.available
+                availability = if (getDependenciesInFail(game).nonEmpty) CustomerGameAvailability.unavailableDependency
+                else if (getParticipationLimitsInFail(game).nonEmpty) CustomerGameAvailability.unavailableLimit
+                else CustomerGameAvailability.available
               ))
         }.pipeTo(sender)
 
@@ -301,23 +302,24 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       }
 
       // check Dependencies
-      if (hasParticipationDependencies(game = cmd.game)) {
-        throw ParticipationDependenciesException(code = cmd.game.code)
+      val dependenciesInFail = getDependenciesInFail(game = cmd.game)
+      if (dependenciesInFail.nonEmpty) {
+        throw ParticipationDependenciesException(code = cmd.game.code, limits = dependenciesInFail)
       }
 
       // check Limits
       val participationLimitsInFail = getParticipationLimitsInFail(game = cmd.game)
-      if (participationLimitsInFail.exists(_.`type` == GameLimitType.Participation)) {
-        throw ParticipationLimitException(code = cmd.game.code)
+      if (participationLimitsInFail.nonEmpty) {
+        throw ParticipationLimitException(code = cmd.game.code, limits = participationLimitsInFail)
       }
 
       // check Ean
       if (cmd.game.inputType == GameInputType.Pincode && !cmd.ean.exists(e => cmd.game.inputEans.contains(e))) {
-        throw ParticipationEanException(code = cmd.game.code)
+        throw ParticipationEanException(code = cmd.game.code, ean = cmd.ean)
       }
 
       // Return Lost if some GameLimit is reached
-      (if (participationLimitsInFail.exists(_.`type` == GameLimitType.Win)) {
+      (if (getWinLimitsInFail(cmd.game).nonEmpty) {
         GameParticipationEvent(
           timestamp = Instant.now,
           participationId = UUID.randomUUID(),
@@ -503,28 +505,31 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
   var participations: Seq[CustomerParticipationState] = Seq.empty[CustomerParticipationState]
 
-  private def hasParticipationDependencies(game: Game): Boolean = !Some(game.parents).filter(_.nonEmpty).forall(_.exists(parent => participations.exists(_.gameId == parent)))
+  private def getDependenciesInFail(game: Game): Seq[UUID] = game.parents.filter(parent => !participations.exists(_.gameId == parent))
 
-  private def getParticipationLimitsInFail(game: Game): Seq[GameLimit] = game.limits.filter { limit =>
+  private def getParticipationLimitsInFail(game: Game): Seq[GameLimit] = game.limits.filter(_.`type` == GameLimitType.Participation).filter { limit =>
     val now = Instant.now
     limit.unit match {
-      case GameLimitUnit.Game if limit.`type` == GameLimitType.Participation =>
+      case GameLimitUnit.Game =>
         participations.count(p => p.gameId == game.id) >= limit.value
-      case GameLimitUnit.Game if limit.`type` == GameLimitType.Win =>
-        participations.count(p => p.gameId == game.id && Seq(ParticipationStatus.toConfirm, ParticipationStatus.pending, ParticipationStatus.win).contains(p.participationStatus)) >= limit.value
-
-      case GameLimitUnit.Second if limit.`type` == GameLimitType.Participation =>
+      case GameLimitUnit.Second =>
         val limitDate = now.minusSeconds(limit.unit_value.getOrElse(1).toLong).minusNanos(1)
         participations.count(p => p.gameId == game.id && p.participationDate.isAfter(limitDate)) >= limit.value
-      case GameLimitUnit.Second if limit.`type` == GameLimitType.Win =>
-        val limitDate = now.minusSeconds(limit.unit_value.getOrElse(1).toLong).minusNanos(1)
-        participations.count(p => p.gameId == game.id && Seq(ParticipationStatus.toConfirm, ParticipationStatus.pending, ParticipationStatus.win).contains(p.participationStatus) && p.participationDate.isAfter(limitDate)) >= limit.value
-
-      case GameLimitUnit.Day if limit.`type` == GameLimitType.Participation =>
+      case GameLimitUnit.Day =>
         val limitDate = now.atZone(ZoneId.of(game.timezone)).truncatedTo(ChronoUnit.DAYS).minusDays(limit.unit_value.getOrElse(1).toLong).minusNanos(1).toInstant
         participations.count(p => p.gameId == game.id && p.participationDate.isAfter(limitDate)) >= limit.value
+    }
+  }
 
-      case GameLimitUnit.Day if limit.`type` == GameLimitType.Win =>
+  private def getWinLimitsInFail(game: Game): Seq[GameLimit] = game.limits.filter(_.`type` == GameLimitType.Win).filter { limit =>
+    val now = Instant.now
+    limit.unit match {
+      case GameLimitUnit.Game =>
+        participations.count(p => p.gameId == game.id && Seq(ParticipationStatus.toConfirm, ParticipationStatus.pending, ParticipationStatus.win).contains(p.participationStatus)) >= limit.value
+      case GameLimitUnit.Second =>
+        val limitDate = now.minusSeconds(limit.unit_value.getOrElse(1).toLong).minusNanos(1)
+        participations.count(p => p.gameId == game.id && Seq(ParticipationStatus.toConfirm, ParticipationStatus.pending, ParticipationStatus.win).contains(p.participationStatus) && p.participationDate.isAfter(limitDate)) >= limit.value
+      case GameLimitUnit.Day =>
         val limitDate = now.atZone(ZoneId.of(game.timezone)).truncatedTo(ChronoUnit.DAYS).minusDays(limit.unit_value.getOrElse(1).toLong).minusNanos(1).toInstant
         participations.count(p => p.gameId == game.id && Seq(ParticipationStatus.toConfirm, ParticipationStatus.pending, ParticipationStatus.win).contains(p.participationStatus) && p.participationDate.isAfter(limitDate)) >= limit.value
     }
