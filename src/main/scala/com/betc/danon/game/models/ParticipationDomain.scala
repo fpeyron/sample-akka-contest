@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import com.betc.danon.game.models.GameEntity.{GameInputType, GameType}
-import com.betc.danon.game.models.PrizeDao.{PrizeJsonSupport, PrizeResponse}
+import com.betc.danon.game.models.PrizeDao.PrizeJsonSupport
 import com.betc.danon.game.models.PrizeDomain.{Prize, PrizeType}
 import com.betc.danon.game.utils.DefaultJsonSupport
 import io.swagger.annotations.ApiModelProperty
