@@ -16,7 +16,7 @@ import com.betc.danon.game.actors.CustomerWorkerActor._
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
 import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GameStatus}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
-import com.betc.danon.game.models.ParticipationDto.{CustomerGameResponse, CustomerParticipateResponse, ParticipationStatus}
+import com.betc.danon.game.models.ParticipationDto.{CustomerGameAvailability, CustomerGameResponse, CustomerParticipateResponse, ParticipationStatus}
 import com.betc.danon.game.models.PrizeDao.PrizeResponse
 import com.betc.danon.game.models.PrizeDomain.PrizeType
 import com.betc.danon.game.models.{Event, GameEntity}
@@ -270,7 +270,8 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
                 parents = Some(game.parents.flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty),
                 participation_count = participations.count(_.gameId == game.id),
                 instant_win_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.win),
-                instant_toconfirm_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.toConfirm)
+                instant_toconfirm_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.toConfirm),
+                availability = if (hasParticipationDependencies(game)) CustomerGameAvailability.unavailableDependency else CustomerGameAvailability.available
               ))
         }.pipeTo(sender)
 

@@ -17,7 +17,7 @@ object ParticipationDto {
     implicit val customerParticipationStatusType: RootJsonFormat[ParticipationStatus.Value] = enumFormat(ParticipationStatus)
     implicit val customerParticipateRequest: RootJsonFormat[CustomerParticipateRequest] = jsonFormat4(CustomerParticipateRequest)
     implicit val customerParticipateResponse: RootJsonFormat[CustomerParticipateResponse] = jsonFormat4(CustomerParticipateResponse)
-    implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat11(CustomerGameResponse)
+    implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat12(CustomerGameResponse)
     implicit val customerConfirmParticipationRequest: RootJsonFormat[CustomerConfirmParticipationRequest] = jsonFormat1(CustomerConfirmParticipationRequest)
   }
 
@@ -81,12 +81,21 @@ object ParticipationDto {
                                    @ApiModelProperty(position = 10, value = "win count", required = true, example = "10")
                                    instant_win_count: Int,
                                    @ApiModelProperty(position = 11, value = "toconfirm count", required = true, example = "1")
-                                   instant_toconfirm_count: Int
+                                   instant_toconfirm_count: Int,
+                                   @ApiModelProperty(position = 12, value = "availability", dataType = "string", required = true, example = "AVAILABLE", allowableValues = "AVAILABLE,UNAVAILABLE_LIMIT,UNAVAILABLE_DEPENDENCY")
+                                   availability: CustomerGameAvailability.Value
                                  )
 
   case class CustomerConfirmParticipationRequest(
                                                   @ApiModelProperty(position = 1, value = "meta", required = false)
                                                   meta: Option[Map[String, String]] = None
                                                 )
+
+  implicit object CustomerGameAvailability extends Enumeration {
+    val available: CustomerGameAvailability.Value = Value("AVAILABLE")
+    val unavailableLimit: CustomerGameAvailability.Value = Value("UNAVAILABLE_LIMIT")
+    val unavailableDependency: CustomerGameAvailability.Value = Value("UNAVAILABLE_DEPENDENCY")
+    val all = Seq(available, unavailableLimit, unavailableDependency)
+  }
 
 }
