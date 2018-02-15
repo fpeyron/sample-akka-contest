@@ -16,7 +16,7 @@ import com.betc.danon.game.models.InstantwinDomain.Instantwin
 import com.betc.danon.game.repositories.GameExtension
 import com.betc.danon.game.utils.AuthenticateSupport.UserContext
 import com.betc.danon.game.utils.HttpSupport._
-import com.betc.danon.game.utils.JournalReader
+import com.betc.danon.game.utils.{ActorUtil, JournalReader}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -126,7 +126,6 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
         startDate = request.start_date.getOrElse(Instant.now),
         endDate = request.end_date.getOrElse(Instant.now),
         timezone = request.timezone.map(ZoneId.of(_).toString).getOrElse("UTC"),
-        parents = request.parents.getOrElse(Seq.empty),
         inputType = request.input_type.map(GameInputType.withName).getOrElse(GameInputType.Other),
         inputPoint = request.input_point,
         limits = request.limits.getOrElse(Seq.empty)
@@ -134,7 +133,8 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
             `type` = f.`type`.map(GameLimitType.withName).getOrElse(GameLimitType.Participation),
             unit = f.unit.map(GameLimitUnit.withName).getOrElse(GameLimitUnit.Game),
             unit_value = f.unit_value,
-            value = f.value.getOrElse(1)
+            value = f.value.getOrElse(1),
+            parent_id = f.parent_id.flatMap(id => ActorUtil.string2UUID(id))
           )),
         inputEans = request.input_eans.getOrElse(Seq.empty).distinct,
         inputFreecodes = request.input_freecodes.getOrElse(Seq.empty).distinct,
@@ -148,9 +148,12 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       }
 
       // Check existing parent
-      if (game.parents.nonEmpty) {
-        val parentIds = Await.result(repository.game.findByIds(game.parents), Duration.Inf).filter(_.countryCode == uc.country_code).map(_.id)
-        val errors = game.parents.flatMap(p => if (!parentIds.contains(p)) Some("parents", s"GAME_NOT_FOUND : parent should already exists : $p") else None)
+      val parentStringIds: Seq[String] = request.limits.getOrElse(Seq.empty[GameLimitRequest]).filter(_.`type` == GameLimitType.Dependency).flatMap(_.parent_id).distinct
+      val parentIds: Seq[UUID] = parentStringIds.flatMap(ActorUtil.string2UUID)
+
+      if (parentIds.nonEmpty) {
+        val ids = Await.result(repository.game.findByIds(parentIds), Duration.Inf).filter(_.countryCode == uc.country_code).map(_.id.toString)
+        val errors = parentStringIds.flatMap(p => if (!ids.contains(p)) Some("parents", s"GAME_NOT_FOUND : parent should already exists : $p") else None)
         if (errors.nonEmpty) {
           var index = -1
           throw InvalidInputException(fields = errors.map { r => index += 1; s"${r._1}.$index" -> r._2 }.toMap)
@@ -201,14 +204,18 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       }
 
       // Check existing parent
-      if (request.parents.exists(_.nonEmpty)) {
-        val parentIds = Await.result(repository.game.findByIds(request.parents.get), Duration.Inf).filter(_.countryCode == uc.country_code).map(_.id)
-        val errors = request.parents.get.flatMap(p => if (!parentIds.contains(p)) Some(("parent_id", "ENTITY_NOT_FOUND : should already exists")) else None)
+      val parentStringIds: Seq[String] = request.limits.getOrElse(Seq.empty[GameLimitRequest]).filter(_.`type` == GameLimitType.Dependency).flatMap(_.parent_id).distinct
+      val parentIds: Seq[UUID] = parentStringIds.flatMap(ActorUtil.string2UUID)
+
+      if (parentIds.nonEmpty) {
+        val ids = Await.result(repository.game.findByIds(parentIds), Duration.Inf).filter(_.countryCode == uc.country_code).map(_.id.toString)
+        val errors = parentStringIds.flatMap(p => if (!ids.contains(p)) Some("parents", s"GAME_NOT_FOUND : parent should already exists : $p") else None)
         if (errors.nonEmpty) {
           var index = -1
           throw InvalidInputException(fields = errors.map { r => index += 1; s"${r._1}.$index" -> r._2 }.toMap)
         }
       }
+
       // Persist
       val gameToUpdate = Game(
         id = game.get.id,
@@ -220,7 +227,6 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
         startDate = request.start_date.getOrElse(game.get.startDate),
         endDate = request.end_date.getOrElse(game.get.endDate),
         timezone = request.timezone.getOrElse("UTC"),
-        parents = request.parents.getOrElse(game.get.parents),
         inputType = request.input_type.map(GameInputType.withName).getOrElse(GameInputType.Other),
         inputPoint = request.input_point.orElse(game.get.inputPoint),
         limits = request.limits.map(
@@ -258,9 +264,6 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
       // check status
       if (game.get.status != GameStatus.Draft) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
-
-      // Check dependency
-      if (game.get.parents.nonEmpty) throw NotAuthorizedException(id = id, message = "HAS_DEPENDENCIES")
 
       // Delete instantwins
       deleteInstantWins(game.get.id)
@@ -640,6 +643,9 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
     ) ++ Option(
       if (requestLimit.unit.isDefined && requestLimit.unit.get != GameLimitUnit.Game.toString && requestLimit.value.exists(_ < 1))
         (s"limit.$index.value", s"INVALID_VALUE : value and > 0") else null
+    ) ++ Option(
+      if (requestLimit.`type`.contains(GameLimitType.Dependency.toString) && requestLimit.parent_id.isEmpty)
+        (s"limit.$index.game_id", s"MANDATORY_VALUE") else null
     )
   }
 

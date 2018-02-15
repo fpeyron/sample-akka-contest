@@ -256,26 +256,25 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         .findByTagsAndCodes(tags, codes).filter(g => g.countryCode == countryCode.toUpperCase && g.status == GameStatus.Activated)
         .runWith(Sink.seq)
         .map { games =>
-          GameEntity.sortByParent(games.toList)
-            .map(game =>
-              CustomerGameResponse(
-                `type` = game.`type`,
-                code = game.code,
-                title = game.title,
-                start_date = game.startDate,
-                end_date = game.endDate,
-                input_type = game.inputType,
-                input_point = game.inputPoint,
-                parents = Some(game.parents.flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty),
-                participation_count = participations.count(_.gameId == game.id),
-                instant_win_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.win),
-                instant_toconfirm_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.toConfirm),
-                availability = if (getDependenciesInFail(game).nonEmpty) CustomerGameAvailability.unavailableDependency
-                else if (getParticipationLimitsInFail(game).nonEmpty) CustomerGameAvailability.unavailableLimit
-                else CustomerGameAvailability.available
-              ))
+          GameEntity.sortByParent(games.toList).map { game =>
+            CustomerGameResponse(
+              `type` = game.`type`,
+              code = game.code,
+              title = game.title,
+              start_date = game.startDate,
+              end_date = game.endDate,
+              input_type = game.inputType,
+              input_point = game.inputPoint,
+              parents = Some(game.limits.filter(_.`type` == GameLimitType.Dependency).flatMap(_.parent_id).flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty),
+              participation_count = participations.count(_.gameId == game.id),
+              instant_win_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.win),
+              instant_toconfirm_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.toConfirm),
+              availability = if (getDependenciesInFail(game).nonEmpty) CustomerGameAvailability.unavailableDependency
+              else if (getParticipationLimitsInFail(game).nonEmpty) CustomerGameAvailability.unavailableLimit
+              else CustomerGameAvailability.available
+            )
+          }
         }.pipeTo(sender)
-
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
@@ -286,9 +285,9 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       val game = Await.result(repository.game
         .findByTagsAndCodes(Seq.empty, Seq(cmd.gameCode)).filter(g => g.countryCode == cmd.countryCode.toUpperCase && g.status == GameStatus.Activated)
         .runWith(Sink.headOption)
-      , Duration.Inf)
+        , Duration.Inf)
 
-      if(game.isEmpty) {
+      if (game.isEmpty) {
         throw GameRefNotFoundException(country_code = cmd.countryCode, code = cmd.gameCode)
       }
 
@@ -299,6 +298,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
+
 
     case cmd: CustomerParticipateCmd => try {
 
@@ -523,7 +523,19 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
   var participations: Seq[CustomerParticipationState] = Seq.empty[CustomerParticipationState]
 
-  private def getDependenciesInFail(game: Game): Seq[UUID] = game.parents.filter(parent => !participations.exists(_.gameId == parent))
+  private def getDependenciesInFail(game: Game): Seq[GameLimit] = game.limits.filter(_.`type` == GameLimitType.Dependency).filter { limit =>
+    val now = Instant.now
+    limit.unit match {
+      case GameLimitUnit.Game if limit.parent_id.isDefined =>
+        participations.count(p => p.gameId == limit.parent_id.get) < limit.value
+      case GameLimitUnit.Second if limit.parent_id.isDefined =>
+        val limitDate = now.minusSeconds(limit.unit_value.getOrElse(1).toLong).minusNanos(1)
+        participations.count(p => p.gameId == limit.parent_id.get && p.participationDate.isAfter(limitDate)) < limit.value
+      case GameLimitUnit.Day if limit.parent_id.isDefined =>
+        val limitDate = now.atZone(ZoneId.of(game.timezone)).truncatedTo(ChronoUnit.DAYS).minusDays(limit.unit_value.getOrElse(1).toLong).minusNanos(1).toInstant
+        participations.count(p => p.gameId == limit.parent_id.get && p.participationDate.isAfter(limitDate)) < limit.value
+    }
+  }
 
   private def getParticipationLimitsInFail(game: Game): Seq[GameLimit] = game.limits.filter(_.`type` == GameLimitType.Participation).filter { limit =>
     val now = Instant.now

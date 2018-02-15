@@ -232,7 +232,7 @@ trait PartnerRoute
           customerId = customer_id.toUpperCase,
           gameCode = game_code
         )) {
-          case None: Any => complete(StatusCodes.OK, None)
+          case None => complete(StatusCodes.OK, None)
         }
     }
 

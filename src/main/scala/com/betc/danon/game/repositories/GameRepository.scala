@@ -7,7 +7,6 @@ import java.util.UUID
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GamePrize, GameStatus, GameType}
-import com.betc.danon.game.utils.ActorUtil
 import com.betc.danon.game.utils.CustomMySqlProfile.api._
 import com.betc.danon.game.utils.StreamUtil.AccumulateWhileUnchanged
 import slick.ast.BaseTypedType
@@ -279,7 +278,7 @@ private[repositories] trait GameTable {
       s => GameInputType.withName(s)
     )
 
-    override def * = (id, `type`, status, code, parents, country_code, title, start_date, timezone, end_date, input_type, input_point, tags) <> (create, extract)
+    override def * = (id, `type`, status, code, country_code, title, start_date, timezone, end_date, input_type, input_point, tags) <> (create, extract)
 
     def id = column[UUID]("id", O.PrimaryKey)
 
@@ -288,8 +287,6 @@ private[repositories] trait GameTable {
     def status = column[String]("status", O.Length(10, varying = true))
 
     def code = column[String]("code", O.Length(36, varying = true))
-
-    def parents = column[Option[String]]("parents", O.Length(255, varying = true))
 
     def country_code = column[String]("country_code", O.Length(2, varying = true))
 
@@ -307,21 +304,20 @@ private[repositories] trait GameTable {
 
     def tags = column[Option[String]]("tags", O.Length(255, varying = true))
 
-    def create(t: (UUID, String, String, String, Option[String], String, Option[String], Instant, String, Instant, GameInputType.Value, Option[Int], Option[String])) =
+    def create(t: (UUID, String, String, String, String, Option[String], Instant, String, Instant, GameInputType.Value, Option[Int], Option[String])) =
       Game(
         id = t._1,
         `type` = GameType.withName(t._2),
         status = GameStatus.withName(t._3),
         code = t._4,
-        parents = t._5.map(_.split(",").flatMap(ActorUtil.string2UUID).toSeq).getOrElse(Seq.empty),
-        countryCode = t._6,
-        title = t._7,
-        startDate = t._8,
-        timezone = t._9,
-        endDate = t._10,
-        inputType = t._11,
-        inputPoint = t._12,
-        tags = t._13.map(_.split(",").toSeq).getOrElse(Seq.empty)
+        countryCode = t._5,
+        title = t._6,
+        startDate = t._7,
+        timezone = t._8,
+        endDate = t._9,
+        inputType = t._10,
+        inputPoint = t._11,
+        tags = t._12.map(_.split(",").toSeq).getOrElse(Seq.empty)
       )
 
     def extract(g: Game) = Option(
@@ -329,7 +325,6 @@ private[repositories] trait GameTable {
       g.`type`.toString,
       g.status.toString,
       g.code,
-      Some(g.parents).find(_.nonEmpty).map(_.mkString(",")),
       g.countryCode,
       g.title,
       g.startDate,
@@ -367,7 +362,7 @@ private[repositories] trait GameLimitTable {
       s => GameLimitUnit.withName(s)
     )
 
-    override def * = (game_id, `type`, unit, unit_value, value) <> (create, extract)
+    override def * = (game_id, `type`, unit, unit_value, value, parent_id) <> (create, extract)
 
     def game_id = column[UUID]("game_id")
 
@@ -381,9 +376,11 @@ private[repositories] trait GameLimitTable {
 
     def value = column[Int]("value")
 
-    def create(t: (UUID, GameLimitType.Value, GameLimitUnit.Value, Option[Int], Int)): (UUID, GameLimit) = (t._1, GameLimit(`type` = t._2, unit = t._3, unit_value = t._4, value = t._5))
+    def parent_id = column[Option[UUID]]("parent_id")
 
-    def extract(t: (UUID, GameLimit)) = Some((t._1, t._2.`type`, t._2.unit, t._2.unit_value, t._2.value))
+    def create(t: (UUID, GameLimitType.Value, GameLimitUnit.Value, Option[Int], Int, Option[UUID])): (UUID, GameLimit) = (t._1, GameLimit(`type` = t._2, unit = t._3, unit_value = t._4, value = t._5, parent_id = t._6))
+
+    def extract(t: (UUID, GameLimit)) = Some((t._1, t._2.`type`, t._2.unit, t._2.unit_value, t._2.value, t._2.parent_id))
 
     def idx_game_id = index("idx_game_id", game_id, unique = false)
   }

@@ -34,7 +34,7 @@ object HttpSupport {
 
   case class ParticipationCloseException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationClosedException", message = s"game with code : $code is finished")
 
-  case class ParticipationDependenciesException(code: String, limits: Seq[UUID]) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationDependenciesException", message = s"Participations dependencies fail for game with code : $code")
+  case class ParticipationDependenciesException(code: String, limits: Seq[GameLimit]) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationDependenciesException", message = s"Participations dependencies fail for game with code : $code")
 
   case class ParticipationLimitException(code: String, limits: Seq[GameLimit]) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationLimitException", message = s"Limit participations is reached from game with code : $code")
 
