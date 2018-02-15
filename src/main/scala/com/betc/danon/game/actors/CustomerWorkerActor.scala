@@ -53,6 +53,7 @@ object CustomerWorkerActor {
 
   case class CustomerGetGamesQry(countryCode: String, customerId: String, tags: Seq[String], codes: Seq[String]) extends CustomerQry
 
+  case class CustomerGetParticipationsQry(countryCode: String, customerId: String, tags: Seq[String], codes: Seq[String]) extends CustomerQry
 
   // Cmd
   sealed trait CustomerCmd {
@@ -63,8 +64,6 @@ object CustomerWorkerActor {
 
   case class CustomerReloadCmd(customerId: String) extends CustomerCmd
 
-  case class CustomerGetParticipationsCmd(countryCode: String, customerId: String, tags: Seq[String], codes: Seq[String]) extends CustomerCmd
-
   case class CustomerParticipateCmd(
                                      countryCode: String,
                                      customerId: String,
@@ -73,6 +72,8 @@ object CustomerWorkerActor {
                                      meta: Map[String, String],
                                      game: Game
                                    ) extends CustomerCmd
+
+  case class CustomerResetGameParticipationsCmd(countryCode: String, customerId: String, gameCode: String) extends CustomerCmd
 
   case class CustomerConfirmParticipationCmd(
                                               countryCode: String,
@@ -216,7 +217,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
     }
 
 
-    case CustomerGetParticipationsCmd(countryCode, _, tags, codes) => try {
+    case CustomerGetParticipationsQry(countryCode, _, tags, codes) => try {
 
       val result = for {
 
@@ -280,6 +281,24 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
 
+
+    case cmd: CustomerResetGameParticipationsCmd => try {
+      val game = Await.result(repository.game
+        .findByTagsAndCodes(Seq.empty, Seq(cmd.gameCode)).filter(g => g.countryCode == cmd.countryCode.toUpperCase && g.status == GameStatus.Activated)
+        .runWith(Sink.headOption)
+      , Duration.Inf)
+
+      if(game.isEmpty) {
+        throw GameRefNotFoundException(country_code = cmd.countryCode, code = cmd.gameCode)
+      }
+
+      //todo command CustomerResetGameParticipationsCmd is not implemented
+      sender() ! None
+
+    } catch {
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+    }
 
     case cmd: CustomerParticipateCmd => try {
 

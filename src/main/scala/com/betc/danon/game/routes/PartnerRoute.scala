@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
 import com.betc.danon.game.actors.CustomerWorkerActor
-import com.betc.danon.game.actors.CustomerWorkerActor.{CustomerConfirmParticipationCmd, CustomerGetGamesQry, CustomerInvalidateParticipationCmd, CustomerValidateParticipationCmd}
+import com.betc.danon.game.actors.CustomerWorkerActor._
 import com.betc.danon.game.actors.GameManagerActor.ParticipateCmd
 import com.betc.danon.game.models.ParticipationDto.{CustomerConfirmParticipationRequest, CustomerGameResponse, CustomerParticipateRequest, CustomerParticipateResponse, PartnerJsonSupport}
 import com.betc.danon.game.utils.HttpSupport.ErrorResponse
@@ -34,8 +34,13 @@ trait PartnerRoute
   implicit val timeout: Timeout = Config.Api.timeout
 
   def partnerRoute: Route = pathPrefix("partner") {
-    corsHandler(partner_customer_participate ~ partner_customer_getGames ~ partner_customer_getParticipations ~
-      partner_customer_confirmParticipation ~ partner_customer_validateParticipation ~ partner_customer_invalidateParticipation)
+    corsHandler(
+      partner_customer_getGames ~
+        partner_customer_participate ~ partner_customer_getParticipations ~
+        partner_customer_confirmParticipation ~
+        partner_customer_validateParticipation ~ partner_customer_invalidateParticipation ~
+        partner_customer_resetGameParticipations
+    )
   }
 
 
@@ -207,6 +212,35 @@ trait PartnerRoute
 
   /**
     *
+    * @return customer.resetGameParticipations
+    */
+  @Path("{country_code}/customers/{customer_id}/games/{game_code}/action-reset")
+  @ApiOperation(value = "reset participations for a game", notes = "", nickname = "partner.customer.resetGameParticipations", httpMethod = "PUT")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return nothing"),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "country_code", value = "country code", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "customer_id", value = "customer ID", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "game_code", value = "game_code", required = true, dataType = "string", paramType = "path")
+  ))
+  def partner_customer_resetGameParticipations: Route = path(Segment / "customers" / Segment / "games" / Segment / "action-reset") { (country_code, customer_id, game_code) =>
+    put {
+        onSuccess(context.customerCluster ? CustomerResetGameParticipationsCmd(
+          countryCode = country_code.toUpperCase,
+          customerId = customer_id.toUpperCase,
+          gameCode = game_code
+        )) {
+          case None: Any => complete(StatusCodes.OK, None)
+        }
+    }
+
+  }
+
+
+  /**
+    *
     * @return customer.getParticipations
     */
   @Path("{country_code}/customers/{customer_id}/participations")
@@ -225,7 +259,7 @@ trait PartnerRoute
     get {
       parameters('tags.?, 'codes.?) { (tagsOptional, codesOptional) =>
         onSuccess(context.customerCluster ?
-          CustomerWorkerActor.CustomerGetParticipationsCmd(
+          CustomerWorkerActor.CustomerGetParticipationsQry(
             countryCode = country_code.toUpperCase,
             customerId = customer_id.toUpperCase,
             tags = tagsOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
