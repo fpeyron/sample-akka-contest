@@ -44,6 +44,8 @@ object HttpSupport {
 
   case class ParticipationConfirmException(customerId: String, participationId: String, participationStatus: ParticipationStatus.Value) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationConfirmException", message = s"participation couldn't be confirmed : $participationId")
 
+  case class ParticipationResetException(code: String) extends FunctionalException(statusCode = StatusCodes.Forbidden, `type` = "ParticipationResetException", message = s"gameCode couldn't be reseted : $code")
+
 }
 
 trait HttpSupport extends Directives with DefaultJsonSupport {

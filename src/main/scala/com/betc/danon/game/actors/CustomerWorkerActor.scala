@@ -18,11 +18,13 @@ import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, Ga
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.models.ParticipationDto.{CustomerGameAvailability, CustomerGameResponse, CustomerParticipateResponse, CustomerPrizeResponse, ParticipationStatus}
 import com.betc.danon.game.models.PrizeDomain.PrizeType
-import com.betc.danon.game.models.{Event, GameEntity}
+import com.betc.danon.game.models.{Event, ParticipationDto}
+import com.betc.danon.game.repositories.GameExtension
 import com.betc.danon.game.utils.HttpSupport._
 import com.betc.danon.game.utils.{ActorUtil, JournalReader}
 import com.betc.danon.game.{Config, Repository}
 
+import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
@@ -141,6 +143,13 @@ object CustomerWorkerActor {
                                                meta: Map[String, String] = Map.empty
                                              ) extends CustomerEvent
 
+  case class CustomerParticipationReseted(
+                                           timestamp: Instant = Instant.now,
+                                           gameId: UUID,
+                                           countryCode: String,
+                                           customerId: String
+                                         ) extends CustomerEvent
+
   case class CustomerParticipationState(participationId: UUID, gameId: UUID, countryCode: String, participationDate: Instant, participationStatus: ParticipationStatus.Value)
 
 }
@@ -175,34 +184,9 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
   override def receiveRecover: Receive = {
 
-    case event: CustomerParticipated =>
-      participations = participations :+
-        CustomerParticipationState(
-          participationId = event.participationId,
-          gameId = event.gameId,
-          countryCode = event.countryCode,
-          participationDate = event.timestamp,
-          participationStatus = provideStatus(event.instantwin)
-        )
+    case event: CustomerEvent => applyEvent(event)
 
-    case event: CustomerParticipationConfirmed =>
-      participations = participations.filterNot(_.participationId == event.participationId) :+
-        participations.find(_.participationId == event.participationId)
-          .map(_.copy(participationStatus = ParticipationStatus.win)).orNull
-
-    case event: CustomerParticipationValidated =>
-      participations = participations.filterNot(_.participationId == event.participationId) :+
-        participations.find(_.participationId == event.participationId)
-          .map(_.copy(participationStatus = ParticipationStatus.win)).orNull
-
-    case event: CustomerParticipationInvalidated =>
-      participations = participations.filterNot(_.participationId == event.participationId) :+
-        participations.find(_.participationId == event.participationId)
-          .map(_.copy(participationStatus = ParticipationStatus.lost)).orNull
-
-
-    case RecoveryCompleted =>
-      context.setReceiveTimeout(1.minutes)
+    case RecoveryCompleted => context.setReceiveTimeout(1.minutes)
 
   }
 
@@ -256,24 +240,25 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         .findByTagsAndCodes(tags, codes).filter(g => g.countryCode == countryCode.toUpperCase && g.status == GameStatus.Activated)
         .runWith(Sink.seq)
         .map { games =>
-          GameEntity.sortByParent(games.toList).map { game =>
-            CustomerGameResponse(
-              `type` = game.`type`,
-              code = game.code,
-              title = game.title,
-              start_date = game.startDate,
-              end_date = game.endDate,
-              input_type = game.inputType,
-              input_point = game.inputPoint,
-              parents = Some(game.limits.filter(_.`type` == GameLimitType.Dependency).flatMap(_.parent_id).flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty),
-              participation_count = participations.count(_.gameId == game.id),
-              instant_win_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.win),
-              instant_toconfirm_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.toConfirm),
-              availability = if (getDependenciesInFail(game).nonEmpty) CustomerGameAvailability.unavailableDependency
-              else if (getParticipationLimitsInFail(game).nonEmpty) CustomerGameAvailability.unavailableLimit
-              else CustomerGameAvailability.available
-            )
-          }
+          ParticipationDto.sortByParent(
+            games.map { game =>
+              CustomerGameResponse(
+                `type` = game.`type`,
+                code = game.code,
+                title = game.title,
+                start_date = game.startDate,
+                end_date = game.endDate,
+                input_type = game.inputType,
+                input_point = game.inputPoint,
+                parents = Some(game.limits.filter(_.`type` == GameLimitType.Dependency).flatMap(_.parent_id).flatMap(p => games.find(_.id == p)).map(_.code)).find(_.nonEmpty),
+                participation_count = participations.count(_.gameId == game.id),
+                instant_win_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.win),
+                instant_toconfirm_count = participations.count(p => p.gameId == game.id && p.participationStatus == ParticipationStatus.toConfirm),
+                availability = if (getDependenciesInFail(game).nonEmpty) CustomerGameAvailability.unavailableDependency
+                else if (getParticipationLimitsInFail(game).nonEmpty) CustomerGameAvailability.unavailableLimit
+                else CustomerGameAvailability.available
+              )
+            }.toList)
         }.pipeTo(sender)
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
@@ -291,10 +276,20 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         throw GameRefNotFoundException(country_code = cmd.countryCode, code = cmd.gameCode)
       }
 
-      //todo command CustomerResetGameParticipationsCmd is not implemented
-      sender() ! None
+      if (! game.get.limits.exists(l => l.`type` == GameLimitType.Dependency && l.parent_id.isDefined)) {
+        throw ParticipationResetException(code = cmd.gameCode)
+      }
 
-    } catch {
+      val events: immutable.Seq[CustomerParticipationReseted] = getResetParticipationEvents(game.get).to[collection.immutable.Seq]
+
+      persistAllAsync(events) { _ =>
+        // Return response
+        sender() ! None
+      }
+
+      events.foreach(applyEvent)
+    }
+    catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
     }
@@ -361,8 +356,10 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         ), Duration.Inf)
       }) match {
 
-        case event: GameParticipationEvent =>
-          persistAsync(new CustomerParticipated(event)) { _ =>
+        case e: GameParticipationEvent =>
+          val event = new CustomerParticipated(e)
+
+          persistAsync(event) { _ =>
 
             // Return response
             sender() ! CustomerParticipateResponse(
@@ -374,13 +371,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
           }
 
           // Refresh state list
-          participations = participations :+ CustomerParticipationState(
-            participationId = event.participationId,
-            gameId = event.gameId,
-            countryCode = event.countryCode,
-            participationDate = event.timestamp,
-            participationStatus = provideStatus(event.instantwin)
-          )
+          applyEvent(event)
 
         case _ => sender() ! _
       }
@@ -423,7 +414,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         sender() ! None
       }
       // Refresh state list
-      participations = participations.filterNot(_.participationId == participationId.get) :+ participation.get.copy(participationStatus = ParticipationStatus.win)
+      applyEvent(event)
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
@@ -464,7 +455,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         sender() ! None
       }
       // Refresh state list
-      participations = participations.filterNot(_.participationId == participationId.get) :+ participation.get.copy(participationStatus = ParticipationStatus.win)
+      applyEvent(event)
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
@@ -492,7 +483,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       }
 
       // Return
-      val event = CustomerParticipationValidated(
+      val event = CustomerParticipationInvalidated(
         participationId = participation.get.participationId,
         gameId = participation.get.gameId,
         countryCode = participation.get.countryCode,
@@ -505,7 +496,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         sender() ! None
       }
       // Refresh state list
-      participations = participations.filterNot(_.participationId == participationId.get) :+ participation.get.copy(participationStatus = ParticipationStatus.lost)
+      applyEvent(event)
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
@@ -513,15 +504,32 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
     }
 
 
-    case _: ReceiveTimeout =>
-      context.parent ! Passivate(stopMessage = CustomerStopCmd(customerId))
+    case _: ReceiveTimeout => context.parent ! Passivate(stopMessage = CustomerStopCmd(customerId))
 
-    case _: CustomerStopCmd =>
-      context.stop(self)
+    case _: CustomerStopCmd => context.stop(self)
   }
 
 
   var participations: Seq[CustomerParticipationState] = Seq.empty[CustomerParticipationState]
+
+  def applyEvent: CustomerEvent => Unit = {
+    case event: CustomerParticipated =>
+      participations = participations :+ CustomerParticipationState(
+        participationId = event.participationId,
+        gameId = event.gameId,
+        countryCode = event.countryCode,
+        participationDate = event.timestamp,
+        participationStatus = provideStatus(event.instantwin)
+      )
+    case event: CustomerParticipationConfirmed =>
+      participations = participations.filterNot(_.participationId == event.participationId) ++ participations.find(_.participationId == event.participationId).map(_.copy(participationStatus = ParticipationStatus.win))
+    case event: CustomerParticipationValidated =>
+      participations = participations.filterNot(_.participationId == event.participationId) ++ participations.find(_.participationId == event.participationId).map(_.copy(participationStatus = ParticipationStatus.win))
+    case event: CustomerParticipationInvalidated =>
+      participations = participations.filterNot(_.participationId == event.participationId) ++ participations.find(_.participationId == event.participationId).map(_.copy(participationStatus = ParticipationStatus.lost))
+    case event: CustomerParticipationReseted =>
+      participations = participations.filterNot(_.gameId == event.gameId)
+  }
 
   private def getDependenciesInFail(game: Game): Seq[GameLimit] = game.limits.filter(_.`type` == GameLimitType.Dependency).filter { limit =>
     val now = Instant.now
@@ -566,4 +574,35 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
   }
 
   private def provideStatus(instantwin: Option[InstantwinExtended]): ParticipationStatus.Value = instantwin.map(i => if (i.prize.`type` == PrizeType.Gift) ParticipationStatus.toConfirm else ParticipationStatus.pending).getOrElse(ParticipationStatus.lost)
+
+  private def getResetParticipationEvents(game: Game): Seq[CustomerParticipationReseted] = {
+
+    def internal(gameId: UUID): Seq[CustomerParticipationReseted] = {
+      val g = Await.result(repository.game.getById(gameId, Seq(GameExtension.limits)), Duration.Inf)
+      if (g.isEmpty) {
+        Seq.empty[CustomerParticipationReseted]
+      } else {
+        g.get.limits.filter(l => l.`type` == GameLimitType.Dependency && l.parent_id.isDefined)
+          .map(_.parent_id.get).distinct
+          .map(internal)
+          .foldLeft(Seq.empty[CustomerParticipationReseted])(_ ++ _) :+
+          CustomerParticipationReseted(
+            gameId = g.get.id,
+            countryCode = g.get.countryCode,
+            customerId = customerId
+          )
+      }
+    }
+
+    game.limits.filter(l => l.`type` == GameLimitType.Dependency && l.parent_id.isDefined)
+      .map(_.parent_id.get).distinct
+      .map(internal)
+      .foldLeft(Seq.empty[CustomerParticipationReseted])(_ ++ _) :+
+      CustomerParticipationReseted(
+        gameId = game.id,
+        countryCode = game.countryCode,
+        customerId = customerId
+      )
+
+  }
 }

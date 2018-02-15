@@ -121,4 +121,41 @@ object ParticipationDto {
     val all = Seq(available, unavailableLimit, unavailableDependency)
   }
 
+
+  def sortByParent(xs: Seq[CustomerGameResponse]): Seq[CustomerGameResponse] = {
+
+    /*
+    def less(a: CustomerGameResponse, b: CustomerGameResponse): Boolean = {
+          if (b.parents.contains(a.code)) true
+          else if (a.parents.contains(b.code)) false
+          //else if (a.parent_id.isEmpty && b.parent_id.isEmpty) a.id.compareTo(b.id) > 0
+          //else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get != b.parent_id.get) a.parent_id.get.compareTo(b.parent_id.get) > 0
+          //else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get == b.parent_id.get) b.id.compareTo(a.id) > 0
+          //else b.parent_id.getOrElse(b.id).compareTo(a.parent_id.getOrElse(a.id)) > 0
+          else a.code.compareTo(b.code) < 0
+        }
+
+        def merge(xs: List[CustomerGameResponse], ys: List[CustomerGameResponse]): List[CustomerGameResponse] = (xs, ys) match {
+          case (Nil, _) => ys
+          case (_, Nil) => xs
+          case (x :: xs1, y :: ys1) =>
+            if (less(x, y)) x :: merge(xs1, ys)
+            else y :: merge(xs, ys1)
+        }
+
+        val n = xs.length / 2
+        if (n == 0) xs
+        else {
+          val (ys, zs) = xs splitAt n
+          merge(sortByParent(ys), sortByParent(zs))
+        }
+    xs
+  */
+    def mergeWithChild(parent: CustomerGameResponse): Seq[CustomerGameResponse] = {
+      parent :: xs.filter(g => g.parents.getOrElse(Seq.empty).contains(parent.code)).sortBy(_.code).map(mergeWithChild).foldLeft(List.empty[CustomerGameResponse])(_ ++ _)
+    }
+
+    xs.filter(_.parents.getOrElse(Seq.empty).isEmpty).sortBy(_.code).map(mergeWithChild).foldLeft(Seq.empty[CustomerGameResponse])(_ ++ _)
+  }
+
 }
