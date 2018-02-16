@@ -36,9 +36,8 @@ trait PartnerRoute
   def partnerRoute: Route = pathPrefix("partner") {
     corsHandler(
       partner_customer_getGames ~
-        partner_customer_participate ~ partner_customer_getParticipations ~
-        partner_customer_confirmParticipation ~
-        partner_customer_validateParticipation ~ partner_customer_invalidateParticipation ~
+        partner_customer_participate ~ partner_customer_getParticipations ~ partner_customer_getParticipation ~
+        partner_customer_confirmParticipation ~ partner_customer_validateParticipation ~ partner_customer_invalidateParticipation ~
         partner_customer_resetGameParticipations
     )
   }
@@ -267,6 +266,35 @@ trait PartnerRoute
           )) {
           case response: Seq[Any] => complete(StatusCodes.OK, response.asInstanceOf[Seq[CustomerParticipateResponse]])
         }
+      }
+    }
+  }
+
+
+  /**
+    *
+    * @return customer.getParticipation
+    */
+  @Path("{country_code}/customers/{customer_id}/participations/{participation_id}")
+  @ApiOperation(value = "get participation with customer context", notes = "", nickname = "partner.customer.getParticipation", httpMethod = "GET")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Return a participation", response = classOf[CustomerParticipateResponse]),
+    new ApiResponse(code = 500, message = "Internal server error", response = classOf[ErrorResponse])
+  ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "country_code", value = "country code", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "customer_id", value = "customer ID", required = true, dataType = "string", paramType = "path"),
+    new ApiImplicitParam(name = "participation_id", value = "participation ID", required = true, dataType = "string", paramType = "path")
+  ))
+  def partner_customer_getParticipation: Route = path(Segment / "customers" / Segment / "participations" / Segment) { (country_code, customer_id, participation_id) =>
+    get {
+        onSuccess(context.customerCluster ?
+          CustomerWorkerActor.CustomerGetParticipationQry(
+            countryCode = country_code.toUpperCase,
+            customerId = customer_id.toUpperCase,
+            participationId = participation_id
+          )) {
+          case response: CustomerParticipateResponse => complete(StatusCodes.OK, response)
       }
     }
   }

@@ -50,7 +50,7 @@ object CustomerWorkerActor {
     def customerId: String
   }
 
-  case class CustomerGetParticipationQry(customerId: String, gameIds: Seq[UUID]) extends CustomerQry
+  case class CustomerGetParticipationQry(countryCode: String, customerId: String, participationId: String) extends CustomerQry
 
   case class CustomerGetGamesQry(countryCode: String, customerId: String, tags: Seq[String], codes: Seq[String]) extends CustomerQry
 
@@ -149,7 +149,7 @@ object CustomerWorkerActor {
                                            customerId: String
                                          ) extends CustomerEvent
 
-  case class CustomerParticipationState(participationId: UUID, gameId: UUID, countryCode: String, participationDate: Instant, participationStatus: ParticipationStatus.Value)
+  case class CustomerParticipationState(participationId: UUID, gameId: UUID, countryCode: String, participationDate: Instant, participationStatus: ParticipationStatus.Value, prizeId: Option[UUID] = None)
 
 }
 
@@ -192,8 +192,33 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
   override def receiveCommand: Receive = {
 
-    case CustomerGetParticipationQry(_, gameIds) => try {
-      sender() ! participations.filter(p => gameIds.contains(p.gameId))
+    case CustomerGetParticipationQry(countryCode, _, participationId) => try {
+
+      val participation = ActorUtil.string2UUID(participationId)
+        .flatMap(p => participations.find(s => s.participationId == p && s.countryCode == countryCode))
+
+      if (participation.isEmpty) {
+        throw ParticipationNotFoundException(customerId = customerId, participationId = participationId)
+      }
+
+      if (participation.get.prizeId.isDefined && participation.get.participationStatus != ParticipationStatus.lost) {
+        repository.prize.getById(participation.get.prizeId.get).map { prize =>
+          CustomerParticipateResponse(
+            id = participation.get.participationId,
+            date = participation.get.participationDate,
+            status = participation.get.participationStatus,
+            prize = prize.map(new CustomerPrizeResponse(_))
+          )
+        }.pipeTo(sender())
+      } else {
+        sender() ! CustomerParticipateResponse(
+          id = participation.get.participationId,
+          date = participation.get.participationDate,
+          status = participation.get.participationStatus
+        )
+      }
+
+
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
@@ -521,7 +546,8 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         gameId = event.gameId,
         countryCode = event.countryCode,
         participationDate = event.timestamp,
-        participationStatus = provideStatus(event.instantwin)
+        participationStatus = provideStatus(event.instantwin),
+        prizeId = event.instantwin.map(_.prize.id)
       )
     case event: CustomerParticipationConfirmed =>
       participations = participations.filterNot(_.participationId == event.participationId) ++ participations.find(_.participationId == event.participationId).map(_.copy(participationStatus = ParticipationStatus.win))
