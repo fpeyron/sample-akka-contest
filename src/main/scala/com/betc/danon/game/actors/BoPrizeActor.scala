@@ -87,6 +87,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
       val newId = UUID.randomUUID
       val prize = Prize(
         id = newId,
+        code = request.code.getOrElse(newId.toString),
         countryCode = uc.country_code,
         `type` = request.`type`.map(PrizeType.withName) getOrElse PrizeType.Gift,
         title = request.title,
@@ -129,6 +130,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
       val entityUpdated = Prize(
         id = entity.id,
         countryCode = entity.countryCode,
+        code = request.code.getOrElse(entity.code),
         `type` = entity.`type`,
         title = request.title.map(Some(_)).getOrElse(entity.title),
         label = request.label.getOrElse(entity.label),
@@ -176,6 +178,9 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
     Option(
       if (request.`type`.isEmpty)
         ("type", s"MANDATORY_VALUE") else null
+    ) ++ Option(
+      if (request.code.isDefined && request.code.exists(_.length < 2))
+        ("code", s"INVALID_VALUE : should have more 2 chars") else null
     ) ++ Option(
       if (request.`type`.isDefined && !PrizeType.values.map(_.toString).contains(request.`type`.get))
         ("type", s"UNKNOWN_VALUE : list of values : ${PrizeType.all.mkString(",")}") else null

@@ -52,7 +52,7 @@ object TestSlick extends App {
 
   for {
     (i, uuid) <- ids
-    _ <- repository.prize.create(Prize(id = UUID.randomUUID(), countryCode = "FR", `type` = PrizeType.Point, label = s"$i-myLabel"))
+    _ <- repository.prize.create(Prize(code = "sdfdsf", id = UUID.randomUUID(), countryCode = "FR", `type` = PrizeType.Point, label = s"$i-myLabel"))
     _ <- repository.game.create(Game(
       id = uuid,
       `type` = GameType.Instant,

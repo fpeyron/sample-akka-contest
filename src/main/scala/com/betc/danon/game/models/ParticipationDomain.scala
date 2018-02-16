@@ -17,7 +17,7 @@ object ParticipationDto {
   trait PartnerJsonSupport extends DefaultJsonSupport with PrizeJsonSupport {
     implicit val customerParticipationStatusType: RootJsonFormat[ParticipationStatus.Value] = enumFormat(ParticipationStatus)
     implicit val customerParticipateRequest: RootJsonFormat[CustomerParticipateRequest] = jsonFormat4(CustomerParticipateRequest)
-    implicit val customerPrizeResponse: RootJsonFormat[CustomerPrizeResponse] = jsonFormat8(CustomerPrizeResponse)
+    implicit val customerPrizeResponse: RootJsonFormat[CustomerPrizeResponse] = jsonFormat9(CustomerPrizeResponse)
     implicit val customerParticipateResponse: RootJsonFormat[CustomerParticipateResponse] = jsonFormat4(CustomerParticipateResponse)
     implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat12(CustomerGameResponse)
     implicit val customerConfirmParticipationRequest: RootJsonFormat[CustomerConfirmParticipationRequest] = jsonFormat1(CustomerConfirmParticipationRequest)
@@ -61,6 +61,8 @@ object ParticipationDto {
                                         )
 
   case class CustomerPrizeResponse(
+                                    @ApiModelProperty(position = 1, value = "code", required = true, example = "POINT_20")
+                                    code: String,
                                     @ApiModelProperty(position = 2, value = "type", dataType = "string", required = true, example = "POINTS", allowableValues = "POINTS,GIFTSHOP,GIFT")
                                     `type`: PrizeType.Value,
                                     @ApiModelProperty(position = 3, value = "title", example = "My new Prize")
@@ -78,7 +80,7 @@ object ParticipationDto {
                                     @ApiModelProperty(position = 9, value = "points", example = "200")
                                     points: Option[Int]
                                   ) {
-    def this(prize: Prize) = this(`type` = prize.`type`, title = prize.title, label = prize.label, description = prize.description, picture = prize.picture, vendor_code = prize.vendorCode, face_value = prize.faceValue, points = prize.points)
+    def this(prize: Prize) = this(code = prize.code, `type` = prize.`type`, title = prize.title, label = prize.label, description = prize.description, picture = prize.picture, vendor_code = prize.vendorCode, face_value = prize.faceValue, points = prize.points)
   }
 
 

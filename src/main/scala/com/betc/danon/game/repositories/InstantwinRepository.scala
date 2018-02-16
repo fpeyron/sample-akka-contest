@@ -16,7 +16,7 @@ import slick.jdbc.JdbcType
 
 import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 trait InstantwinRepository extends InstantwinTable with PrizeTable {
 
@@ -33,11 +33,11 @@ trait InstantwinRepository extends InstantwinTable with PrizeTable {
       * Instantwin
       */
 
-    def deleteBy(game_id: UUID, gameprize_id: Option[UUID] = None): Future[Try[Int]] = database.run {
+    def deleteBy(game_id: UUID, gameprize_id: Option[UUID] = None): Future[Int] = database.run {
       instantwinTableQuery
         .filter(row => row.game_id === game_id)
         .filter(row => if (gameprize_id.isDefined) row.gameprize_id === gameprize_id.get else true: Rep[Boolean])
-        .delete.asTry
+        .delete
     }
 
     def insertAsStream(source: Source[Instantwin, NotUsed]): Future[Done] = source

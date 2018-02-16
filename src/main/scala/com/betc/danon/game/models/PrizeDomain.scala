@@ -11,6 +11,7 @@ object PrizeDomain {
 
   case class Prize(
                     id: UUID,
+                    code: String,
                     countryCode: String,
                     `type`: PrizeType.Value,
                     title: Option[String] = None,
@@ -35,35 +36,39 @@ object PrizeDomain {
 object PrizeDao {
 
   trait PrizeJsonSupport extends DefaultJsonSupport {
-    implicit val prizeCreateRequest: RootJsonFormat[PrizeCreateRequest] = jsonFormat8(PrizeCreateRequest)
+    implicit val prizeCreateRequest: RootJsonFormat[PrizeCreateRequest] = jsonFormat9(PrizeCreateRequest)
 
     implicit val prizeType: RootJsonFormat[PrizeType.Value] = enumFormat(PrizeType)
-    implicit val prizeResponse: RootJsonFormat[PrizeResponse] = jsonFormat9(PrizeResponse)
+    implicit val prizeResponse: RootJsonFormat[PrizeResponse] = jsonFormat10(PrizeResponse)
   }
 
   // Service
   case class PrizeCreateRequest(
                                  @ApiModelProperty(position = 1, value = "type", required = true, example = "POINTS", allowableValues = "POINTS,GIFTSHOP,GIFT")
                                  `type`: Option[String],
-                                 @ApiModelProperty(position = 2, value = "title", example = "My new Prize")
+                                 @ApiModelProperty(position = 1, value = "code", required = true, example = "POINT_10")
+                                 code: Option[String],
+                                 @ApiModelProperty(position = 3, value = "title", example = "My new Prize")
                                  title: Option[String],
-                                 @ApiModelProperty(position = 3, value = "label", example = "My new label prize")
+                                 @ApiModelProperty(position = 4, value = "label", example = "My new label prize")
                                  label: Option[String],
-                                 @ApiModelProperty(position = 4, value = "description", example = "My new description prize")
+                                 @ApiModelProperty(position = 5, value = "description", example = "My new description prize")
                                  description: Option[String],
-                                 @ApiModelProperty(position = 5, value = "picture", example = "myPicture.jpg")
+                                 @ApiModelProperty(position = 6, value = "picture", example = "myPicture.jpg")
                                  picture: Option[String],
-                                 @ApiModelProperty(position = 6, value = "gift vendor code", example = "VENDOR")
+                                 @ApiModelProperty(position = 7, value = "gift vendor code", example = "VENDOR")
                                  vendor_code: Option[String],
-                                 @ApiModelProperty(position = 7, value = "giftshop face value", example = "200")
+                                 @ApiModelProperty(position = 8, value = "giftshop face value", example = "200")
                                  face_value: Option[Int],
-                                 @ApiModelProperty(position = 8, value = "points", example = "200")
+                                 @ApiModelProperty(position = 9, value = "points", example = "200")
                                  points: Option[Int]
                                )
 
   case class PrizeResponse(
                             @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093ae")
                             id: UUID,
+                            @ApiModelProperty(position = 3, value = "code", required = true, example = "POINT10")
+                            code: String,
                             @ApiModelProperty(position = 2, value = "type", dataType = "string", required = true, example = "POINTS", allowableValues = "POINTS,GIFTSHOP,GIFT")
                             `type`: PrizeType.Value,
                             @ApiModelProperty(position = 3, value = "title", example = "My new Prize")
@@ -81,7 +86,18 @@ object PrizeDao {
                             @ApiModelProperty(position = 9, value = "points", example = "200")
                             points: Option[Int]
                           ) {
-    def this(prize: Prize) = this(prize.id, prize.`type`, prize.title, prize.label, prize.description, prize.picture, prize.vendorCode, prize.faceValue, points = prize.points)
+    def this(prize: Prize) = this(
+      id = prize.id,
+      code = prize.code,
+      `type` = prize.`type`,
+      title = prize.title,
+      label = prize.label,
+      description = prize.description,
+      picture = prize.picture,
+      vendor_code = prize.vendorCode,
+      face_value = prize.faceValue,
+      points = prize.points
+    )
   }
 
 }

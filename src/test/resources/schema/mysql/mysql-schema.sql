@@ -63,7 +63,6 @@ CREATE TABLE `REF_GAME` (
   `type` varchar(10) NOT NULL,
   `status` varchar(10) NOT NULL,
   `code` varchar(36) NOT NULL,
-  `parents` varchar(255) DEFAULT NULL,
   `country_code` varchar(2) NOT NULL,
   `title` varchar(255) DEFAULT NULL,
   `start_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -118,6 +117,7 @@ CREATE TABLE `REF_GAME_LIMIT` (
   `unit` varchar(20) NOT NULL,
   `unit_value` int(11) DEFAULT NULL,
   `value` int(11) NOT NULL,
+  `parent_id` varchar(36) DEFAULT NULL,
   KEY `idx_game_id` (`game_id`),
   KEY `idx_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
@@ -169,6 +169,7 @@ DROP TABLE IF EXISTS `REF_PRIZE`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `REF_PRIZE` (
   `id` varchar(36) NOT NULL,
+  `code` varchar(36) NOT NULL,
   `country_code` varchar(2) NOT NULL,
   `type` varchar(10) NOT NULL,
   `label` varchar(255) NOT NULL,

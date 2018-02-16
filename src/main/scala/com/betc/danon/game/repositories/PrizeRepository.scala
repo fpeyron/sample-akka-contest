@@ -14,7 +14,6 @@ import slick.jdbc.JdbcType
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.Try
 
 trait PrizeRepository extends PrizeTable with GamePrizeTable {
 
@@ -27,16 +26,16 @@ trait PrizeRepository extends PrizeTable with GamePrizeTable {
       * Prize
       */
 
-    def create(prize: Prize): Future[Try[Int]] = database.run {
-      (prizeTableQuery += prize).asTry
+    def create(prize: Prize): Future[Int] = database.run {
+      (prizeTableQuery += prize)
     }
 
-    def update(prize: Prize): Future[Try[Int]] = database.run {
-      prizeTableQuery.filter(_.id === prize.id).update(prize).asTry
+    def update(prize: Prize): Future[Int] = database.run {
+      prizeTableQuery.filter(_.id === prize.id).update(prize)
     }
 
-    def delete(id: UUID): Future[Try[Int]] = database.run {
-      prizeTableQuery.filter(_.id === id).delete.asTry
+    def delete(id: UUID): Future[Int] = database.run {
+      prizeTableQuery.filter(_.id === id).delete
     }
 
     def getById(id: UUID): Future[Option[Prize]] = database.run {
@@ -89,9 +88,11 @@ private[repositories] trait PrizeTable {
       s => PrizeType.withName(s)
     )
 
-    override def * = (id, country_code, `type`, label, title, description, picture, vendor_code, face_value, points) <> (create, extract)
+    override def * = (id, code, country_code, `type`, label, title, description, picture, vendor_code, face_value, points) <> (create, extract)
 
     def id = column[UUID]("id", O.PrimaryKey)
+
+    def code = column[String]("code", O.Length(10, varying = true))
 
     def country_code = column[String]("country_code", O.Length(2, varying = true))
 
@@ -111,11 +112,10 @@ private[repositories] trait PrizeTable {
 
     def points = column[Option[Int]]("points")
 
-    def create(d: (UUID, String, PrizeType.Value, String, Option[String], Option[String], Option[String], Option[String], Option[Int], Option[Int])) =
-      Prize(id = d._1, countryCode = d._2, `type` = d._3, label = d._4, title = d._5, description = d._6, picture = d._7, vendorCode = d._8, faceValue = d._9, points = d._10)
+    def create(d: (UUID, String, String, PrizeType.Value, String, Option[String], Option[String], Option[String], Option[String], Option[Int], Option[Int])) =
+      Prize(id = d._1, code = d._2, countryCode = d._3, `type` = d._4, label = d._5, title = d._6, description = d._7, picture = d._8, vendorCode = d._9, faceValue = d._10, points = d._11)
 
-    def extract(p: Prize) =
-      Option(p.id, p.countryCode, p.`type`, p.label, p.title, p.description, p.picture, p.vendorCode, p.faceValue, p.points)
+    def extract(p: Prize) = Option(p.id, p.code, p.countryCode, p.`type`, p.label, p.title, p.description, p.picture, p.vendorCode, p.faceValue, p.points)
   }
 
 }

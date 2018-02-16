@@ -27,17 +27,17 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     /**
       * Game
       */
-    def create(game: Game): Future[Try[Unit]] = database.run {
+    def create(game: Game): Future[Unit] = database.run {
       DBIO.seq(
         gameTableQuery += game,
         gameLimitTableQuery ++= game.limits.map(l => (game.id, l)),
         gameEanTableQuery ++= game.inputEans.map(l => (game.id, l)),
         gameFreecodeTableQuery ++= game.inputFreecodes.map(l => (game.id, l))
-      ).transactionally.asTry
+      ).transactionally
     }
 
 
-    def update(game: Game): Future[Try[Unit]] = database.run {
+    def update(game: Game): Future[Unit] = database.run {
       DBIO.seq(
         gameTableQuery.filter(_.id === game.id).update(game),
         gameLimitTableQuery.filter(_.game_id === game.id).delete,
@@ -46,23 +46,23 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
         gameEanTableQuery ++= game.inputEans.map(l => (game.id, l)),
         gameFreecodeTableQuery.filter(_.game_id === game.id).delete,
         gameFreecodeTableQuery ++= game.inputFreecodes.map(l => (game.id, l))
-      ).transactionally.asTry
+      ).transactionally
     }
 
 
-    def delete(game_id: UUID): Future[Try[Unit]] = database.run {
+    def delete(game_id: UUID): Future[Unit] = database.run {
       DBIO.seq(
         gamePrizeTableQuery.filter(_.game_id === game_id).delete,
         gameLimitTableQuery.filter(_.game_id === game_id).delete,
         gameEanTableQuery.filter(_.game_id === game_id).delete,
         gameFreecodeTableQuery.filter(_.game_id === game_id).delete,
         gameTableQuery.filter(_.id === game_id).delete
-      ).asTry
+      )
     }
 
 
-    def updateStatus(game_id: UUID, status: GameStatus.Value): Future[Try[Int]] = database.run {
-      (for {c <- gameTableQuery if c.id === game_id} yield c.status).update(status.toString).asTry
+    def updateStatus(game_id: UUID, status: GameStatus.Value): Future[Int] = database.run {
+      (for {c <- gameTableQuery if c.id === game_id} yield c.status).update(status.toString)
     }
 
 
