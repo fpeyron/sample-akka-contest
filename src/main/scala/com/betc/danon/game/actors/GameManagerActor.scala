@@ -92,6 +92,11 @@ class GameManagerActor(gameActor: ActorRef)(implicit val repository: Repository,
       // get Game in state
       val game: Option[Game] = games.find(r => r.countryCode == cmd.country_code && r.code == cmd.game_code && r.status == GameStatus.Activated)
 
+      // Check if game exists
+      if (game.isEmpty) {
+        throw GameRefNotFoundException(code = cmd.game_code, country_code = cmd.country_code)
+      }
+
       // check if game is active start_date
       if (game.get.startDate.isAfter(Instant.now)) {
         throw ParticipationNotOpenedException(code = cmd.game_code)
