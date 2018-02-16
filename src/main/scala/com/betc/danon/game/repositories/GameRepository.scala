@@ -71,24 +71,12 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     }
 
 
-    def getById(game_id: UUID, extensions: Seq[GameExtension.Value] = Seq.empty): Future[Option[Game]] = {
-      /*
-            val query = gameTableQuery.filter(_.id === game_id)
-              .joinLeft(gameLimitTableQuery).on(_.id === _.game_id)
-              .joinLeft(gamePrizeTableQuery).on(_._1.id === _.game_id)
+    def findByParentId(parentId: UUID): Future[Seq[Game]] = database.run {
+      val ids = gameLimitTableQuery.filter(_.parent_id === parentId).map(_.game_id)
+      gameTableQuery.filter(_.id in ids).to[Seq].result
+    }
 
-            println(query.result.statements.headOption)
-            database.run(query.result)
-              .map(_.groupBy(t => t._1._1)
-                .map(t => (
-                  t._1,
-                  t._2.flatMap(_._2).map(r => GamePrize(id = r._1, prize_id = r._3, start_date = r._4, end_date = r._5, quantity = r._6)),
-                  t._2.flatMap(_._1._2).map(_._2)
-                ))
-                .map(t => t._1.copy(prizes = t._2, limits = t._3))
-                .headOption
-              )
-              */
+    def getById(game_id: UUID, extensions: Seq[GameExtension.Value] = Seq.empty): Future[Option[Game]] = {
 
       val query: DBIO[(Option[Game], Seq[GameLimit], Seq[String], Seq[String], Seq[GamePrize])] = for {
         game <- gameTableQuery.filter(_.id === game_id).result.headOption
@@ -383,6 +371,8 @@ private[repositories] trait GameLimitTable {
     def extract(t: (UUID, GameLimit)) = Some((t._1, t._2.`type`, t._2.unit, t._2.unit_value, t._2.value, t._2.parent_id))
 
     def idx_game_id = index("idx_game_id", game_id, unique = false)
+
+    def idx_parent_id = index("idx_parent_id", game_id, unique = false)
   }
 
 }

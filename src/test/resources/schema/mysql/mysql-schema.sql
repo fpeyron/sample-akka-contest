@@ -32,7 +32,7 @@ CREATE TABLE `EVT_JOURNAL` (
   PRIMARY KEY (`persistence_id`,`sequence_number`),
   UNIQUE KEY `ordering` (`ordering`),
   UNIQUE KEY `journal_ordering_idx` (`ordering`)
-) ENGINE=InnoDB AUTO_INCREMENT=143 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -118,7 +118,8 @@ CREATE TABLE `REF_GAME_LIMIT` (
   `unit` varchar(20) NOT NULL,
   `unit_value` int(11) DEFAULT NULL,
   `value` int(11) NOT NULL,
-  KEY `idx_game_id` (`game_id`)
+  KEY `idx_game_id` (`game_id`),
+  KEY `idx_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

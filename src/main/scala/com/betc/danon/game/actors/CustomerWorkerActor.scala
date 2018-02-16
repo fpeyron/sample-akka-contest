@@ -19,7 +19,6 @@ import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.models.ParticipationDto.{CustomerGameAvailability, CustomerGameResponse, CustomerParticipateResponse, CustomerPrizeResponse, ParticipationStatus}
 import com.betc.danon.game.models.PrizeDomain.PrizeType
 import com.betc.danon.game.models.{Event, ParticipationDto}
-import com.betc.danon.game.repositories.GameExtension
 import com.betc.danon.game.utils.HttpSupport._
 import com.betc.danon.game.utils.{ActorUtil, JournalReader}
 import com.betc.danon.game.{Config, Repository}
@@ -267,27 +266,30 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
 
     case cmd: CustomerResetGameParticipationsCmd => try {
-      val game = Await.result(repository.game
-        .findByTagsAndCodes(Seq.empty, Seq(cmd.gameCode)).filter(g => g.countryCode == cmd.countryCode.toUpperCase && g.status == GameStatus.Activated)
-        .runWith(Sink.headOption)
+
+      val game = Await.result(
+        repository.game.findByTagsAndCodes(Seq.empty, Seq(cmd.gameCode))
+          .filter(g => g.countryCode == cmd.countryCode.toUpperCase && g.status == GameStatus.Activated)
+          .runWith(Sink.headOption)
         , Duration.Inf)
 
       if (game.isEmpty) {
         throw GameRefNotFoundException(country_code = cmd.countryCode, code = cmd.gameCode)
       }
 
-      if (! game.get.limits.exists(l => l.`type` == GameLimitType.Dependency && l.parent_id.isDefined)) {
+      val events: immutable.Seq[CustomerParticipationReseted] = getResetParticipationEvents(game.get).to[collection.immutable.Seq]
+
+      // fail is Game hasn't any children
+      if (events.lengthCompare(2) < 0) {
         throw ParticipationResetException(code = cmd.gameCode)
       }
 
-      val events: immutable.Seq[CustomerParticipationReseted] = getResetParticipationEvents(game.get).to[collection.immutable.Seq]
+      persistAll(events) { _ => }
 
-      persistAllAsync(events) { _ =>
-        // Return response
-        sender() ! None
-      }
+      events.filter(e => participations.exists(_.gameId == e.gameId)).foreach(applyEvent)
 
-      events.foreach(applyEvent)
+      sender() ! None
+
     }
     catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
@@ -578,26 +580,19 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
   private def getResetParticipationEvents(game: Game): Seq[CustomerParticipationReseted] = {
 
     def internal(gameId: UUID): Seq[CustomerParticipationReseted] = {
-      val g = Await.result(repository.game.getById(gameId, Seq(GameExtension.limits)), Duration.Inf)
-      if (g.isEmpty) {
+      val games: Seq[Game] = Await.result(repository.game.findByParentId(gameId), Duration.Inf)
+      if (games.isEmpty) {
         Seq.empty[CustomerParticipationReseted]
       } else {
-        g.get.limits.filter(l => l.`type` == GameLimitType.Dependency && l.parent_id.isDefined)
-          .map(_.parent_id.get).distinct
-          .map(internal)
-          .foldLeft(Seq.empty[CustomerParticipationReseted])(_ ++ _) :+
-          CustomerParticipationReseted(
-            gameId = g.get.id,
-            countryCode = g.get.countryCode,
-            customerId = customerId
-          )
+        games.map(game => CustomerParticipationReseted(
+          gameId = game.id,
+          countryCode = game.countryCode,
+          customerId = customerId
+        )) ++ games.map(game => internal(game.id)).foldLeft(Seq.empty[CustomerParticipationReseted])(_ ++ _)
       }
     }
 
-    game.limits.filter(l => l.`type` == GameLimitType.Dependency && l.parent_id.isDefined)
-      .map(_.parent_id.get).distinct
-      .map(internal)
-      .foldLeft(Seq.empty[CustomerParticipationReseted])(_ ++ _) :+
+    internal(game.id) :+
       CustomerParticipationReseted(
         gameId = game.id,
         countryCode = game.countryCode,
