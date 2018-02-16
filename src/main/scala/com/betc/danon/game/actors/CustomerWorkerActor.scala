@@ -268,7 +268,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
     case cmd: CustomerResetGameParticipationsCmd => try {
 
       val game = Await.result(
-        repository.game.findByTagsAndCodes(Seq.empty, Seq(cmd.gameCode))
+        repository.game.findByCode(cmd.gameCode)
           .filter(g => g.countryCode == cmd.countryCode.toUpperCase && g.status == GameStatus.Activated)
           .runWith(Sink.headOption)
         , Duration.Inf)

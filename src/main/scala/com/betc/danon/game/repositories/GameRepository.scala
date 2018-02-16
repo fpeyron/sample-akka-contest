@@ -71,6 +71,7 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     }
 
 
+
     def findByParentId(parentId: UUID): Future[Seq[Game]] = database.run {
       val ids = gameLimitTableQuery.filter(_.parent_id === parentId).map(_.game_id)
       gameTableQuery.filter(_.id in ids).to[Seq].result
@@ -90,8 +91,10 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     }
 
 
-    def findByCode(code: String): Future[Seq[Game]] = database.run {
-      gameTableQuery.filter(_.code === code).to[List].result
+    def findByCode(code: String): Source[Game, NotUsed] = Source.fromPublisher {
+      database.stream {
+        gameTableQuery.filter(_.code === code).to[Seq].result
+      }
     }
 
     def findByTagsAndCodes(tags: Seq[String], codes: Seq[String]): Source[Game, NotUsed] = Source.fromPublisher {

@@ -5,7 +5,7 @@ import java.util.UUID
 
 import akka.NotUsed
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import com.betc.danon.game.Repository
 import com.betc.danon.game.actors.BoGameActor._
@@ -142,8 +142,11 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       )
 
       // Check existing code
-      if (Await.result(repository.game.findByCode(game.code), Duration.Inf)
-        .exists(r => r.countryCode == game.countryCode && r.status != GameStatus.Archived)) {
+      if(Await.result(
+        repository.game.findByCode(game.code)
+          .filter(g => g.countryCode == game.countryCode.toUpperCase && g.status != GameStatus.Activated)
+          .runWith(Sink.headOption)
+        , Duration.Inf).isDefined) {
         throw InvalidInputException(fields = Map("code" -> "GAME_ALREADY_EXISTS : already exists with same code and status ACTIVE"))
       }
 
@@ -197,9 +200,11 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       }
 
       // Check existing code
-      if (request.code.exists(_ != game.get.code) &&
-        Await.result(repository.game.findByCode(request.code.get), Duration.Inf)
-          .exists(r => r.countryCode == game.get.countryCode && r.status != GameStatus.Archived)) {
+      if (request.code.exists(_ != game.get.code) && Await.result(
+        repository.game.findByCode(game.get.code)
+          .filter(g => g.countryCode == game.get.countryCode.toUpperCase && g.status != GameStatus.Activated)
+          .runWith(Sink.headOption)
+        , Duration.Inf).isDefined) {
         throw InvalidInputException(fields = Map("code" -> "ALREADY_EXISTS : already exists with same code and status ACTIVE"))
       }
 
