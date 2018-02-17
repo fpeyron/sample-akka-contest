@@ -15,7 +15,6 @@ import slick.sql.SqlProfile.ColumnOption.SqlType
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.Try
 
 trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable with GameEanTable with GameFreeCodeTable {
 
@@ -69,7 +68,6 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
     def findByIds(ids: Seq[UUID]): Future[Seq[Game]] = {
       database.run(gameTableQuery.filter(_.id inSet ids).to[Seq].result)
     }
-
 
 
     def findByParentId(parentId: UUID): Future[Seq[Game]] = database.run {
