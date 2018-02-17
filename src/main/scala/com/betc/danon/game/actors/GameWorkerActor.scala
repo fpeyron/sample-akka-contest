@@ -91,17 +91,17 @@ class GameWorkerActor(customerCluster: ActorRef)(implicit val repository: Reposi
 
   override def postRestart(reason: Throwable): Unit = {
     super.postRestart(reason)
-    log.info(s">> RESTART ACTOR <${self.path.parent.name}-${self.path.name}> : ${reason.getMessage}")
+    log.debug(s">> RESTART ACTOR <${self.path.parent.name}-${self.path.name}> : ${reason.getMessage}")
   }
 
   override def preStart(): Unit = {
     super.preStart
-    log.info(s">> START ACTOR <${self.path.parent.name}-${self.path.name}>")
+    log.debug(s">> START ACTOR <${self.path.parent.name}-${self.path.name}>")
   }
 
   override def postStop(): Unit = {
     super.postStop
-    log.info(s">> STOP ACTOR <${self.path.parent.name}-${self.path.name}>")
+    log.debug(s">> STOP ACTOR <${self.path.parent.name}-${self.path.name}>")
   }
 
 
@@ -127,7 +127,7 @@ class GameWorkerActor(customerCluster: ActorRef)(implicit val repository: Reposi
         game = game.get
       )
     } catch {
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
 
 
@@ -165,7 +165,7 @@ class GameWorkerActor(customerCluster: ActorRef)(implicit val repository: Reposi
       }
 
     } catch {
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
 
 

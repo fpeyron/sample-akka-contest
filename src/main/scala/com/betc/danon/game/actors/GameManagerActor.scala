@@ -66,7 +66,7 @@ class GameManagerActor(gameActor: ActorRef)(implicit val repository: Repository,
       gameActor ! Passivate(stopMessage = GameStopCmd(gameId = game.id))
     }
     catch {
-      case e: Exception => log.error(e.getMessage, e)
+      case e: Exception => log.error("Exception caught: {}", e);
     }
 
 
@@ -75,7 +75,7 @@ class GameManagerActor(gameActor: ActorRef)(implicit val repository: Repository,
       gameActor ! Passivate(stopMessage = GameStopCmd(gameId = id))
     }
     catch {
-      case e: Exception => log.error(e.getMessage, e)
+      case e: Exception => log.error("Exception caught: {}", e);
     }
 
 
@@ -83,7 +83,7 @@ class GameManagerActor(gameActor: ActorRef)(implicit val repository: Repository,
       gameActor ! Passivate(stopMessage = GameStopCmd(gameId = event.id))
     }
     catch {
-      case e: Exception => log.error(e.getMessage, e)
+      case e: Exception => log.error("Exception caught: {}", e);
     }
 
 
@@ -120,7 +120,7 @@ class GameManagerActor(gameActor: ActorRef)(implicit val repository: Repository,
     }
     catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
   }
 }

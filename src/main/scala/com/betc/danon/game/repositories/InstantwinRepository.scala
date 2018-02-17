@@ -47,7 +47,7 @@ trait InstantwinRepository extends InstantwinTable with PrizeTable {
       .runWith(Sink.foreach[Seq[Instantwin]] { i: Seq[Instantwin] =>
         database.run((instantwinTableQuery ++= i).asTry.map {
           case Success(_) =>
-          case Failure(e) => log.error(s"SQL Error, ${e.getMessage}"); log.error(e.getMessage, e)
+          case Failure(e) => log.error(s"SQL Error, ${e.getMessage}"); log.error("Exception caught: {}", e);
         })
       })
 

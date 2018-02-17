@@ -167,17 +167,17 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
   override def postRestart(reason: Throwable): Unit = {
     super.postRestart(reason)
-    log.info(s">> RESTART ACTOR <${self.path.parent.name}-${self.path.name}> : ${reason.getMessage}")
+    log.debug(s">> RESTART ACTOR <${self.path.parent.name}-${self.path.name}> : ${reason.getMessage}")
   }
 
   override def preStart(): Unit = {
     super.preStart
-    log.info(s">> START ACTOR <${self.path.parent.name}-${self.path.name}>")
+    log.debug(s">> START ACTOR <${self.path.parent.name}-${self.path.name}>")
   }
 
   override def postStop(): Unit = {
     super.postStop
-    log.info(s">> STOP ACTOR <${self.path.parent.name}-${self.path.name}>")
+    log.debug(s">> STOP ACTOR <${self.path.parent.name}-${self.path.name}>")
   }
 
 
@@ -221,7 +221,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
 
 
@@ -255,7 +255,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
 
 
@@ -288,7 +288,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         }.pipeTo(sender)
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
 
 
@@ -320,7 +320,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
     }
     catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
 
 
@@ -406,7 +406,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       }
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
 
 
@@ -447,7 +447,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
 
 
@@ -488,7 +488,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
 
 
@@ -529,7 +529,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
-      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error(e.getMessage, e)
+      case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
 
 
