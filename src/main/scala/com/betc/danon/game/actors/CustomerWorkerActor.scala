@@ -270,6 +270,8 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
                 `type` = game.`type`,
                 code = game.code,
                 title = game.title,
+                picture = game.picture,
+                description = game.description,
                 start_date = game.startDate,
                 end_date = game.endDate,
                 input_type = game.inputType,

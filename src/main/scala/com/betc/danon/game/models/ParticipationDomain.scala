@@ -19,7 +19,7 @@ object ParticipationDto {
     implicit val customerParticipateRequest: RootJsonFormat[CustomerParticipateRequest] = jsonFormat4(CustomerParticipateRequest)
     implicit val customerPrizeResponse: RootJsonFormat[CustomerPrizeResponse] = jsonFormat9(CustomerPrizeResponse)
     implicit val customerParticipateResponse: RootJsonFormat[CustomerParticipateResponse] = jsonFormat4(CustomerParticipateResponse)
-    implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat12(CustomerGameResponse)
+    implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat14(CustomerGameResponse)
     implicit val customerConfirmParticipationRequest: RootJsonFormat[CustomerConfirmParticipationRequest] = jsonFormat1(CustomerConfirmParticipationRequest)
   }
 
@@ -93,21 +93,25 @@ object ParticipationDto {
                                    `type`: GameType.Value,
                                    @ApiModelProperty(position = 4, value = "title", example = "My new game")
                                    title: Option[String] = None,
-                                   @ApiModelProperty(position = 5, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
+                                   @ApiModelProperty(position = 5, value = "picture", example = "myPicture.png")
+                                   picture: Option[String] = None,
+                                   @ApiModelProperty(position = 6, value = "description", example = "my description \n and detail ...")
+                                   description: Option[String] = None,
+                                   @ApiModelProperty(position = 7, value = "start date", example = "2018-01-01T00:00:00.000+02:00")
                                    start_date: Instant,
-                                   @ApiModelProperty(position = 6, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
+                                   @ApiModelProperty(position = 8, value = "end date", example = "2018-02-01T23:59:59.999+02:00")
                                    end_date: Instant,
-                                   @ApiModelProperty(position = 7, value = "input type", dataType = "string", required = true, example = "OTHER", allowableValues = "OTHER,POINT,SKU")
+                                   @ApiModelProperty(position = 9, value = "input type", dataType = "string", required = true, example = "OTHER", allowableValues = "OTHER,POINT,SKU")
                                    input_type: GameInputType.Value,
-                                   @ApiModelProperty(position = 8, value = "input point", required = false, example = "10")
+                                   @ApiModelProperty(position = 10, value = "input point", required = false, example = "10")
                                    input_point: Option[Int] = None,
-                                   @ApiModelProperty(position = 9, value = "participations count", required = true, example = "10")
+                                   @ApiModelProperty(position = 11, value = "participations count", required = true, example = "10")
                                    participation_count: Int,
-                                   @ApiModelProperty(position = 10, value = "win count", required = true, example = "10")
+                                   @ApiModelProperty(position = 12, value = "win count", required = true, example = "10")
                                    instant_win_count: Int,
-                                   @ApiModelProperty(position = 11, value = "toconfirm count", required = true, example = "1")
+                                   @ApiModelProperty(position = 13, value = "toconfirm count", required = true, example = "1")
                                    instant_toconfirm_count: Int,
-                                   @ApiModelProperty(position = 12, value = "availability", dataType = "string", required = true, example = "AVAILABLE", allowableValues = "AVAILABLE,UNAVAILABLE_LIMIT,UNAVAILABLE_DEPENDENCY")
+                                   @ApiModelProperty(position = 14, value = "availability", dataType = "string", required = true, example = "AVAILABLE", allowableValues = "AVAILABLE,UNAVAILABLE_LIMIT,UNAVAILABLE_DEPENDENCY")
                                    availability: CustomerGameAvailability.Value
                                  )
 

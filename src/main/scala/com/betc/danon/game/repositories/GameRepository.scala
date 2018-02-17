@@ -267,7 +267,7 @@ private[repositories] trait GameTable {
       s => GameInputType.withName(s)
     )
 
-    override def * = (id, `type`, status, code, country_code, title, start_date, timezone, end_date, input_type, input_point, tags) <> (create, extract)
+    override def * = (id, `type`, status, code, country_code, title, picture, description , start_date, timezone, end_date, input_type, input_point, tags) <> (create, extract)
 
     def id = column[UUID]("id", O.PrimaryKey)
 
@@ -279,7 +279,11 @@ private[repositories] trait GameTable {
 
     def country_code = column[String]("country_code", O.Length(2, varying = true))
 
-    def title = column[Option[String]]("title", O.Length(255, varying = true))
+    def title = column[Option[String]]("title", O.Length(50, varying = true))
+
+    def picture = column[Option[String]]("picture", O.Length(50, varying = true))
+
+    def description = column[Option[String]]("description", O.Length(255, varying = true))
 
     def start_date = column[Instant]("start_date", SqlType("timestamp not null default CURRENT_TIMESTAMP"))
 
@@ -293,7 +297,7 @@ private[repositories] trait GameTable {
 
     def tags = column[Option[String]]("tags", O.Length(255, varying = true))
 
-    def create(t: (UUID, String, String, String, String, Option[String], Instant, String, Instant, GameInputType.Value, Option[Int], Option[String])) =
+    def create(t: (UUID, String, String, String, String, Option[String], Option[String], Option[String], Instant, String, Instant, GameInputType.Value, Option[Int], Option[String])) =
       Game(
         id = t._1,
         `type` = GameType.withName(t._2),
@@ -301,12 +305,14 @@ private[repositories] trait GameTable {
         code = t._4,
         countryCode = t._5,
         title = t._6,
-        startDate = t._7,
-        timezone = t._8,
-        endDate = t._9,
-        inputType = t._10,
-        inputPoint = t._11,
-        tags = t._12.map(_.split(",").toSeq).getOrElse(Seq.empty)
+        picture = t._7,
+        description = t._8,
+        startDate = t._9,
+        timezone = t._10,
+        endDate = t._11,
+        inputType = t._12,
+        inputPoint = t._13,
+        tags = t._14.map(_.split(",").toSeq).getOrElse(Seq.empty)
       )
 
     def extract(g: Game) = Option(
@@ -316,6 +322,8 @@ private[repositories] trait GameTable {
       g.code,
       g.countryCode,
       g.title,
+      g.picture,
+      g.description,
       g.startDate,
       g.timezone,
       g.endDate,
