@@ -12,10 +12,10 @@ import akka.stream.scaladsl.Sink
 import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipateCmd
 import com.betc.danon.game.actors.GameWorkerActor._
 import com.betc.danon.game.models.Event
-import com.betc.danon.game.models.GameEntity.Game
+import com.betc.danon.game.models.GameEntity.{Game, GameStatus}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
-import com.betc.danon.game.repositories.GameExtension
-import com.betc.danon.game.utils.{ActorUtil, JournalReader}
+import com.betc.danon.game.utils.HttpSupport.{FunctionalException, GameCodeNotFoundException}
+import com.betc.danon.game.utils.JournalReader
 import com.betc.danon.game.{Config, Repository}
 
 import scala.concurrent.Await
@@ -29,24 +29,25 @@ object GameWorkerActor {
   val typeName: String = "game"
 
   val extractEntityId: ShardRegion.ExtractEntityId = {
-    case msg: GameCmd => (s"${msg.gameId.toString}", msg)
+    case msg: GameCmd => (s"${msg.countryCode}-${msg.gameCode.toString}", msg)
   }
 
   val extractShardId: ShardRegion.ExtractShardId = {
-    case msg: GameCmd => s"$typeName-${math.abs(msg.gameId.hashCode()) % Config.Cluster.shardCount}"
+    case msg: GameCmd => s"$typeName-${math.abs(msg.gameCode.hashCode()) % Config.Cluster.shardCount}"
   }
 
   // Command
   sealed trait GameCmd {
-    def gameId: UUID
+    def countryCode: String
+
+    def gameCode: String
   }
 
-  case class GameStopCmd(gameId: UUID) extends GameCmd
+  case class GameStopCmd(countryCode: String, gameCode: String) extends GameCmd
 
   case class GameParticipateCmd(
-                                 gameId: UUID,
-                                 country_code: String,
-                                 game_code: String,
+                                 countryCode: String,
+                                 gameCode: String,
                                  customerId: String,
                                  transaction_code: Option[String],
                                  ean: Option[String],
@@ -54,8 +55,8 @@ object GameWorkerActor {
                                ) extends GameCmd
 
   case class GamePlayCmd(
-                          gameId: UUID,
-                          country_code: String,
+                          countryCode: String,
+                          gameCode: String,
                           customerId: String,
                           transaction_code: Option[String],
                           ean: Option[String],
@@ -82,26 +83,26 @@ object GameWorkerActor {
 
 class GameWorkerActor(customerCluster: ActorRef)(implicit val repository: Repository, val materializer: ActorMaterializer, val journalReader: JournalReader) extends PersistentActor with ActorLogging {
 
-  context.setReceiveTimeout(1.minutes)
-
   override def persistenceId: String = s"game-${self.path.name}"
-
-  val gameId: UUID = ActorUtil.string2UUID(self.path.name).get
 
 
   override def postRestart(reason: Throwable): Unit = {
-    super.postRestart(reason)
     log.debug(s">> RESTART ACTOR <${self.path.parent.name}-${self.path.name}> : ${reason.getMessage}")
+    super.postRestart(reason)
   }
 
   override def preStart(): Unit = {
-    super.preStart
     log.debug(s">> START ACTOR <${self.path.parent.name}-${self.path.name}>")
+    val gameCountryCode: String = self.path.name.split("-")(0)
+    val gameCode: String = self.path.name.split("-")(1)
+    game = Await.result(repository.game.fetchByCode(gameCode).filter(r => r.countryCode == gameCountryCode && r.status == GameStatus.Activated).runWith(Sink.headOption), Duration.Inf)
+    context.setReceiveTimeout(1.minutes)
+    super.preStart
   }
 
   override def postStop(): Unit = {
-    super.postStop
     log.debug(s">> STOP ACTOR <${self.path.parent.name}-${self.path.name}>")
+    super.postStop
   }
 
 
@@ -118,28 +119,38 @@ class GameWorkerActor(customerCluster: ActorRef)(implicit val repository: Reposi
 
     case cmd: GameParticipateCmd => try {
 
+      if (game.isEmpty) {
+        throw GameCodeNotFoundException(countryCode = cmd.countryCode, gameCode = cmd.gameCode)
+      }
+
       customerCluster forward CustomerParticipateCmd(
-        countryCode = cmd.country_code,
+        countryCode = game.get.countryCode,
         customerId = cmd.customerId,
         transaction_code = cmd.transaction_code,
         ean = cmd.ean,
         meta = cmd.meta,
         game = game.get
       )
+
     } catch {
+      case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
       case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
     }
 
 
     case cmd: GamePlayCmd => try {
 
+      if (game.isEmpty) {
+        throw GameCodeNotFoundException(countryCode = cmd.countryCode, gameCode = cmd.gameCode)
+      }
+
       val now = Instant.now()
 
       val event = GameParticipationEvent(
         timestamp = Instant.now(),
         participationId = UUID.randomUUID(),
-        gameId = gameId,
-        countryCode = cmd.country_code,
+        gameId = game.get.id,
+        countryCode = cmd.countryCode,
         customerId = cmd.customerId,
         instantwin = getInstantWin(now),
         transaction_code = cmd.transaction_code,
@@ -170,18 +181,18 @@ class GameWorkerActor(customerCluster: ActorRef)(implicit val repository: Reposi
 
 
     case _: ReceiveTimeout =>
-      context.parent ! Passivate(stopMessage = GameStopCmd(gameId = gameId))
+      context.parent ! Passivate(stopMessage = GameStopCmd(countryCode = game.get.countryCode, gameCode = game.get.code))
 
     case _: GameStopCmd =>
       context.stop(self)
   }
 
 
-  val game: Option[Game] = Await.result(repository.game.getById(gameId, Seq(GameExtension.limits, GameExtension.eans)), Duration.Inf)
-
+  var game: Option[Game] = None
   var lastInstantWin: Option[InstantwinExtended] = None
   var nextInstantWins: List[InstantwinExtended] = List.empty[InstantwinExtended]
   var gameIsFinished: Boolean = false
+
 
   private def getInstantWin(instant: Instant): Option[InstantwinExtended] = {
     val instantWin = nextInstantWins.find(_.activateDate.isBefore(instant))
@@ -205,15 +216,12 @@ class GameWorkerActor(customerCluster: ActorRef)(implicit val repository: Reposi
 
   private def refreshInstantWins(): Unit = {
     nextInstantWins = Await.result(
-      repository.instantwin.fetchWithPrizeBy(gameId)
+      repository.instantwin.fetchWithPrizeBy(game.get.id)
         .filter(r => lastInstantWin.forall(l => (r.id.compareTo(l.id) > 0 && r.activateDate == l.activateDate) || r.activateDate.isAfter(l.activateDate)))
         .take(10).runWith(Sink.collection)
       , Duration.Inf)
     if (nextInstantWins.isEmpty)
       gameIsFinished = true
   }
-
-  //private def getOrCreateCustomerWorkerActor(id: String): ActorRef = context.child(CustomerWorkerActor.name(id))
-  //  .getOrElse(context.actorOf(CustomerWorkerActor.props(id), CustomerWorkerActor.name(id)))
 
 }

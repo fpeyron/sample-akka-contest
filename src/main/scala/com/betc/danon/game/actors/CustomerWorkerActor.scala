@@ -376,8 +376,8 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       else {
         implicit val timeout: Timeout = Timeout(1.minutes)
         Await.result(gameActor ? GameWorkerActor.GamePlayCmd(
-          gameId = cmd.game.id,
-          country_code = cmd.countryCode,
+          gameCode = cmd.game.code,
+          countryCode = cmd.countryCode,
           customerId = cmd.customerId,
           transaction_code = cmd.transaction_code,
           ean = cmd.ean,

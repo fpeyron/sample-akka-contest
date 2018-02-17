@@ -131,6 +131,23 @@ trait GameRepository extends GameTable with GameLimitTable with GamePrizeTable w
       .map(l => l.head.copy(limits = l.map(_.limits).reduceLeft(_ ++ _)))
 
 
+    def fetchByCode(
+                         code: String
+                       ): Source[Game, NotUsed] = Source.fromPublisher {
+      database.stream {
+        val query = gameTableQuery
+          .filter(_.code === code)
+          .joinLeft(gameLimitTableQuery).on(_.id === _.game_id)
+          .joinLeft(gameEanTableQuery).on(_._1.id === _.game_id)
+          .to[List]
+        query.result
+      }.mapResult(r => r._1._1.copy(limits = r._1._2.map(_._2).toSeq, inputEans = r._2.map(_._2).toSeq))
+    }
+      .via(new AccumulateWhileUnchanged(_.id))
+      .map(l => l.head.copy(limits = l.map(_.limits).reduceLeft(_ ++ _), inputEans = l.map(_.inputEans).reduceLeft(_ ++ _)))
+
+
+
     def fetchBy(
                  country_code: Option[String] = None,
                  status: Iterable[GameStatus.Value] = Iterable.empty,

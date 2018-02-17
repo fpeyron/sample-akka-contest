@@ -1,8 +1,7 @@
 package com.betc.danon.game
 
-import akka.actor.{ActorRef, ActorSystem, PoisonPill}
+import akka.actor.{ActorRef, ActorSystem}
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
-import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings, ClusterSingletonProxy, ClusterSingletonProxySettings}
 import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
@@ -75,29 +74,12 @@ object Main extends App with RouteConcatenation with HttpSupport {
   )
   val clusterListenerActor = system.actorOf(ClusterListenerActor.props, ClusterListenerActor.name)
 
-  // Start Singleton
-  val clusterSingleton: ActorRef = system.actorOf(
-    ClusterSingletonManager.props(
-      singletonProps = GameManagerActor.props(gameClusterProxy),
-      terminationMessage = PoisonPill,
-      settings = ClusterSingletonManagerSettings(system)
-    ),
-    name = GameManagerActor.name
-  )
-  implicit val clusterSingletonProxy: ActorRef = system.actorOf(
-    props = ClusterSingletonProxy.props(
-      singletonManagerPath = clusterSingleton.path.toStringWithoutAddress,
-      settings = ClusterSingletonProxySettings(system).withRole(None)
-    ),
-    name = s"${GameManagerActor.name}Proxy"
-  )
-
-  val boGameActor: ActorRef = system.actorOf(BoGameActor.props, BoGameActor.Name)
+  val boGameActor: ActorRef = system.actorOf(BoGameActor.props(gameCluster), BoGameActor.Name)
   val boPrizeActor: ActorRef = system.actorOf(BoPrizeActor.props, BoPrizeActor.name)
 
 
   // start http services
-  implicit val routeContext: RouteContext = RouteContext(boGameActor = boGameActor, boPrizeActor = boPrizeActor, clusterSingletonProxy = clusterSingletonProxy, customerCluster = customerCluster)
+  implicit val routeContext: RouteContext = RouteContext(boGameActor = boGameActor, boPrizeActor = boPrizeActor, customerCluster = customerCluster, gameCluster = gameCluster)
 
   val bindingFuture = Http().bindAndHandle(DebuggingDirectives.logRequestResult("API route", Logging.DebugLevel)(MainRoute().routes), Config.Api.hostname, Config.Api.port)
 
@@ -110,14 +92,13 @@ object Main extends App with RouteConcatenation with HttpSupport {
   logger.info(s"Swagger ui            http://${Config.Api.hostname}:${Config.Api.port}/swagger")
 }
 
-case class RouteContext(boGameActor: ActorRef, boPrizeActor: ActorRef, clusterSingletonProxy: ActorRef, customerCluster: ActorRef)
+case class RouteContext(boGameActor: ActorRef, boPrizeActor: ActorRef, customerCluster: ActorRef, gameCluster: ActorRef)
 
 case class MainRoute()
                     (implicit
                      val ec: ExecutionContext,
                      val materializer: ActorMaterializer,
                      val query: Query,
-                     val clusterSingletonProxy: ActorRef,
                      val context: RouteContext
                     ) extends HttpSupport with BoGameRoute with SwaggerRoute with BoPrizeRoute with PartnerRoute with SwaggerUiRoute with HealthRoute {
 

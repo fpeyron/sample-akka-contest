@@ -8,7 +8,7 @@ import akka.http.scaladsl.server._
 import akka.util.Timeout
 import com.betc.danon.game.actors.CustomerWorkerActor
 import com.betc.danon.game.actors.CustomerWorkerActor._
-import com.betc.danon.game.actors.GameManagerActor.ParticipateCmd
+import com.betc.danon.game.actors.GameWorkerActor.GameParticipateCmd
 import com.betc.danon.game.models.ParticipationDto.{CustomerConfirmParticipationRequest, CustomerGameResponse, CustomerParticipateRequest, CustomerParticipateResponse, PartnerJsonSupport}
 import com.betc.danon.game.utils.HttpSupport.ErrorResponse
 import com.betc.danon.game.utils.{CorsSupport, DefaultJsonSupport}
@@ -61,10 +61,10 @@ trait PartnerRoute
   def partner_customer_participate: Route = path(Segment / "customers" / Segment / "participations") { (country_code, customer_id) =>
     post {
       entity(as[CustomerParticipateRequest]) { request =>
-        onSuccess(context.clusterSingletonProxy ?
-          ParticipateCmd(
-            country_code = country_code.toUpperCase,
-            game_code = request.game_code,
+        onSuccess(context.gameCluster ?
+          GameParticipateCmd(
+            countryCode = country_code.toUpperCase,
+            gameCode = request.game_code,
             customer_id.toUpperCase,
             transaction_code = request.transaction_code,
             meta = request.meta.getOrElse(Map.empty),
@@ -226,13 +226,13 @@ trait PartnerRoute
   ))
   def partner_customer_resetGameParticipations: Route = path(Segment / "customers" / Segment / "games" / Segment / "action-reset") { (country_code, customer_id, game_code) =>
     put {
-        onSuccess(context.customerCluster ? CustomerResetGameParticipationsCmd(
-          countryCode = country_code.toUpperCase,
-          customerId = customer_id.toUpperCase,
-          gameCode = game_code
-        )) {
-          case None => complete(StatusCodes.OK, None)
-        }
+      onSuccess(context.customerCluster ? CustomerResetGameParticipationsCmd(
+        countryCode = country_code.toUpperCase,
+        customerId = customer_id.toUpperCase,
+        gameCode = game_code
+      )) {
+        case None => complete(StatusCodes.OK, None)
+      }
     }
 
   }
@@ -288,13 +288,13 @@ trait PartnerRoute
   ))
   def partner_customer_getParticipation: Route = path(Segment / "customers" / Segment / "participations" / Segment) { (country_code, customer_id, participation_id) =>
     get {
-        onSuccess(context.customerCluster ?
-          CustomerWorkerActor.CustomerGetParticipationQry(
-            countryCode = country_code.toUpperCase,
-            customerId = customer_id.toUpperCase,
-            participationId = participation_id
-          )) {
-          case response: CustomerParticipateResponse => complete(StatusCodes.OK, response)
+      onSuccess(context.customerCluster ?
+        CustomerWorkerActor.CustomerGetParticipationQry(
+          countryCode = country_code.toUpperCase,
+          customerId = customer_id.toUpperCase,
+          participationId = participation_id
+        )) {
+        case response: CustomerParticipateResponse => complete(StatusCodes.OK, response)
       }
     }
   }

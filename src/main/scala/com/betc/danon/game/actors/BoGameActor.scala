@@ -26,7 +26,7 @@ object BoGameActor {
 
   val Name = "games-singleton"
 
-  def props(implicit repository: Repository, materializer: ActorMaterializer, clusterSingletonProxy: ActorRef, journalReader: JournalReader) = Props(new BoGameActor)
+  def props(gameCluster: ActorRef)(implicit repository: Repository, materializer: ActorMaterializer, journalReader: JournalReader) = Props(new BoGameActor(gameCluster))
 
   // Query
   sealed trait Query
@@ -64,7 +64,7 @@ object BoGameActor {
 }
 
 
-class BoGameActor(implicit val repository: Repository, val materializer: ActorMaterializer, val clusterSingletonProxy: ActorRef, val journalReader: JournalReader) extends Actor with ActorLogging {
+class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository, val materializer: ActorMaterializer, val journalReader: JournalReader) extends Actor with ActorLogging {
 
   import akka.pattern.pipe
   import context.dispatcher
@@ -144,7 +144,7 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       )
 
       // Check existing code
-      if(Await.result(
+      if (Await.result(
         repository.game.findByCode(game.code)
           .filter(g => g.countryCode == game.countryCode.toUpperCase && g.status != GameStatus.Activated)
           .runWith(Sink.headOption)
@@ -170,9 +170,6 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
       // Return response
       sender ! new GameResponse(game)
-
-      // Push event
-      clusterSingletonProxy ! GameManagerActor.GameCreateEvent(game = game)
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
@@ -254,8 +251,10 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       // Return response
       sender ! new GameResponse(gameToUpdate)
 
-      // Push event
-      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = gameToUpdate)
+      // Push event to refresh
+      if (game.get.status == GameStatus.Activated) {
+        gameCluster ! GameWorkerActor.GameStopCmd(countryCode = game.get.countryCode, gameCode = game.get.code)
+      }
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
@@ -283,9 +282,6 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       // Return response
       sender ! None
 
-      // Push event
-      clusterSingletonProxy ! GameManagerActor.GameDeleteEvent(id = id)
-
     }
     catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
@@ -309,9 +305,6 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
 
       // Return response
       sender ! None
-
-      // Push event
-      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get.copy(status = GameStatus.Activated))
 
     }
     catch {
@@ -337,8 +330,10 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       // Return response
       sender ! None
 
-      // Push event
-      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get.copy(status = GameStatus.Archived))
+      // Push event to refresh
+      if (game.get.status == GameStatus.Activated) {
+        gameCluster ! GameWorkerActor.GameStopCmd(countryCode = game.get.countryCode, gameCode = game.get.code)
+      }
 
     }
     catch {
@@ -406,9 +401,10 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       // to generate instantwins (asynchronous)
       createInstantwins(id, gamePrize)
 
-      // Push event
-      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get)
-
+      // Push event to refresh
+      if (game.get.status == GameStatus.Activated) {
+        gameCluster ! GameWorkerActor.GameStopCmd(countryCode = game.get.countryCode, gameCode = game.get.code)
+      }
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
@@ -460,8 +456,10 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       deleteInstantWins(game.get.id, gamePrize.map(_.id))
       createInstantwins(game.get.id, gamePrizeUpdated)
 
-      // Push event
-      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get)
+      // Push event to refresh
+      if (game.get.status == GameStatus.Activated) {
+        gameCluster ! GameWorkerActor.GameStopCmd(countryCode = game.get.countryCode, gameCode = game.get.code)
+      }
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
@@ -504,9 +502,10 @@ class BoGameActor(implicit val repository: Repository, val materializer: ActorMa
       // return to sender
       sender() ! None
 
-      // Push event
-      clusterSingletonProxy ! GameManagerActor.GameUpdateEvent(game = game.get)
-
+      // Push event to refresh
+      if (game.get.status == GameStatus.Activated) {
+        gameCluster ! GameWorkerActor.GameStopCmd(countryCode = game.get.countryCode, gameCode = game.get.code)
+      }
 
     } catch {
       case e: FunctionalException => sender() ! akka.actor.Status.Failure(e)
