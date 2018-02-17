@@ -94,17 +94,17 @@ class GameManagerActor(gameActor: ActorRef)(implicit val repository: Repository,
 
       // Check if game exists
       if (game.isEmpty) {
-        throw GameRefNotFoundException(code = cmd.game_code, country_code = cmd.country_code)
+        throw GameCodeNotFoundException(gameCode = cmd.game_code, countryCode = cmd.country_code)
       }
 
       // check if game is active start_date
       if (game.get.startDate.isAfter(Instant.now)) {
-        throw ParticipationNotOpenedException(code = cmd.game_code)
+        throw ParticipationNotOpenedException(gameCode = cmd.game_code)
       }
 
       // check if game is active start_date
       if (game.get.endDate.isBefore(Instant.now)) {
-        throw ParticipationCloseException(code = cmd.game_code)
+        throw ParticipationCloseException(gameCode = cmd.game_code)
       }
 
       // forward to dedicated actor

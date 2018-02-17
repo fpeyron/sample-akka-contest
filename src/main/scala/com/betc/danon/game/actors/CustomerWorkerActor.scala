@@ -301,14 +301,14 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         , Duration.Inf)
 
       if (game.isEmpty) {
-        throw GameRefNotFoundException(country_code = cmd.countryCode, code = cmd.gameCode)
+        throw GameCodeNotFoundException(countryCode = cmd.countryCode, gameCode = cmd.gameCode)
       }
 
       val events: immutable.Seq[CustomerParticipationReseted] = getResetParticipationEvents(game.get).to[collection.immutable.Seq]
 
       // fail is Game hasn't any children
       if (events.lengthCompare(2) < 0) {
-        throw ParticipationResetException(code = cmd.gameCode)
+        throw ParticipationResetException(gameCode = cmd.gameCode)
       }
 
       persistAll(events) { _ => }
@@ -330,34 +330,34 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
 
       // check Status
       if (cmd.game.status != GameStatus.Activated) {
-        throw ParticipationNotOpenedException(code = cmd.game.code)
+        throw ParticipationNotOpenedException(gameCode = cmd.game.code)
       }
 
       // check if game is active start_date
       if (cmd.game.startDate.isAfter(Instant.now)) {
-        throw ParticipationNotOpenedException(code = cmd.game.code)
+        throw ParticipationNotOpenedException(gameCode = cmd.game.code)
       }
 
       // check if game is active end_date
       if (cmd.game.endDate.isBefore(Instant.now)) {
-        throw ParticipationCloseException(code = cmd.game.code)
+        throw ParticipationCloseException(gameCode = cmd.game.code)
       }
 
       // check Dependencies
       val dependenciesInFail = getDependenciesInFail(game = cmd.game)
       if (dependenciesInFail.nonEmpty) {
-        throw ParticipationDependenciesException(code = cmd.game.code, limits = dependenciesInFail)
+        throw ParticipationDependenciesException(gameCode = cmd.game.code, gameLimits = dependenciesInFail)
       }
 
       // check Limits
       val participationLimitsInFail = getParticipationLimitsInFail(game = cmd.game)
       if (participationLimitsInFail.nonEmpty) {
-        throw ParticipationLimitException(code = cmd.game.code, limits = participationLimitsInFail)
+        throw ParticipationLimitException(gameCode = cmd.game.code, gameLimits = participationLimitsInFail)
       }
 
       // check Ean
       if (cmd.game.inputType == GameInputType.Pincode && !cmd.ean.exists(e => cmd.game.inputEans.contains(e))) {
-        throw ParticipationEanException(code = cmd.game.code, ean = cmd.ean)
+        throw ParticipationEanException(gameCode = cmd.game.code, ean = cmd.ean)
       }
 
       // Return Lost if some GameLimit is reached
