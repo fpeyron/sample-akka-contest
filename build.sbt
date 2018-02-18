@@ -9,7 +9,8 @@ description := "Fusion provider Game"
 
 lazy val akkaVersion = "2.5.9"
 lazy val akkaHttpVersion = "10.0.11"
-lazy val ConstructrAkka   = "0.18.1"
+lazy val constructrVersion   = "0.18.1"
+lazy val swaggerVersion = "1.5.16"
 
 resolvers += Resolver.bintrayRepo("everpeace", "maven")
 
@@ -24,7 +25,7 @@ libraryDependencies += "com.typesafe.akka"            %% "akka-parsing"         
 libraryDependencies += "com.typesafe.akka"            %% "akka-http-spray-json"           % akkaHttpVersion
 // --- swagger generator
 libraryDependencies += "com.github.swagger-akka-http" %% "swagger-akka-http"              % "0.10.1"
-libraryDependencies += "io.swagger"                   % "swagger-jaxrs"                   % "1.5.16"
+libraryDependencies += "io.swagger"                   % "swagger-jaxrs"                   % swaggerVersion
 // --- akka cluster
 libraryDependencies += "com.typesafe.akka"            %% "akka-cluster"                   % akkaVersion
 libraryDependencies += "com.typesafe.akka"            %% "akka-cluster-metrics"           % akkaVersion
@@ -33,7 +34,7 @@ libraryDependencies += "com.typesafe.akka"            %% "akka-remote"          
 libraryDependencies += "com.typesafe.akka"            %% "akka-cluster-tools"             % akkaVersion
 libraryDependencies += "com.lightbend.akka"           %% "akka-management-cluster-http"   % "0.5"
 // --- akka cluster contructr for redis
-libraryDependencies += "de.heikoseeberger"            %% "constructr"                     % ConstructrAkka
+libraryDependencies += "de.heikoseeberger"            %% "constructr"                     % constructrVersion
 libraryDependencies += "com.github.everpeace"         %% "constructr-coordination-redis"  % "0.0.4"
 // --- Akka Persistent / Mysql
 libraryDependencies += "com.github.dnvriend"          %% "akka-persistence-jdbc"          % "3.2.0"
@@ -51,12 +52,21 @@ libraryDependencies += "com.typesafe.akka"            %% "akka-stream-testkit"  
 
 
 // Force dependencies to remove WARN in log during compilation
+dependencyOverrides += "com.fasterxml.jackson.module" %% "jackson-module-scala"           % "2.8.9"
+dependencyOverrides += "com.typesafe"                 % "config"                          % "1.3.2"
+dependencyOverrides += "com.typesafe.akka"            %% "akka-cluster-sharding"          % akkaVersion
+dependencyOverrides += "com.typesafe.akka"            %% "akka-cluster"                   % akkaVersion
 dependencyOverrides += "com.typesafe.akka"            %% "akka-stream"                    % akkaVersion
 dependencyOverrides += "com.typesafe.akka"            %% "akka-actor"                     % akkaVersion
 dependencyOverrides += "com.typesafe.akka"            %% "akka-remote"                    % akkaVersion
-dependencyOverrides += "de.heikoseeberger"            %% "constructr-coordination"        % ConstructrAkka
-dependencyOverrides += "org.codehaus.plexus"          % "plexus-utils"                    % "3.0.17"
-dependencyOverrides += "com.google.guava"             % "guava"                           % "22.0"
+dependencyOverrides += "com.typesafe.akka"            %% "akka-http"                      % akkaHttpVersion
+dependencyOverrides += "com.typesafe.akka"            %% "akka-http-spray-json"           % akkaHttpVersion
+dependencyOverrides += "de.heikoseeberger"            %% "constructr-coordination"        % constructrVersion
+dependencyOverrides += "io.swagger"                   % "swagger-core"                    % swaggerVersion
+dependencyOverrides += "io.spray"                     %% "spray-json"                     % "1.3.4"
+dependencyOverrides += "org.ow2.asm"                  % "asm"                             % "5.0.4"
+dependencyOverrides += "org.reactivestreams"          % "reactive-streams"                % "1.0.2"
+dependencyOverrides += "org.slf4j"                    % "slf4j-api"                       % "1.7.25"
 
 
 // ----------------
