@@ -14,7 +14,7 @@ import akka.stream.scaladsl.Sink
 import akka.util.Timeout
 import com.betc.danon.game.actors.CustomerWorkerActor._
 import com.betc.danon.game.actors.GameWorkerActor.GameParticipationEvent
-import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GameStatus}
+import com.betc.danon.game.models.GameEntity.{Game, GameInputType, GameLimit, GameLimitType, GameLimitUnit, GameStatus, GameType}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.models.ParticipationDto.{CustomerGameAvailability, CustomerGameResponse, CustomerParticipateResponse, CustomerPrizeResponse, ParticipationStatus}
 import com.betc.danon.game.models.PrizeDomain.PrizeType
@@ -106,6 +106,7 @@ object CustomerWorkerActor {
                                    participationId: UUID,
                                    gameId: UUID,
                                    gameCode: String,
+                                   gameType: GameType.Value,
                                    countryCode: String,
                                    customerId: String,
                                    instantwin: Option[InstantwinExtended] = None,
@@ -113,14 +114,13 @@ object CustomerWorkerActor {
                                    ean: Option[String] = None,
                                    meta: Map[String, String] = Map.empty
                                  ) extends CustomerEvent {
-    def this(r: GameParticipationEvent) = this(timestamp = r.timestamp, participationId = r.participationId, gameId = r.gameId, gameCode = r.gameCode, countryCode = r.countryCode, customerId = r.customerId, instantwin = r.instantwin, transaction_code = r.transaction_code, ean = r.ean, meta = r.meta)
+    def this(r: GameParticipationEvent) = this(timestamp = r.timestamp, participationId = r.participationId, gameId = r.gameId, gameCode = r.gameCode, gameType = r.gameType, countryCode = r.countryCode, customerId = r.customerId, instantwin = r.instantwin, transaction_code = r.transaction_code, ean = r.ean, meta = r.meta)
   }
 
   case class CustomerParticipationConfirmed(
                                              timestamp: Instant = Instant.now,
                                              participationId: UUID,
                                              gameId: UUID,
-                                             gameCode: String,
                                              countryCode: String,
                                              customerId: String,
                                              meta: Map[String, String] = Map.empty
@@ -130,7 +130,6 @@ object CustomerWorkerActor {
                                              timestamp: Instant = Instant.now,
                                              participationId: UUID,
                                              gameId: UUID,
-                                             gameCode: String,
                                              countryCode: String,
                                              customerId: String,
                                              meta: Map[String, String] = Map.empty
@@ -140,7 +139,6 @@ object CustomerWorkerActor {
                                                timestamp: Instant = Instant.now,
                                                participationId: UUID,
                                                gameId: UUID,
-                                               gameCode: String,
                                                countryCode: String,
                                                customerId: String,
                                                meta: Map[String, String] = Map.empty
@@ -149,7 +147,6 @@ object CustomerWorkerActor {
   case class CustomerParticipationReseted(
                                            timestamp: Instant = Instant.now,
                                            gameId: UUID,
-                                           gameCode: String,
                                            countryCode: String,
                                            customerId: String
                                          ) extends CustomerEvent
@@ -375,6 +372,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
           participationId = UUID.randomUUID(),
           gameId = cmd.game.id,
           gameCode = cmd.game.code,
+          gameType = cmd.game.`type`,
           countryCode = cmd.countryCode,
           customerId = cmd.customerId,
           transaction_code = cmd.transaction_code,
@@ -404,7 +402,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
               id = event.participationId,
               game_code = event.gameCode,
               date = event.timestamp,
-              status = provideStatus(event.instantwin),
+              status = provideStatus(event.gameType, event.instantwin),
               prize = event.instantwin.map(p => new CustomerPrizeResponse(p.prize))
             )
           }
@@ -443,7 +441,6 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       val event = CustomerParticipationConfirmed(
         participationId = participation.get.participationId,
         gameId = participation.get.gameId,
-        gameCode = participation.get.gameCode,
         countryCode = participation.get.countryCode,
         customerId = cmd.customerId,
         meta = cmd.meta
@@ -485,7 +482,6 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       val event = CustomerParticipationValidated(
         participationId = participation.get.participationId,
         gameId = participation.get.gameId,
-        gameCode = participation.get.gameCode,
         countryCode = participation.get.countryCode,
         customerId = cmd.customerId,
         meta = cmd.meta
@@ -527,7 +523,6 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       val event = CustomerParticipationInvalidated(
         participationId = participation.get.participationId,
         gameId = participation.get.gameId,
-        gameCode = participation.get.gameCode,
         countryCode = participation.get.countryCode,
         customerId = customerId,
         meta = cmd.meta
@@ -562,7 +557,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         gameCode = event.gameCode,
         countryCode = event.countryCode,
         participationDate = event.timestamp,
-        participationStatus = provideStatus(event.instantwin),
+        participationStatus = provideStatus(event.gameType, event.instantwin),
         prizeId = event.instantwin.map(_.prize.id)
       )
     case event: CustomerParticipationConfirmed =>
@@ -617,7 +612,12 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
     }
   }
 
-  private def provideStatus(instantwin: Option[InstantwinExtended]): ParticipationStatus.Value = instantwin.map(i => if (i.prize.`type` == PrizeType.Gift) ParticipationStatus.toConfirm else ParticipationStatus.pending).getOrElse(ParticipationStatus.lost)
+  private def provideStatus: (GameType.Value, Option[InstantwinExtended]) => ParticipationStatus.Value = {
+    case (GameType.Draw, None) => ParticipationStatus.pending
+    case (GameType.Instant, None) => ParticipationStatus.lost
+    case (_, Some(i: InstantwinExtended)) if i.prize.`type` == PrizeType.Gift => ParticipationStatus.toConfirm
+    case (_, Some(_)) => ParticipationStatus.pending
+  }
 
   private def getResetParticipationEvents(game: Game): Seq[CustomerParticipationReseted] = {
 
@@ -628,7 +628,6 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       } else {
         games.map(game => CustomerParticipationReseted(
           gameId = game.id,
-          gameCode = game.code,
           countryCode = game.countryCode,
           customerId = customerId
         )) ++ games.map(game => internal(game.id)).foldLeft(Seq.empty[CustomerParticipationReseted])(_ ++ _)
@@ -638,7 +637,6 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
     internal(game.id) :+
       CustomerParticipationReseted(
         gameId = game.id,
-        gameCode = game.code,
         countryCode = game.countryCode,
         customerId = customerId
       )

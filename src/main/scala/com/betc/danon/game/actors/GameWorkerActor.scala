@@ -12,7 +12,7 @@ import akka.stream.scaladsl.Sink
 import com.betc.danon.game.actors.CustomerWorkerActor.CustomerParticipateCmd
 import com.betc.danon.game.actors.GameWorkerActor._
 import com.betc.danon.game.models.Event
-import com.betc.danon.game.models.GameEntity.{Game, GameStatus}
+import com.betc.danon.game.models.GameEntity.{Game, GameStatus, GameType}
 import com.betc.danon.game.models.InstantwinDomain.InstantwinExtended
 import com.betc.danon.game.utils.HttpSupport.{FunctionalException, GameCodeNotFoundException}
 import com.betc.danon.game.utils.JournalReader
@@ -71,6 +71,7 @@ object GameWorkerActor {
                                      participationId: UUID,
                                      gameId: UUID,
                                      gameCode: String,
+                                     gameType: GameType.Value,
                                      countryCode: String,
                                      customerId: String,
                                      instantwin: Option[InstantwinExtended] = None,
@@ -109,7 +110,9 @@ class GameWorkerActor(customerCluster: ActorRef)(implicit val repository: Reposi
 
   override def receiveRecover: Receive = {
     case event: GameParticipationEvent if event.instantwin.isDefined =>
-      lastInstantWin = event.instantwin
+      if(game.exists(_.`type` == GameType.Instant)){
+        lastInstantWin = event.instantwin
+      }
 
     case RecoveryCompleted =>
       refreshInstantWins()
@@ -152,9 +155,10 @@ class GameWorkerActor(customerCluster: ActorRef)(implicit val repository: Reposi
         participationId = UUID.randomUUID(),
         gameId = game.get.id,
         gameCode = game.get.code,
+        gameType = game.get.`type`,
         countryCode = cmd.countryCode,
         customerId = cmd.customerId,
-        instantwin = getInstantWin(now),
+        instantwin = Option(game.get.`type`).filter(_ == GameType.Instant).flatMap(_ => getInstantWin(now)),
         transaction_code = cmd.transaction_code,
         ean = cmd.ean,
         meta = cmd.meta
