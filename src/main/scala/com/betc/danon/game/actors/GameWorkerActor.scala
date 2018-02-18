@@ -70,6 +70,7 @@ object GameWorkerActor {
                                      timestamp: Instant = Instant.now,
                                      participationId: UUID,
                                      gameId: UUID,
+                                     gameCode: String,
                                      countryCode: String,
                                      customerId: String,
                                      instantwin: Option[InstantwinExtended] = None,
@@ -144,12 +145,13 @@ class GameWorkerActor(customerCluster: ActorRef)(implicit val repository: Reposi
         throw GameCodeNotFoundException(countryCode = cmd.countryCode, gameCode = cmd.gameCode)
       }
 
-      val now = Instant.now()
+      val now: Instant = Instant.now()
 
       val event = GameParticipationEvent(
-        timestamp = Instant.now(),
+        timestamp = now,
         participationId = UUID.randomUUID(),
         gameId = game.get.id,
+        gameCode = game.get.code,
         countryCode = cmd.countryCode,
         customerId = cmd.customerId,
         instantwin = getInstantWin(now),

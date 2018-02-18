@@ -105,6 +105,7 @@ object CustomerWorkerActor {
                                    timestamp: Instant = Instant.now,
                                    participationId: UUID,
                                    gameId: UUID,
+                                   gameCode: String,
                                    countryCode: String,
                                    customerId: String,
                                    instantwin: Option[InstantwinExtended] = None,
@@ -112,13 +113,14 @@ object CustomerWorkerActor {
                                    ean: Option[String] = None,
                                    meta: Map[String, String] = Map.empty
                                  ) extends CustomerEvent {
-    def this(r: GameParticipationEvent) = this(timestamp = r.timestamp, participationId = r.participationId, gameId = r.gameId, countryCode = r.countryCode, customerId = r.customerId, instantwin = r.instantwin, transaction_code = r.transaction_code, ean = r.ean, meta = r.meta)
+    def this(r: GameParticipationEvent) = this(timestamp = r.timestamp, participationId = r.participationId, gameId = r.gameId, gameCode = r.gameCode, countryCode = r.countryCode, customerId = r.customerId, instantwin = r.instantwin, transaction_code = r.transaction_code, ean = r.ean, meta = r.meta)
   }
 
   case class CustomerParticipationConfirmed(
                                              timestamp: Instant = Instant.now,
                                              participationId: UUID,
                                              gameId: UUID,
+                                             gameCode: String,
                                              countryCode: String,
                                              customerId: String,
                                              meta: Map[String, String] = Map.empty
@@ -128,6 +130,7 @@ object CustomerWorkerActor {
                                              timestamp: Instant = Instant.now,
                                              participationId: UUID,
                                              gameId: UUID,
+                                             gameCode: String,
                                              countryCode: String,
                                              customerId: String,
                                              meta: Map[String, String] = Map.empty
@@ -137,6 +140,7 @@ object CustomerWorkerActor {
                                                timestamp: Instant = Instant.now,
                                                participationId: UUID,
                                                gameId: UUID,
+                                               gameCode: String,
                                                countryCode: String,
                                                customerId: String,
                                                meta: Map[String, String] = Map.empty
@@ -145,11 +149,12 @@ object CustomerWorkerActor {
   case class CustomerParticipationReseted(
                                            timestamp: Instant = Instant.now,
                                            gameId: UUID,
+                                           gameCode: String,
                                            countryCode: String,
                                            customerId: String
                                          ) extends CustomerEvent
 
-  case class CustomerParticipationState(participationId: UUID, gameId: UUID, countryCode: String, participationDate: Instant, participationStatus: ParticipationStatus.Value, prizeId: Option[UUID] = None)
+  case class CustomerParticipationState(participationId: UUID, gameId: UUID, gameCode: String, countryCode: String, participationDate: Instant, participationStatus: ParticipationStatus.Value, prizeId: Option[UUID] = None)
 
 }
 
@@ -205,6 +210,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
         repository.prize.getById(participation.get.prizeId.get).map { prize =>
           CustomerParticipateResponse(
             id = participation.get.participationId,
+            game_code = participation.get.gameCode,
             date = participation.get.participationDate,
             status = participation.get.participationStatus,
             prize = prize.map(new CustomerPrizeResponse(_))
@@ -213,6 +219,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       } else {
         sender() ! CustomerParticipateResponse(
           id = participation.get.participationId,
+          game_code = participation.get.gameCode,
           date = participation.get.participationDate,
           status = participation.get.participationStatus
         )
@@ -243,6 +250,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
             .filter(event => gameIds.contains(event.gameId))
             .map(event => CustomerParticipateResponse(
               id = event.participationId,
+              game_code = event.gameCode,
               date = event.timestamp,
               status = participations.find(_.participationId == event.participationId).map(_.participationStatus).getOrElse(ParticipationStatus.lost),
               prize = event.instantwin.map(i => new CustomerPrizeResponse(i.prize))
@@ -366,6 +374,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
           timestamp = Instant.now,
           participationId = UUID.randomUUID(),
           gameId = cmd.game.id,
+          gameCode = cmd.game.code,
           countryCode = cmd.countryCode,
           customerId = cmd.customerId,
           transaction_code = cmd.transaction_code,
@@ -393,6 +402,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
             // Return response
             sender() ! CustomerParticipateResponse(
               id = event.participationId,
+              game_code = event.gameCode,
               date = event.timestamp,
               status = provideStatus(event.instantwin),
               prize = event.instantwin.map(p => new CustomerPrizeResponse(p.prize))
@@ -433,6 +443,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       val event = CustomerParticipationConfirmed(
         participationId = participation.get.participationId,
         gameId = participation.get.gameId,
+        gameCode = participation.get.gameCode,
         countryCode = participation.get.countryCode,
         customerId = cmd.customerId,
         meta = cmd.meta
@@ -474,6 +485,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       val event = CustomerParticipationValidated(
         participationId = participation.get.participationId,
         gameId = participation.get.gameId,
+        gameCode = participation.get.gameCode,
         countryCode = participation.get.countryCode,
         customerId = cmd.customerId,
         meta = cmd.meta
@@ -515,6 +527,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       val event = CustomerParticipationInvalidated(
         participationId = participation.get.participationId,
         gameId = participation.get.gameId,
+        gameCode = participation.get.gameCode,
         countryCode = participation.get.countryCode,
         customerId = customerId,
         meta = cmd.meta
@@ -546,6 +559,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       participations = participations :+ CustomerParticipationState(
         participationId = event.participationId,
         gameId = event.gameId,
+        gameCode = event.gameCode,
         countryCode = event.countryCode,
         participationDate = event.timestamp,
         participationStatus = provideStatus(event.instantwin),
@@ -614,6 +628,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
       } else {
         games.map(game => CustomerParticipationReseted(
           gameId = game.id,
+          gameCode = game.code,
           countryCode = game.countryCode,
           customerId = customerId
         )) ++ games.map(game => internal(game.id)).foldLeft(Seq.empty[CustomerParticipationReseted])(_ ++ _)
@@ -623,6 +638,7 @@ class CustomerWorkerActor(gameActor: ActorRef)(implicit val repository: Reposito
     internal(game.id) :+
       CustomerParticipationReseted(
         gameId = game.id,
+        gameCode = game.code,
         countryCode = game.countryCode,
         customerId = customerId
       )

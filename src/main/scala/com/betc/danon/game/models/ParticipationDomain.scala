@@ -18,7 +18,7 @@ object ParticipationDto {
     implicit val customerParticipationStatusType: RootJsonFormat[ParticipationStatus.Value] = enumFormat(ParticipationStatus)
     implicit val customerParticipateRequest: RootJsonFormat[CustomerParticipateRequest] = jsonFormat4(CustomerParticipateRequest)
     implicit val customerPrizeResponse: RootJsonFormat[CustomerPrizeResponse] = jsonFormat9(CustomerPrizeResponse)
-    implicit val customerParticipateResponse: RootJsonFormat[CustomerParticipateResponse] = jsonFormat4(CustomerParticipateResponse)
+    implicit val customerParticipateResponse: RootJsonFormat[CustomerParticipateResponse] = jsonFormat5(CustomerParticipateResponse)
     implicit val customerGameResponse: RootJsonFormat[CustomerGameResponse] = jsonFormat14(CustomerGameResponse)
     implicit val customerConfirmParticipationRequest: RootJsonFormat[CustomerConfirmParticipationRequest] = jsonFormat1(CustomerConfirmParticipationRequest)
   }
@@ -52,11 +52,13 @@ object ParticipationDto {
   case class CustomerParticipateResponse(
                                           @ApiModelProperty(position = 1, value = "id", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
                                           id: UUID,
-                                          @ApiModelProperty(position = 2, value = "date", required = true, example = "2018-01-01T00:00:00.000+02:00")
+                                          @ApiModelProperty(position = 2, value = "game_code", required = true, example = "1c637dce-ebf0-11e7-8c3f-9a214cf093aa")
+                                          game_code: String,
+                                          @ApiModelProperty(position = 3, value = "date", required = true, example = "2018-01-01T00:00:00.000+02:00")
                                           date: Instant,
-                                          @ApiModelProperty(position = 3, value = "status", required = true, example = "OTHER", allowableValues = "REJECTED,LOST,WIN")
+                                          @ApiModelProperty(position = 4, value = "status", required = true, example = "OTHER", allowableValues = "REJECTED,LOST,WIN")
                                           status: ParticipationStatus.Value,
-                                          @ApiModelProperty(position = 4, value = "prize", required = false)
+                                          @ApiModelProperty(position = 5, value = "prize", required = false)
                                           prize: Option[CustomerPrizeResponse] = None
                                         )
 
@@ -130,33 +132,6 @@ object ParticipationDto {
 
   def sortByParent(xs: Seq[CustomerGameResponse]): Seq[CustomerGameResponse] = {
 
-    /*
-    def less(a: CustomerGameResponse, b: CustomerGameResponse): Boolean = {
-          if (b.parents.contains(a.code)) true
-          else if (a.parents.contains(b.code)) false
-          //else if (a.parent_id.isEmpty && b.parent_id.isEmpty) a.id.compareTo(b.id) > 0
-          //else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get != b.parent_id.get) a.parent_id.get.compareTo(b.parent_id.get) > 0
-          //else if (a.parent_id.isDefined && b.parent_id.isDefined && a.parent_id.get == b.parent_id.get) b.id.compareTo(a.id) > 0
-          //else b.parent_id.getOrElse(b.id).compareTo(a.parent_id.getOrElse(a.id)) > 0
-          else a.code.compareTo(b.code) < 0
-        }
-
-        def merge(xs: List[CustomerGameResponse], ys: List[CustomerGameResponse]): List[CustomerGameResponse] = (xs, ys) match {
-          case (Nil, _) => ys
-          case (_, Nil) => xs
-          case (x :: xs1, y :: ys1) =>
-            if (less(x, y)) x :: merge(xs1, ys)
-            else y :: merge(xs, ys1)
-        }
-
-        val n = xs.length / 2
-        if (n == 0) xs
-        else {
-          val (ys, zs) = xs splitAt n
-          merge(sortByParent(ys), sortByParent(zs))
-        }
-    xs
-  */
     def mergeWithChild(parent: CustomerGameResponse): Seq[CustomerGameResponse] = {
       parent :: xs.filter(g => g.parents.getOrElse(Seq.empty).contains(parent.code)).sortBy(_.code).map(mergeWithChild).foldLeft(List.empty[CustomerGameResponse])(_ ++ _)
     }
