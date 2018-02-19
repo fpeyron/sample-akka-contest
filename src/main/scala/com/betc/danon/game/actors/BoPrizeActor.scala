@@ -50,7 +50,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
 
     case PrizeListQuery(uc, game_id) => try {
 
-      sender ! repository.prize.fetchBy(country_code = Some(uc.country_code), game_id = game_id.flatMap(ActorUtil.string2UUID)).map(new PrizeResponse(_))
+      sender ! repository.prize.fetchBy(country_code = Some(uc.countryCode), game_id = game_id.flatMap(ActorUtil.string2UUID)).map(new PrizeResponse(_))
 
     } catch {
       case e: Exception => sender() ! akka.actor.Status.Failure(e); log.error("Exception caught: {}", e);
@@ -62,7 +62,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
       repository.prize.getById(id).map { prize =>
 
         // check existing prize
-        if (!prize.exists(_.countryCode == uc.country_code)) {
+        if (!prize.exists(_.countryCode == uc.countryCode)) {
           throw PrizeIdNotFoundException(id = id)
         } else {
           prize.map(new PrizeResponse(_)).get
@@ -88,7 +88,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
       val prize = Prize(
         id = newId,
         code = request.code.getOrElse(newId.toString),
-        countryCode = uc.country_code,
+        countryCode = uc.countryCode,
         `type` = request.`type`.map(PrizeType.withName) getOrElse PrizeType.Gift,
         title = request.title,
         label = request.label.getOrElse("Unknown"),
@@ -114,7 +114,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
 
       // check existing contest
       val entity: Prize = Await.result(repository.prize.getById(id).map {
-        case Some(u) if u.countryCode == uc.country_code => u
+        case Some(u) if u.countryCode == uc.countryCode => u
         case None => throw PrizeIdNotFoundException(id = id)
       }, Duration.Inf)
 
@@ -156,7 +156,7 @@ class BoPrizeActor(implicit val repository: Repository) extends Actor with Actor
 
       // check existing contest
       Await.result(repository.prize.getById(id).map {
-        case Some(u) if u.countryCode == uc.country_code => u
+        case Some(u) if u.countryCode == uc.countryCode => u
         case None => throw PrizeIdNotFoundException(id = id)
       }, Duration.Inf)
 

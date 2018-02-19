@@ -77,7 +77,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
       val restrictedStatus = status.map(_.split(",").flatMap(GameStatus.withNameOptional).toSeq)
 
       val sourceList: Source[GameForListDto, NotUsed] = repository.game.fetchBy(
-        country_code = Some(uc.country_code),
+        country_code = Some(uc.countryCode),
         types = restrictedTypes.getOrElse(Seq.empty[GameType.Value]),
         status = restrictedStatus.getOrElse(Seq.empty[GameStatus.Value])
       )
@@ -93,7 +93,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
 
       repository.game.getById(id, GameExtension.all).map { game =>
         // check existing game
-        if (!game.exists(_.countryCode == uc.country_code)) {
+        if (!game.exists(_.countryCode == uc.countryCode)) {
           throw GameIdNotFoundException(id = id)
         } else {
           game.map(new GameResponse(_)).get
@@ -121,7 +121,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
         `type` = request.`type`.map(GameType.withName) getOrElse GameType.Instant,
         status = GameStatus.Draft,
         code = request.code.getOrElse(newId.toString),
-        countryCode = uc.country_code,
+        countryCode = uc.countryCode,
         title = request.title,
         picture = request.picture,
         description = request.description,
@@ -157,7 +157,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
       val parentIds: Seq[UUID] = parentStringIds.flatMap(ActorUtil.string2UUID)
 
       if (parentIds.nonEmpty) {
-        val ids = Await.result(repository.game.findByIds(parentIds), Duration.Inf).filter(_.countryCode == uc.country_code).map(_.id.toString)
+        val ids = Await.result(repository.game.findByIds(parentIds), Duration.Inf).filter(_.countryCode == uc.countryCode).map(_.id.toString)
         val errors = parentStringIds.flatMap(p => if (!ids.contains(p)) Some("parents", s"GAME_NOT_FOUND : parent should already exists : $p") else None)
         if (errors.nonEmpty) {
           var index = -1
@@ -183,7 +183,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
       val game = Await.result(repository.game.getById(id, GameExtension.all), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.countryCode == uc.country_code)) {
+      if (!game.exists(_.countryCode == uc.countryCode)) {
         throw GameIdNotFoundException(id = id)
       }
 
@@ -212,7 +212,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
       val parentIds: Seq[UUID] = parentStringIds.flatMap(ActorUtil.string2UUID)
 
       if (parentIds.nonEmpty) {
-        val ids = Await.result(repository.game.findByIds(parentIds), Duration.Inf).filter(_.countryCode == uc.country_code).map(_.id.toString)
+        val ids = Await.result(repository.game.findByIds(parentIds), Duration.Inf).filter(_.countryCode == uc.countryCode).map(_.id.toString)
         val errors = parentStringIds.flatMap(p => if (!ids.contains(p)) Some("parents", s"GAME_NOT_FOUND : parent should already exists : $p") else None)
         if (errors.nonEmpty) {
           var index = -1
@@ -268,7 +268,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
       val game = Await.result(repository.game.getById(id), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.countryCode == uc.country_code)) throw GameIdNotFoundException(id = id)
+      if (!game.exists(_.countryCode == uc.countryCode)) throw GameIdNotFoundException(id = id)
 
       // check status
       if (game.get.status != GameStatus.Draft) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
@@ -295,7 +295,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
       val game = Await.result(repository.game.getById(id), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.countryCode == uc.country_code)) throw GameIdNotFoundException(id = id)
+      if (!game.exists(_.countryCode == uc.countryCode)) throw GameIdNotFoundException(id = id)
 
       // check status
       if (game.get.status != GameStatus.Draft) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
@@ -319,7 +319,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
       val game = Await.result(repository.game.getById(id), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.countryCode == uc.country_code)) throw GameIdNotFoundException(id = id)
+      if (!game.exists(_.countryCode == uc.countryCode)) throw GameIdNotFoundException(id = id)
 
       // check status
       if (game.get.status == GameStatus.Archived) throw NotAuthorizedException(id = id, message = "NOT_AUTHORIZED_STATUS")
@@ -346,7 +346,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
 
       repository.game.getById(id, GameExtension.all).map { game =>
         // check existing game
-        if (!game.exists(_.countryCode == uc.country_code)) {
+        if (!game.exists(_.countryCode == uc.countryCode)) {
           throw GameIdNotFoundException(id = id)
         } else {
           game.get.prizes
@@ -365,7 +365,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
       val game = Await.result(repository.game.getById(id, GameExtension.all), Duration.Inf)
 
       // check existing game
-      if (!game.exists(_.countryCode == uc.country_code)) {
+      if (!game.exists(_.countryCode == uc.countryCode)) {
         throw GameIdNotFoundException(id = id)
       }
 
@@ -419,7 +419,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
       val gamePrize: Option[GamePrize] = game.flatMap(_.prizes.find(_.id == prizeId))
 
       // check existing game
-      if (!game.exists(_.countryCode == uc.country_code)) {
+      if (!game.exists(_.countryCode == uc.countryCode)) {
         throw GameIdNotFoundException(id = id)
       }
 
@@ -474,7 +474,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
       val gamePrize: Option[GamePrize] = game.flatMap(_.prizes.find(_.id == prize_id))
 
       // check existing game
-      if (!game.exists(_.countryCode == uc.country_code)) {
+      if (!game.exists(_.countryCode == uc.countryCode)) {
         throw GameIdNotFoundException(id = id)
       }
 
@@ -517,7 +517,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
 
       repository.game.getById(id).map { game =>
         // check existing game
-        if (!game.exists(_.countryCode == uc.country_code)) {
+        if (!game.exists(_.countryCode == uc.countryCode)) {
           throw GameIdNotFoundException(id = id)
         }
         (game.get, repository.instantwin.fetchWithPrizeBy(game.get.id))
@@ -534,7 +534,7 @@ class BoGameActor(val gameCluster: ActorRef)(implicit val repository: Repository
 
       repository.game.getById(id).map { game =>
         // check existing game
-        if (!game.exists(_.countryCode == uc.country_code)) {
+        if (!game.exists(_.countryCode == uc.countryCode)) {
           throw GameIdNotFoundException(id = id)
         }
         (game.get, journalReader.currentEventsByTag(s"GAME-${id.toString}")

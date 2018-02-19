@@ -44,6 +44,9 @@ libraryDependencies += "mysql"                        % "mysql-connector-java"  
 libraryDependencies += "com.github.romix.akka"        %% "akka-kryo-serialization"        % "0.5.2"
 
 libraryDependencies += "ch.qos.logback"               % "logback-classic"                 % "1.2.+"
+// ---Hasher utils to persist password
+libraryDependencies += "com.roundeights"              %% "hasher"                          % "1.2.0"
+
 
 // ---Test
 libraryDependencies += "com.typesafe.akka"            %% "akka-testkit"                   % akkaVersion % Test
