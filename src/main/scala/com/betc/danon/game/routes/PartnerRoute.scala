@@ -198,8 +198,8 @@ trait PartnerRoute
         onSuccess(context.customerCluster ? CustomerGetGamesQry(
           countryCode = country_code.toUpperCase,
           customerId = customer_id.toUpperCase,
-          tags = tagsOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
-          codes = codesOptional.map(_.split(",").toSeq).getOrElse(Seq.empty)
+          tags = tagsOptional.filterNot(_ == "").map(_.split(",").toSeq).getOrElse(Seq.empty),
+          codes = codesOptional.filterNot(_ == "").map(_.split(",").toSeq).getOrElse(Seq.empty)
         )) {
           case response: Seq[Any] => complete(StatusCodes.OK, response.asInstanceOf[Seq[CustomerGameResponse]])
         }
@@ -261,8 +261,8 @@ trait PartnerRoute
           CustomerWorkerActor.CustomerGetParticipationsQry(
             countryCode = country_code.toUpperCase,
             customerId = customer_id.toUpperCase,
-            tags = tagsOptional.map(_.split(",").toSeq).getOrElse(Seq.empty),
-            codes = codesOptional.map(_.split(",").toSeq).getOrElse(Seq.empty)
+            tags = tagsOptional.filterNot(_ == "").map(_.split(",").toSeq).getOrElse(Seq.empty),
+            codes = codesOptional.filterNot(_ == "").map(_.split(",").toSeq).getOrElse(Seq.empty)
           )) {
           case response: Seq[Any] => complete(StatusCodes.OK, response.asInstanceOf[Seq[CustomerParticipateResponse]])
         }
