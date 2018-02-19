@@ -85,7 +85,7 @@ object GameWorkerActor {
 
 class GameWorkerActor(customerCluster: ActorRef)(implicit val repository: Repository, val materializer: ActorMaterializer, val journalReader: JournalReader) extends PersistentActor with ActorLogging {
 
-  override def persistenceId: String = s"game-${self.path.name}"
+  override def persistenceId: String = s"game-${game.map(_.id).getOrElse("NONE")}"
 
 
   override def postRestart(reason: Throwable): Unit = {
