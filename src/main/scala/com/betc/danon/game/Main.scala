@@ -7,6 +7,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.DebuggingDirectives
 import akka.stream.ActorMaterializer
+import buildinfo.BuildInfo
 import com.betc.danon.game.actors._
 import com.betc.danon.game.queries.CustomerQuery
 import com.betc.danon.game.repositories.{GameRepository, InstantwinRepository, PrizeRepository}
@@ -85,6 +86,8 @@ object Main extends App with RouteConcatenation with HttpSupport {
 
   // logger
   val logger = Logging(system, getClass)
+  logger.info(s"Server version : ${BuildInfo.version}")
+  logger.info(s"Server buildTime : ${BuildInfo.buildTime}")
   logger.info(s"Server online at      http://${Config.Api.hostname}:${Config.Api.port}")
   logger.info(s"Server online info    http://${Config.Api.hostname}:${Config.Api.port}/info")
   logger.info(s"Server online health  http://${Config.Api.hostname}:${Config.Api.port}/health")
